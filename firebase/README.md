@@ -27,6 +27,12 @@ Nếu vẫn sử dụng địa chỉ localhost đã đăng ký trước, giữ t
 http://localhost:5500/index.html
 ```
 
+Với website production, thêm URI:
+
+```text
+https://gvcnva2.netlify.app/index.html
+```
+
 Lưu cấu hình Entra, chờ thay đổi có hiệu lực rồi mở lại ứng dụng. Nút **Sao chép Redirect URI** trên màn hình đăng nhập cung cấp chính xác địa chỉ `index.html` được sử dụng. Hai tên máy có vùng lưu dữ liệu trình duyệt riêng; dùng lại tên máy và cổng cũ nếu cần lấy cấu hình/dữ liệu đã lưu. Giữ Tenant ID/Client ID đang dùng, đồng thời đăng ký URI mới kết thúc bằng `/index.html`.
 
 Tài liệu Microsoft: [AADSTS50011](https://learn.microsoft.com/en-us/troubleshoot/entra/entra-id/app-integration/error-code-aadsts50011-redirect-uri-mismatch).

@@ -91,9 +91,9 @@ Với website `https://gvcnva2.netlify.app`, dùng `npm run firebase:check` đ�
 
 Thiết lập một lần:
 
-1. Đưa mã nguồn lên repository GitHub, bao gồm `netlify.toml`, `package.json`, `scripts/`, `assets/` và `index.html`. Có thể dùng **Source Control → Publish to GitHub** trong VS Code sau khi cài Git/đăng nhập GitHub.
-2. Trong Netlify, chọn tạo project từ Git repository và kết nối repository đó. Nếu project đã có từ lần kéo/thả thủ công, vào **Project configuration → Developer settings → Continuous deployment** để liên kết Git repository.
-3. Chọn nhánh chính, ví dụ `main`, làm production branch. Base directory là thư mục gốc; build command là `npm run build`; publish directory là `dist`. File `netlify.toml` đã khai báo build command, publish directory và Node 22.
+1. Dùng repository GitHub **`maithulammm/gvcnva2`** làm nguồn duy nhất cho project Netlify. Repository cần có `netlify.toml`, `package.json`, `scripts/`, `assets/` và `index.html`.
+2. Trong Netlify, liên kết project với repository `maithulammm/gvcnva2` tại **Project configuration → Developer settings → Continuous deployment**.
+3. Chọn nhánh `main` làm production branch. Base directory là thư mục gốc; build command là `npm run build`; publish directory là `dist`. File `netlify.toml` đã khai báo build command, publish directory và Node 22.
 4. Deploy lần đầu và lấy tên miền cố định của website. Netlify sẽ tự build/deploy khi có lần push mới lên production branch.
 
 Sau mỗi lần sửa, commit và push bằng VS Code hoặc terminal trong repository đã kết nối:
@@ -112,16 +112,16 @@ Thử build tại máy trước khi push:
 npm.cmd run build
 ```
 
-### Đăng nhập Microsoft trên tên miền Netlify
+### Đăng nhập Microsoft trên gvcnva2.netlify.app
 
-Với ví dụ tên miền `https://ten-site.netlify.app`, đăng ký URI sau trong Entra → App registrations → Authentication → Single-page application (SPA):
+Trong Entra → App registrations → Authentication → Single-page application (SPA), đăng ký URI:
 
 ```text
-https://ten-site.netlify.app/index.html
+https://gvcnva2.netlify.app/index.html
 ```
 
-Thay `ten-site` bằng tên miền thực tế và giữ các URI localhost đang dùng. Cấu hình `pretty_urls = false` trong Netlify giữ nguyên đuôi `.html` cho callback. Trên tên miền mới, nhập lại Tenant ID/Client ID đang dùng ở phần cấu hình Microsoft vì mỗi tên miền có vùng lưu trình duyệt riêng. Dữ liệu cục bộ trên localhost vẫn ở localhost; xuất JSON nếu cần chuyển dữ liệu.
+Giữ các URI localhost đang dùng. Cấu hình `pretty_urls = false` trong Netlify giữ nguyên đuôi `.html` cho callback. Trên `gvcnva2.netlify.app`, nhập Tenant ID/Client ID đang dùng ở phần cấu hình Microsoft vì mỗi tên miền có vùng lưu trình duyệt riêng. Dữ liệu cục bộ trên localhost vẫn ở localhost; xuất JSON nếu cần chuyển dữ liệu.
 
-Nếu bật Firebase, thêm origin Netlify thực tế, ví dụ `https://ten-site.netlify.app`, vào `GVCN_ALLOWED_ORIGINS` của API Firebase rồi triển khai lại API. Build Netlify ở đây triển khai frontend; backend Cloud Functions và database rules tiếp tục triển khai theo [hướng dẫn Firebase](firebase/README.md).
+Nếu bật Firebase, origin `https://gvcnva2.netlify.app` phải có trong `GVCN_ALLOWED_ORIGINS` của API Firebase rồi triển khai lại API. Build Netlify triển khai frontend; backend Cloud Functions và database rules tiếp tục triển khai theo [hướng dẫn Firebase](firebase/README.md).
 
 Tài liệu Netlify: [continuous deployment và build settings](https://docs.netlify.com/build/configure-builds/overview/), [netlify.toml](https://docs.netlify.com/build/configure-builds/file-based-configuration/).
