@@ -117,7 +117,7 @@ const FIREBASE_DATABASE_URL =
   "https://gvcn-3bdf9-default-rtdb.asia-southeast1.firebasedatabase.app";
 
 const FIREBASE_API_URL =
-  "https://asia-southeast1-gvcn-3bdf9.cloudfunctions.net/gvcnApi";
+  "https://gvcnva2.netlify.app/api";
 
 const CLOUD_CONFIG_KEY = "VA_GVCN_FIREBASE_CONNECTION_V1";
 

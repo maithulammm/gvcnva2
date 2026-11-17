@@ -1,4 +1,4 @@
-const base='https://asia-southeast1-gvcn-3bdf9.cloudfunctions.net/gvcnApi';
+const base='https://gvcnva2.netlify.app/api';
 const origin='https://gvcnva2.netlify.app';
 const probes=[
   {name:'API health',url:base+'/health',options:{method:'GET',headers:{Origin:origin}}},
@@ -13,10 +13,10 @@ const results=await Promise.all(probes.map(async probe=>{
 }));
 for(const result of results) console.log(JSON.stringify(result));
 if(results.some(r=>r.status===404)) {
-  console.error('API endpoint returns 404: deploy gvcnApi in asia-southeast1 or check the configured function URL.');
+  console.error('API endpoint returns 404: verify the Netlify Function deployment and /api route.');
   process.exitCode=1;
 } else if(results.some(r=>r.error||!r.cors)) {
-  console.error('Check connectivity and the deployed GVCN_ALLOWED_ORIGINS for gvcnva2.netlify.app.');
+  console.error('Check connectivity and GVCN_ALLOWED_ORIGINS in Netlify environment variables.');
   process.exitCode=1;
 } else if(results[0].status!==200||results[1].status!==204||results[2].status!==401) {
   console.error('API did not return the expected health/preflight/authentication responses.');

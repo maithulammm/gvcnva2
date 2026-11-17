@@ -5,8 +5,11 @@
     "build": "node scripts/build.mjs",
     "check": "node scripts/check-frontend.mjs && npm --prefix firebase/functions run check",
     "test": "node scripts/check-frontend.mjs && npm --prefix firebase/functions test",
-    "firebase:check": "node scripts/check-firebase.mjs",
-    "firebase:status": "node scripts/probe-firebase.mjs",
-    "firebase:deploy": "node scripts/check-firebase.mjs && npx --yes firebase-tools deploy --project gvcn-3bdf9 --only functions:gvcn"
+    "api:check": "node scripts/check-firebase.mjs",
+    "api:status": "node scripts/probe-firebase.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.1",
+    "jose": "^6.0.0"
   }
 }

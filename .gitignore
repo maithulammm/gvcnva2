@@ -9,3 +9,8 @@ firebase/functions/.env*
 !firebase/functions/.env.example
 firebase/functions/.secret.local
 *-service-account*.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+/.env
+/.env.*
+!/.env.example

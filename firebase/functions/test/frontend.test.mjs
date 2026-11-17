@@ -29,7 +29,7 @@ function frontend({memory=new Map(),api}={}) {
     location:{origin:'http://127.0.0.1:5500',pathname:'/index.html',protocol:'http:'}};
   ctx.window={location:ctx.location};
   ctx.fetch=async(url,options={})=>{
-    const path=new URL(url).pathname.replace('/gvcnApi',''),body=options.body?JSON.parse(options.body):{};
+    const path=new URL(url).pathname.replace(/^\/api/,'')||'/',body=options.body?JSON.parse(options.body):{};
     try {
       let result;
       if(path==='/bootstrap') result=await api.bootstrap(admin);

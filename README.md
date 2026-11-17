@@ -69,6 +69,7 @@ Tiếp tục dùng cùng tên máy và cổng Live Server đã dùng trước đ
 Nếu chưa có thư viện backend, cài theo lockfile:
 
 ```powershell
+npm.cmd ci
 npm.cmd --prefix firebase/functions ci --ignore-scripts
 ```
 
@@ -83,7 +84,7 @@ npm.cmd test
 
 Xem [hướng dẫn Firebase](firebase/README.md) để triển khai database/API và xử lý cấu hình Microsoft Entra.
 
-Với website `https://gvcnva2.netlify.app`, dùng `npm run firebase:check` để kiểm tra cấu hình triển khai, `npm run firebase:deploy` để triển khai API sau khi đăng nhập Google và `npm run firebase:status` để kiểm tra endpoint/CORS. Upload frontend lên Netlify không tự triển khai API Firebase.
+Với website `https://gvcnva2.netlify.app`, API chạy bằng Netlify Functions tại `/api/*`, dùng Firebase Realtime Database và không cần nâng cấp Firebase lên Blaze. Dùng `npm run api:check` để kiểm tra cấu hình local và `npm run api:status` để kiểm tra API production. Cấu hình biến môi trường và khóa service account trong Netlify theo [hướng dẫn Firebase](firebase/README.md); không lưu khóa trong Git.
 
 ## Tự động build và triển khai lên Netlify
 
@@ -93,7 +94,7 @@ Thiết lập một lần:
 
 1. Dùng repository GitHub **`maithulammm/gvcnva2`** làm nguồn duy nhất cho project Netlify. Repository cần có `netlify.toml`, `package.json`, `scripts/`, `assets/` và `index.html`.
 2. Trong Netlify, liên kết project với repository `maithulammm/gvcnva2` tại **Project configuration → Developer settings → Continuous deployment**.
-3. Chọn nhánh `main` làm production branch. Base directory là thư mục gốc; build command là `npm run build`; publish directory là `dist`. File `netlify.toml` đã khai báo build command, publish directory và Node 22.
+3. Chọn nhánh `main` làm production branch. Base directory là thư mục gốc; build command là `npm run build`; publish directory là `dist`. File `netlify.toml` khai báo cả thư mục Netlify Functions và Node 22.
 4. Deploy lần đầu và lấy tên miền cố định của website. Netlify sẽ tự build/deploy khi có lần push mới lên production branch.
 
 Sau mỗi lần sửa, commit và push bằng VS Code hoặc terminal trong repository đã kết nối:
@@ -122,6 +123,6 @@ https://gvcnva2.netlify.app/index.html
 
 Giữ các URI localhost đang dùng. Cấu hình `pretty_urls = false` trong Netlify giữ nguyên đuôi `.html` cho callback. Trên `gvcnva2.netlify.app`, nhập Tenant ID/Client ID đang dùng ở phần cấu hình Microsoft vì mỗi tên miền có vùng lưu trình duyệt riêng. Dữ liệu cục bộ trên localhost vẫn ở localhost; xuất JSON nếu cần chuyển dữ liệu.
 
-Nếu bật Firebase, origin `https://gvcnva2.netlify.app` phải có trong `GVCN_ALLOWED_ORIGINS` của API Firebase rồi triển khai lại API. Build Netlify triển khai frontend; backend Cloud Functions và database rules tiếp tục triển khai theo [hướng dẫn Firebase](firebase/README.md).
+API cho production được phục vụ cùng domain `https://gvcnva2.netlify.app`; Netlify tự triển khai function khi push lên `main`. Firebase Realtime Database vẫn ở project `gvcn-3bdf9`; không mở rules cho truy cập trực tiếp từ trình duyệt. Xem [hướng dẫn Firebase](firebase/README.md) để cấu hình biến môi trường bí mật trong Netlify.
 
 Tài liệu Netlify: [continuous deployment và build settings](https://docs.netlify.com/build/configure-builds/overview/), [netlify.toml](https://docs.netlify.com/build/configure-builds/file-based-configuration/).

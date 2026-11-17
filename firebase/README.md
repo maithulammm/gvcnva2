@@ -1,6 +1,6 @@
 # Firebase cho hệ thống GVCN Việt Anh 2026–2027
 
-Trang duy nhất là `index.html`; CSS và JavaScript được tách trong `assets/`. Đăng nhập Microsoft cũng trả về `index.html`. Xem [bản đồ mã nguồn](../README.md). Chưa có thao tác triển khai hoặc ghi vào database thật từ phiên phát triển này.
+Trang duy nhất là `index.html`; CSS và JavaScript được tách trong `assets/`. Đăng nhập Microsoft cũng trả về `index.html`. API production chạy trên Netlify Functions, còn dữ liệu nằm trong Firebase Realtime Database. Xem [bản đồ mã nguồn](../README.md).
 
 ## Đã chuẩn bị
 
@@ -8,7 +8,7 @@ Trang duy nhất là `index.html`; CSS và JavaScript được tách trong `asse
 - Admin thêm, sửa, xóa GVCN; phân công một lớp/GVCN; thu hồi quyền khi ngừng hoạt động hoặc xóa.
 - Admin thêm, sửa, xóa học sinh, nhập danh sách Excel. Chặn xóa học sinh có lịch gặp, cuộc gặp, kết nối phụ huynh, hỗ trợ hoặc hồ sơ M05 liên quan.
 - Database: `https://gvcn-3bdf9-default-rtdb.asia-southeast1.firebasedatabase.app`.
-- API Cloud Functions: `https://asia-southeast1-gvcn-3bdf9.cloudfunctions.net/gvcnApi`.
+- API Netlify Function: `https://gvcnva2.netlify.app/api/*`.
 - Quyền được kiểm tra ở API sau khi xác minh chữ ký, issuer, audience, thời hạn, tenant và `oid` của token Microsoft. Vai trò gửi từ HTML không được tin cậy.
 - GVCN chỉ sửa biểu mẫu lớp được giao khi tháng còn mở; khối trưởng rà soát khối; BGH nhận số liệu tổng hợp; Admin quản lý danh mục.
 - Cập nhật lớp có số phiên bản: một máy dùng dữ liệu cũ không thể ghi đè máy đã lưu trước. Thay đổi chưa đồng bộ được giữ theo tài khoản trong trình duyệt và phục hồi khi tải lại.
@@ -37,57 +37,37 @@ Lưu cấu hình Entra, chờ thay đổi có hiệu lực rồi mở lại ứn
 
 Tài liệu Microsoft: [AADSTS50011](https://learn.microsoft.com/en-us/troubleshoot/entra/entra-id/app-integration/error-code-aadsts50011-redirect-uri-mismatch).
 
-## Triển khai lần đầu
+## API miễn phí qua Netlify Functions
 
-URL database không cấp quyền quản trị dự án. Các bước dưới đây cần tài khoản Google có quyền triển khai trong Firebase project `gvcn-3bdf9`. Cloud Functions cần dự án đáp ứng điều kiện thanh toán/triển khai của Firebase.
+Firebase Realtime Database giữ nguyên ở project `gvcn-3bdf9` (gói Spark). Firebase Cloud Functions cần Blaze, nên API production chạy bằng Netlify Function tại `https://gvcnva2.netlify.app/api/*`. Các request vẫn xác minh JWT Microsoft ở máy chủ và kiểm tra quyền theo vai trò; không mở Realtime Database cho trình duyệt. Rules hiện tại từ chối đọc/ghi trực tiếp và không cần thay đổi.
 
-1. Giữ nguyên ứng dụng Entra đang dùng. Lấy Tenant ID từ phần cấu hình đăng nhập hiện tại.
-2. Sao chép `firebase/functions/.env.example` thành `firebase/functions/.env.gvcn-3bdf9`, điền Tenant ID thật. Client ID trong ví dụ lấy từ ảnh lỗi; kiểm tra trùng với ứng dụng đang hoạt động. `GVCN_ALLOWED_ORIGINS` liệt kê chính xác các địa chỉ website được phép gọi API, không kèm đường dẫn HTML. Thêm tên miền HTTPS của trường khi đưa vào sử dụng.
-3. Chạy từ thư mục gốc dự án trong PowerShell:
+### Cấu hình bí mật trong Netlify
 
-```powershell
-npm.cmd --prefix firebase/functions ci --ignore-scripts
-npm.cmd --prefix firebase/functions test
-npm.cmd --prefix firebase/functions run check
-npx.cmd --yes firebase-tools login
-npx.cmd --yes firebase-tools projects:list
-npx.cmd --yes firebase-tools deploy --project gvcn-3bdf9 --only "database,functions:gvcn"
+1. Trong Firebase Console → Project settings → Service accounts, tạo/tải khóa JSON cho một service account của project `gvcn-3bdf9`. Khóa này có quyền quản trị database: không commit vào Git, không gửi qua chat và không đưa vào frontend.
+2. Trong Netlify → Project configuration → Environment variables, thêm các biến sau cho Production và Functions:
+
+```text
+FIREBASE_SERVICE_ACCOUNT=<toàn bộ nội dung JSON key>
+MICROSOFT_TENANT_ID=<Tenant ID Entra đang dùng>
+MICROSOFT_CLIENT_ID=<Client ID Entra đang dùng>
+GVCN_ADMIN_EMAIL=lammt@vietanhschool.edu.vn
+GVCN_ALLOWED_ORIGINS=https://gvcnva2.netlify.app,http://localhost:5500,http://127.0.0.1:5500
 ```
 
-Nếu database đang phục vụ ứng dụng khác, gộp nhánh `gvcn` vào rules hiện có trước khi triển khai rules; file rules trong dự án là cấu hình đầy đủ. API dùng Firebase Admin SDK với danh tính dịch vụ do Cloud Functions cung cấp. Không đặt khóa service account, database secret, mật khẩu hoặc Microsoft Client Secret trong HTML. Không cần Firebase Web API key cho cách kết nối này.
+`FIREBASE_SERVICE_ACCOUNT` là bí mật có quyền cao. Chỉ dán trực tiếp vào ô Environment variables của Netlify; không lưu trong `.env.example`, source code, GitHub hoặc tin nhắn. Các biến còn lại phải giữ đúng Tenant ID/Client ID của ứng dụng Microsoft đang dùng.
+3. Push lên nhánh `main` để Netlify build site và function cùng lúc. Nếu đã thêm biến sau lần deploy, chạy lại deploy production từ Netlify.
 
-4. Mở `index.html` qua Live Server hoặc HTTPS, giữ cùng tên máy/cổng đã dùng để truy cập dữ liệu trình duyệt cũ. Đăng nhập Microsoft bằng tài khoản Admin. Chọn **Dữ liệu Firebase → Bật kết nối Firebase** sau khi API triển khai thành công. Có thể bật/tắt tại phần **Kết nối dữ liệu Firebase** trước khi đăng nhập nếu API chưa sẵn sàng.
-5. Lần đầu đăng nhập online, API tạo các lớp còn thiếu trong nhánh dành riêng cho ứng dụng, đồng thời liên kết Admin đầu tiên với `oid` Microsoft. Không tạo dữ liệu minh họa hoặc ghi đè các nhánh khác của database.
-6. Admin vào **Quản lý GVCN** để nhập họ tên, email Microsoft, lớp và trạng thái hoạt động. Giáo viên sau đó đăng nhập bằng Microsoft và nhận đúng phân công từ máy chủ.
-7. Vào **Danh sách học sinh**, chọn khối/lớp rồi thêm, sửa, xóa hoặc nhập Excel. Giới hạn 28 học sinh/lớp hiện giữ theo workbook gốc.
-
-## Lỗi kết nối API trên gvcnva2.netlify.app
-
-Nếu `https://asia-southeast1-gvcn-3bdf9.cloudfunctions.net/gvcnApi/bootstrap` và yêu cầu OPTIONS đều trả HTTP 404, địa chỉ frontend đang gọi chưa có API hoạt động. Upload frontend lên Netlify không triển khai Cloud Functions.
-
-Đã chuẩn bị `.env.gvcn-3bdf9` cục bộ, được Git bỏ qua, với Tenant ID lấy từ cấu hình Entra của trường và origin `https://gvcnva2.netlify.app`. `.env.example` cũng đã được điền các giá trị công khai này để có thể chuẩn bị trên máy khác. File `.env` này không chứa khóa service account hay Microsoft Client Secret.
-
-Kiểm tra cấu hình và triển khai API bằng tài khoản Google có quyền trên project:
+Kiểm tra endpoint:
 
 ```powershell
-npm.cmd run firebase:check
-npx.cmd --yes firebase-tools login
-npm.cmd run firebase:deploy
+npm.cmd run api:status
 ```
 
-`firebase:deploy` chỉ triển khai codebase Functions `gvcn`, không thay đổi database rules hiện có. Nếu Firebase yêu cầu bật thanh toán hoặc thiếu quyền, cần người quản trị dự án xử lý yêu cầu đó trước khi triển khai được; script không tự thay đổi thanh toán hay cấp quyền.
+Khi đã cấu hình đúng, `/api/health` trả 200, OPTIONS của `/api/bootstrap` trả 204 và GET `/api/bootstrap` chưa có token Microsoft trả 401. Health chỉ báo trạng thái cấu hình, không đọc hồ sơ hay ghi dữ liệu.
 
-Sau khi triển khai:
+Sau đó mở `https://gvcnva2.netlify.app`, đăng nhập Microsoft bằng Admin và bật **Dữ liệu Firebase**. Realtime Database hiện `null` là bình thường nếu chưa có Admin bootstrap dữ liệu; lần đầu Admin kết nối thành công, API mới khởi tạo cây dữ liệu. Có thể chạy frontend local qua `localhost:5500`; API production cho phép origin đó. Hạn mức miễn phí của Netlify và Firebase vẫn áp dụng.
 
-```powershell
-npm.cmd run firebase:status
-```
-
-Kết quả mong đợi: `/health` trả 200, OPTIONS của `/bootstrap` trả 204 và GET `/bootstrap` khi chưa có token Microsoft trả 401. Cả ba phản hồi cho trình duyệt phải có `Access-Control-Allow-Origin: https://gvcnva2.netlify.app`. Endpoint health chỉ xác nhận cấu hình API, không đọc hồ sơ hoặc khẳng định đã đăng nhập vào database.
-
-Cuối cùng, tải lại website Netlify và đăng nhập Microsoft. Nếu cần làm việc cục bộ trong lúc chờ triển khai, tắt **Sử dụng dữ liệu dùng chung trên Firebase** trong phần **Kết nối dữ liệu Firebase** ở màn hình đăng nhập rồi lưu. Dữ liệu đã có và các bản chờ đồng bộ vẫn được giữ.
-
-Tài liệu Firebase: [HTTP Functions](https://firebase.google.com/docs/functions/http-events), [triển khai Functions](https://firebase.google.com/docs/functions/get-started), [Admin SDK và database](https://firebase.google.com/docs/database/admin/start).
+Tài liệu: [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup), [Netlify Functions](https://docs.netlify.com/build/functions/overview/).
 
 ## Cấu trúc dữ liệu
 

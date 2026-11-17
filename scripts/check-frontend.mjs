@@ -33,4 +33,8 @@ const base64=/const TEMPLATE_B64\s*=\s*"([A-Za-z0-9+/=\s]+)"/.exec(template)?.[1
 assert(base64,'The original Excel template is missing.');
 assert.equal(createHash('sha256').update(Buffer.from(base64,'base64')).digest('hex'),
   'a71b530f093d5abb98f0ff49b358f2195094b7a9ef1eac30a07fabddd5c776f7','The embedded original workbook changed.');
+assert(fs.readFileSync(new URL('netlify/functions/gvcnApi.mjs',root),'utf8').includes("path:'/api/*'"),
+  'Netlify must route the protected API through /api.');
+assert(fs.readFileSync(new URL('assets/js/config.js',root),'utf8').includes('"https://gvcnva2.netlify.app/api"'),
+  'The frontend must use the gvcnva2 Netlify API.');
 console.log(`Frontend: ${sources.length} scripts parsed, CSS and index.html valid, original workbook unchanged.`);
