@@ -1,0 +1,168 @@
+"use strict";
+
+// Field definitions and editor labels for all forms.
+
+const FIELDS = {
+  teacherAccount: [
+    ["name", "Họ và tên GVCN", "text", 1],
+    ["email", "Email Microsoft công vụ", "email", 1],
+    ["classId", "Lớp được phân công", "classes", 1],
+    ["active", "Đang hoạt động", "boolean", 0],
+  ],
+  teacher: [
+    ["teacher", "Họ và tên giáo viên chủ nhiệm", "text", 1],
+    ["email", "Tài khoản Microsoft / email công vụ", "email", 0],
+  ],
+  student: [
+    ["name", "Họ và tên học sinh", "text", 1],
+    ["code", "Mã học sinh (nếu có)", "text", 0],
+  ],
+  m01: [
+    ["priority", "Học sinh cần gặp ưu tiên?", "boolean", 0],
+    ["goal", "Nội dung / mục tiêu trao đổi", "textarea", 0],
+    ["planTime", "Ngày, giờ và nơi gặp dự kiến", "text", 0],
+    [
+      "status",
+      "Trạng thái khi chưa gặp",
+      "select",
+      0,
+      ["Chưa gặp", "Hẹn lại"],
+    ],
+    ["note", "Ghi chú / lịch gặp bù / mã hồ sơ", "textarea", 0],
+  ],
+  m02: [
+    ["studentId", "Học sinh", "students", 1],
+    ["actual", "Ngày, giờ và địa điểm gặp thực tế", "text", 1],
+    ["concern", "Điều học sinh quan tâm", "textarea", 1],
+    [
+      "participation",
+      "Mức tham gia / tiến bộ quan sát được",
+      "textarea",
+      1,
+    ],
+    [
+      "progressEvidence",
+      "Có căn cứ tiến bộ trước – sau?",
+      "select",
+      1,
+      ["Chưa đủ căn cứ", "Có", "Không"],
+    ],
+    ["goal", "Mục tiêu thống nhất (đo được, có thời hạn)", "textarea", 1],
+    ["action", "Hành động / thời hạn rà soát", "textarea", 1],
+    [
+      "cooperation",
+      "Người hoặc bộ phận phối hợp (ghi Chưa cần nếu không có)",
+      "text",
+      1,
+    ],
+    [
+      "needsCoop",
+      "Trường hợp cần phối hợp",
+      "select",
+      1,
+      ["Không", "Có"],
+    ],
+    ["evidence", "Mã minh chứng / xác nhận học sinh", "text", 1],
+    ["profileId", "Liên kết phiếu theo dõi M05 (nếu có)", "profiles", 0],
+    ["profileProgress", "M05 · Tiến bộ / khó khăn cụ thể", "textarea", 0],
+    ["profileNext", "M05 · Mốc kiểm tra tiếp theo", "text", 0],
+  ],
+  m03: [
+    ["studentId", "Học sinh", "students", 1],
+    ["date", "Ngày thực hiện kết nối", "date", 1],
+    [
+      "channel",
+      "Hình thức kết nối",
+      "select",
+      1,
+      ["Tin nhắn", "Điện thoại", "Email", "Gặp trực tiếp", "Thư của HS"],
+    ],
+    ["message", "Thông điệp tích cực đã chia sẻ", "textarea", 1],
+    [
+      "recipient",
+      "Người nhận",
+      "select",
+      1,
+      ["Mẹ", "Cha", "Người giám hộ", "Khác"],
+    ],
+    [
+      "reply",
+      "Phản hồi / kết quả (nếu chưa có, ghi Đã gửi, chưa phản hồi)",
+      "textarea",
+      1,
+    ],
+    ["evidence", "Mã minh chứng (nếu có)", "text", 0],
+  ],
+  previous: [
+    ["studentId", "Học sinh", "students", 1],
+    ["action", "Biện pháp đã thực hiện", "textarea", 1],
+    ["observation", "Kết quả quan sát được (trước – sau)", "textarea", 1],
+    ["next", "Nội dung cần tiếp tục hoặc Hoàn tất", "textarea", 1],
+  ],
+  plans: [
+    ["studentId", "Học sinh", "students", 1],
+    ["need", "Nhu cầu / điểm mạnh", "textarea", 1],
+    ["goal", "Mục tiêu cụ thể", "textarea", 1],
+    ["action", "Biện pháp / hoạt động", "textarea", 1],
+    ["deadline", "Thời hạn", "text", 1],
+    ["cooperation", "Người phối hợp", "text", 1],
+    ["assessment", "Cách đánh giá", "textarea", 1],
+    [
+      "result",
+      "Kết quả (cuối tháng)",
+      "select",
+      0,
+      ["Chưa chốt", "Đạt", "Đạt một phần", "Chưa đạt"],
+    ],
+  ],
+  profile: [
+    ["studentId", "Học sinh", "students", 1],
+    ["code", "Mã phiếu theo dõi cá nhân", "text", 1],
+    ["startMonth", "Tháng bắt đầu", "months", 1],
+    ["strength", "Điểm mạnh / nguồn lực", "textarea", 1],
+    ["concern", "Điều HS quan tâm hoặc muốn cải thiện", "textarea", 1],
+    [
+      "goal",
+      "Mục tiêu có chỉ báo tiến bộ (mốc đầu, mốc đạt, thời hạn)",
+      "textarea",
+      1,
+    ],
+    [
+      "result",
+      "Mức độ đạt mục tiêu",
+      "select",
+      0,
+      [
+        "Đang theo dõi",
+        "Đạt",
+        "Đạt một phần",
+        "Chưa đạt",
+        "Cần điều chỉnh mục tiêu",
+      ],
+    ],
+    ["progress", "Điểm tiến bộ nổi bật", "textarea", 0],
+    ["next", "Việc cần làm / mốc đánh giá tiếp", "textarea", 0],
+  ],
+  m05detail: [
+    [
+      "profileProgress",
+      "M05 · Tiến bộ / khó khăn sau gặp gỡ",
+      "textarea",
+      1,
+    ],
+    ["profileNext", "M05 · Mốc kiểm tra / ngày rà soát", "text", 1],
+  ],
+};
+
+const MODAL_TITLES = {
+  teacherAccount: "Quản lý GVCN",
+  teacher: "Thông tin giáo viên chủ nhiệm",
+  student: "Hồ sơ học sinh",
+  m01: "Lập lịch gặp học sinh",
+  m02: "Ghi nhật ký cuộc gặp thực tế",
+  m03: "Ghi kết nối tích cực đã thực hiện",
+  previous: "Kết quả hỗ trợ tháng trước",
+  plans: "Lập kế hoạch hỗ trợ tháng này",
+  profile: "Phiếu theo dõi cá nhân M05",
+  m05detail: "Bổ sung chi tiết theo dõi M05",
+};

@@ -1,0 +1,134 @@
+"use strict";
+
+// Import Excel student rosters.
+
+async function importRoster(e) {
+  let input = e.target,
+    blob = input.files?.[0];
+  input.value = "";
+  if (!blob) return;
+  if (!canEditSetup()) {
+    alert("Không đủ quyền nhập danh sách.");
+    return;
+  }
+  if (
+    cls().students.length &&
+    !confirm(
+      "Nhập lại danh sách có thể làm lệch liên kết hồ sơ cũ. Chỉ nên nhập khi chưa có dữ liệu hoặc đã sao lưu. Tiếp tục?",
+    )
+  )
+    return;
+  try {
+    let f = await readZip(await blob.arrayBuffer());
+    let paths = getSheetNamePaths(f);
+    let ss = [];
+    if (f["xl/sharedStrings.xml"]) {
+      let doc = xmlparse(decoder.decode(f["xl/sharedStrings.xml"]));
+      for (let si of doc.getElementsByTagNameNS(S_NS, "si"))
+        ss.push(si.textContent);
+    }
+    let chosen = null;
+    for (let sh of [
+      ...paths.filter((x) => /danh\s*s[aá]ch/i.test(x.name)),
+      ...paths,
+    ]) {
+      let doc = xmlparse(decoder.decode(f[sh.path]));
+      let sheetRows = [...doc.getElementsByTagNameNS(S_NS, "row")].slice(
+        0,
+        1200,
+      );
+      let out = sheetRows.map((r) => {
+        let entries = {};
+        for (let cell of r.getElementsByTagNameNS(S_NS, "c")) {
+          let ref = cell.getAttribute("r"),
+            col = ref?.match(/^[A-Z]+/)?.[0] || "",
+            t = cell.getAttribute("t");
+          let v = cell.getElementsByTagNameNS(S_NS, "v")[0],
+            inline = cell.getElementsByTagNameNS(S_NS, "is")[0];
+          let val =
+            t === "s"
+              ? ss[+(v?.textContent || 0)]
+              : t === "inlineStr"
+                ? inline?.textContent
+                : v?.textContent;
+          entries[col] = String(val ?? "").trim();
+        }
+        return { n: +r.getAttribute("r"), entries };
+      });
+      let heading = out.find(
+        (r) =>
+          r.n <= 20 &&
+          Object.entries(r.entries).some(([k, v]) =>
+            /họ\s*(?:và\s*)?tên|họ tên học sinh/i.test(v),
+          ),
+      );
+      let col =
+        heading &&
+        Object.entries(heading.entries).find(([k, v]) =>
+          /họ\s*(?:và\s*)?tên|họ tên học sinh/i.test(v),
+        )?.[0];
+      if (!col && sh.name === "DanhSach") col = "B";
+      if (!col) continue;
+      let colNext = col.replace(/[A-Z]+/, (x) => {
+        let idx = colIndex(x) + 1,
+          z = "";
+        while (idx) {
+          idx--;
+          z = String.fromCharCode(65 + (idx % 26)) + z;
+          idx = Math.floor(idx / 26);
+        }
+        return z;
+      });
+      let records = out
+        .filter((r) => r.n > (heading?.n || 4))
+        .map((r) => ({
+          name: r.entries[col] || "",
+          code: r.entries[colNext] || "",
+        }))
+        .filter(
+          (x) =>
+            x.name && x.name !== "0" && !/^học sinh\s*$/i.test(x.name),
+        );
+      if (records.length) {
+        chosen = { sh: sh.name, records };
+        break;
+      }
+    }
+    if (!chosen)
+      throw Error(
+        "Không tìm thấy cột Họ và tên và danh sách học sinh trong tệp.",
+      );
+    if (chosen.records.length > 28)
+      throw Error(
+        `Tệp có ${chosen.records.length} học sinh, vượt giới hạn 28 của mẫu chuẩn. Không cắt bớt dữ liệu.`,
+      );
+    let c = cls(),
+      existing = new Map(
+        c.students.map((x) => [x.name.toLowerCase(), x]),
+      );
+    let roster = chosen.records.map((s, i) => ({
+      id:
+        existing.get(s.name.toLowerCase())?.id ||
+        `S${String(i + 1).padStart(3, "0")}-${Math.random().toString(36).slice(2, 5)}`,
+      name: s.name,
+      code: s.code,
+    }));
+    let missing = c.students.filter(
+      (s) => !roster.some((r) => r.id === s.id),
+    );
+    if (
+      missing.length &&
+      missing.some((s) => hasStudentReferences(c, s.id))
+    )
+      throw Error(
+        "Danh sách mới thiếu học sinh đã có dữ liệu biểu mẫu. Hãy giữ học sinh trong danh sách để bảo toàn liên kết hồ sơ.",
+      );
+    c.students = roster;
+    save();
+    render();
+    toast(`Đã nhập ${roster.length} học sinh từ sheet ${chosen.sh}.`);
+  } catch (err) {
+    console.error(err);
+    alert("Không thể nhập danh sách: " + err.message);
+  }
+}

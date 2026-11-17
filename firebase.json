@@ -1,0 +1,12 @@
+{
+  "functions": [{ "source": "firebase/functions", "codebase": "gvcn", "runtime": "nodejs22" }],
+  "database": {
+    "instance": "gvcn-3bdf9-default-rtdb",
+    "rules": "firebase/database.rules.json"
+  },
+  "emulators": {
+    "functions": { "port": 5001 },
+    "database": { "port": 9000 },
+    "singleProjectMode": true
+  }
+}

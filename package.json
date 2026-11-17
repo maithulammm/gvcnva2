@@ -1,0 +1,9 @@
+{
+  "name": "vietanh-gvcn-2026-2027",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check-frontend.mjs && npm --prefix firebase/functions run check",
+    "test": "node scripts/check-frontend.mjs && npm --prefix firebase/functions test"
+  }
+}

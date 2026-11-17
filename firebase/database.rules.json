@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "gvcn": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
