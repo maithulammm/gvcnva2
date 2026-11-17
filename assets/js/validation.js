@@ -28,7 +28,7 @@ function plannedStudentIds(c, m) {
 }
 
 function summarize(c, month) {
-  if (cloud.ready && ui.role === "bgh" && cloud.summaries[c.id]?.[month])
+  if (cloud.ready && isAggregateBgh() && cloud.summaries[c.id]?.[month])
     return cloud.summaries[c.id][month];
   const m = mdata(c, month, false);
   let ids = new Set(c.students.map((s) => s.id));
@@ -79,7 +79,7 @@ function summarize(c, month) {
 }
 
 function validations(c, month) {
-  if (cloud.ready && ui.role === "bgh" && cloud.checks[c.id]?.[month])
+  if (cloud.ready && isAggregateBgh() && cloud.checks[c.id]?.[month])
     return cloud.checks[c.id][month];
   const m = mdata(c, month, false),
     s = summarize(c, month);

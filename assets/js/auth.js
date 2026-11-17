@@ -80,11 +80,19 @@ function authorizeAccount(account) {
         email +
         " chưa được nhà trường gán vai trò/lớp trong bản thử nghiệm. Hãy liên hệ người triển khai.",
     };
-  if (assignment.role === "gvcn" && !CLASSES.includes(assignment.classId))
+  const roles =
+    Array.isArray(assignment.roles) && assignment.roles.length
+      ? assignment.roles
+      : [assignment.role];
+  if (roles.includes("gvcn") && !CLASSES.includes(assignment.classId))
     return { error: "Cấu hình lớp của tài khoản chưa hợp lệ." };
-  if (assignment.role === "lead" && !GRADES[assignment.grade])
+  const grades = assignedGrades(assignment);
+  if (
+    roles.includes("lead") &&
+    (!grades.length || grades.some((grade) => !GRADES[grade]))
+  )
     return { error: "Cấu hình khối của tài khoản chưa hợp lệ." };
-  if (!ROLE_NAMES[assignment.role])
+  if (!roles.length || roles.some((role) => !ROLE_NAMES[role]))
     return { error: "Cấu hình vai trò chưa hợp lệ." };
   return { email, assignment };
 }
@@ -117,18 +125,20 @@ async function authenticatedStart(account) {
   }
   auth.assignment = result.assignment;
   ui.role = result.assignment.role;
-  ui.grade =
-    ui.role === "gvcn"
-      ? gradeText(result.assignment.classId)
-      : ui.role === "lead"
-        ? String(result.assignment.grade)
+  const roles = assignmentRoles(result.assignment);
+  const grades = assignedGrades(result.assignment);
+  ui.grade = roles.includes("admin") || roles.includes("bgh")
+    ? "all"
+    : roles.includes("lead")
+      ? grades[0]
+      : roles.includes("gvcn")
+        ? gradeText(result.assignment.classId)
         : "all";
-  ui.classId =
-    ui.role === "gvcn"
-      ? result.assignment.classId
-      : ui.role === "lead"
-        ? (GRADES[ui.grade] || [])[0]
-        : "6A1";
+  ui.classId = roles.includes("gvcn")
+    ? result.assignment.classId
+    : roles.includes("lead")
+      ? (GRADES[ui.grade] || [])[0]
+      : "6A1";
   ui.page = "dashboard";
   ui.profileId = "";
   try {

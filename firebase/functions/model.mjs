@@ -12,6 +12,25 @@ export const same = isDeepStrictEqual;
 export const emailKey = email => Buffer.from(email.toLowerCase().trim()).toString('base64url');
 export const list = v => Array.isArray(v) ? v : v && typeof v === 'object' ? Object.values(v) : [];
 export const gradeOf = id => Number(String(id).match(/^\d+/)?.[0]);
+export const USER_ROLES = ['admin','gvcn','lead','bgh'];
+export function rolesOf(user) {
+  const roles=list(user?.roles);
+  return [...new Set(roles.length?roles:(user?.role?[user.role]:[]))];
+}
+export function gradesOf(user) {
+  const grades=list(user?.grades);
+  return [...new Set((grades.length?grades:(user?.grade?[user.grade]:[])).map(String))];
+}
+export function hasRole(user,role) { return rolesOf(user).includes(role); }
+export function primaryRole(user) {
+  const roles=rolesOf(user);
+  return ['admin','bgh','lead','gvcn'].find(role=>roles.includes(role))||'';
+}
+export function normalizeAssignment(user) {
+  const roles=rolesOf(user),grades=gradesOf(user);
+  return {...user,roles,role:primaryRole({...user,roles}),grades,
+    grade:grades.length===1?grades[0]:(user?.grade||'')};
+}
 export function fail(status, message) { throw Object.assign(new Error(message), {status}); }
 export function requireValue(condition, message, status=400) { if(!condition) fail(status,message); }
 export function emptyMonth() {
@@ -39,15 +58,23 @@ export function normalizeSchool(s) {
   return {...s,year:YEAR,schema:1,classes:s?.classes||{},teachers:s?.teachers||{},users:s?.users||{},audit:s?.audit||{}};
 }
 export function assignmentFor(s, identity) {
-  const u=s.users[emailKey(identity.email)];
-  requireValue(u && u.active !== false && ['admin','gvcn','lead','bgh'].includes(u.role),'Tài khoản chưa được cấp quyền hoặc đã ngừng hoạt động.',403);
+  const stored=s.users[emailKey(identity.email)];
+  requireValue(stored && stored.active !== false,'Tài khoản chưa được cấp quyền hoặc đã ngừng hoạt động.',403);
+  const u=normalizeAssignment(stored),roles=u.roles,grades=u.grades;
+  requireValue(roles.length>0&&roles.every(role=>USER_ROLES.includes(role)),'Vai trò tài khoản không hợp lệ.',403);
   requireValue(u.oid === identity.oid,'Phân công chưa liên kết đúng danh tính Microsoft.',403);
-  if(u.role==='gvcn') requireValue(CLASSES.includes(u.classId),'Lớp được phân công không hợp lệ.',403);
-  if(u.role==='lead') requireValue(GRADES[u.grade],'Khối được phân công không hợp lệ.',403);
+  if(hasRole(u,'gvcn')) requireValue(CLASSES.includes(u.classId),'Lớp được phân công không hợp lệ.',403);
+  else requireValue(!u.classId,'Tài khoản không có vai trò GVCN nhưng lại gán lớp.',403);
+  if(hasRole(u,'lead')) requireValue(grades.length>0&&grades.every(grade=>GRADES[grade]),'Khối được phân công không hợp lệ.',403);
+  else requireValue(!grades.length,'Tài khoản không có vai trò khối trưởng nhưng lại gán khối.',403);
   return u;
 }
 export function scopeFor(u) {
-  return u.role==='gvcn' ? [u.classId] : u.role==='lead' ? CLASSES.filter(c=>gradeOf(c)===Number(u.grade)) : CLASSES;
+  if(hasRole(u,'admin')||hasRole(u,'bgh')) return CLASSES;
+  const ids=new Set();
+  if(hasRole(u,'gvcn')) ids.add(u.classId);
+  if(hasRole(u,'lead')) for(const id of CLASSES) if(gradesOf(u).includes(String(gradeOf(id)))) ids.add(id);
+  return [...ids];
 }
 export function checkScope(u,id) {
   requireValue(CLASSES.includes(id),'Không tìm thấy lớp.',404);
@@ -107,20 +134,21 @@ export function validateClass(c) {
 }
 export function authorizeClassEdit(u,old,c) {
   checkScope(u,c.id);
-  requireValue(['admin','gvcn'].includes(u.role),'Vai trò không có quyền sửa biểu mẫu.',403);
+  const isAdmin=hasRole(u,'admin');
+  requireValue(isAdmin||(hasRole(u,'gvcn')&&u.classId===c.id),'Vai trò không có quyền sửa biểu mẫu.',403);
   requireValue(same(old.audit,c.audit),'Nhật ký xác nhận chỉ được ghi bởi máy chủ.',403);
   requireValue(old.teacher===c.teacher && old.email===c.email,'Thay đổi GVCN tại trang Quản lý GVCN.',403);
-  if(u.role!=='admin') requireValue(same(old.students,c.students),'Chỉ Admin được thêm, xóa, sửa học sinh.',403);
+  if(!isAdmin) requireValue(same(old.students,c.students),'Chỉ Admin được thêm, xóa, sửa học sinh.',403);
   for(const st of old.students.filter(s=>!c.students.some(x=>x.id===s.id)))
     requireValue(!studentReferences(old,st.id),`Không thể xóa ${st.name}: đã có dữ liệu biểu mẫu liên quan.`,409);
   for(const month of new Set([...Object.keys(old.months),...Object.keys(c.months)])) {
     const before=old.months[month]||emptyMonth(), after=c.months[month]||emptyMonth();
     requireValue(same(before.approval,after.approval),'Trạng thái duyệt chỉ được thay đổi qua quy trình xác nhận.',403);
     requireValue(!old.months[month] || c.months[month],'Không được xóa toàn bộ tháng đã lưu.');
-    if(u.role!=='admin' && !['draft','returned'].includes(before.approval.state))
+    if(!isAdmin && !['draft','returned'].includes(before.approval.state))
       requireValue(same(before,after),'Báo cáo tháng này đã khóa.',403);
   }
-  if(u.role!=='admin') {
+  if(!isAdmin) {
     const profileIds=new Set([...old.profiles,...c.profiles].map(p=>p.id));
     for(const id of profileIds) {
       const a=old.profiles.find(p=>p.id===id), b=c.profiles.find(p=>p.id===id);

@@ -4,11 +4,7 @@
 
 function jsonBackup() {
   let scope =
-    auth.assignment.role === "gvcn"
-      ? [auth.assignment.classId]
-      : auth.assignment.role === "lead"
-        ? GRADES[auth.assignment.grade]
-        : CLASSES;
+    classesForAssignment();
   let payload = {
     ...appData,
     classes: Object.fromEntries(
@@ -35,7 +31,7 @@ async function importBackup(e) {
     );
     return;
   }
-  if (!["admin", "gvcn"].includes(ui.role)) {
+  if (!hasAppRole("admin") && !hasAppRole("gvcn")) {
     alert("Vai trò không được nhập bản sao lưu.");
     return;
   }
@@ -55,7 +51,7 @@ async function importBackup(e) {
         ([id, c]) =>
           CLASSES.includes(id) &&
           c?.students?.length &&
-          (ui.role === "admin" || id === ui.classId),
+          (hasAppRole("admin") || id === ui.classId),
       );
       for (let [id, c] of source) {
         appData.classes[id] = c;
@@ -71,7 +67,7 @@ async function importBackup(e) {
 }
 
 function exportLegacyData() {
-  if (auth.assignment?.role !== "admin") return;
+  if (!hasAppRole("admin")) return;
   const original = localStorage.getItem(DATA_KEY);
   if (!original) {
     toast("Không có bản dữ liệu cục bộ ban đầu.");

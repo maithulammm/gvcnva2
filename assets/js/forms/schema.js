@@ -9,6 +9,13 @@ const FIELDS = {
     ["classId", "Lớp được phân công", "classes", 1],
     ["active", "Đang hoạt động", "boolean", 0],
   ],
+  userRoles: [
+    ["name", "Họ và tên", "text", 1],
+    ["email", "Email Microsoft công vụ", "email", 1],
+    ["roles", "Vai trò được cấp", "roles", 1],
+    ["grades", "Khối phụ trách nếu là khối trưởng", "grades", 0],
+    ["active", "Tài khoản đang hoạt động", "boolean", 0],
+  ],
   teacher: [
     ["teacher", "Họ và tên giáo viên chủ nhiệm", "text", 1],
     ["email", "Tài khoản Microsoft / email công vụ", "email", 0],
@@ -156,6 +163,7 @@ const FIELDS = {
 
 const MODAL_TITLES = {
   teacherAccount: "Quản lý GVCN",
+  userRoles: "Quản lý vai trò tài khoản",
   teacher: "Thông tin giáo viên chủ nhiệm",
   student: "Hồ sơ học sinh",
   m01: "Lập lịch gặp học sinh",

@@ -6,17 +6,22 @@ $("entryForm").addEventListener("submit", submitForm);
 // Không còn nút tự chọn vai trò: vai trò lấy từ danh sách phân quyền sau đăng nhập Microsoft.
 
 $("gradeSel").addEventListener("change", (e) => {
-  if (!auth.account || !["bgh", "admin"].includes(ui.role)) return;
+  if (!auth.account || (!hasAppRole("bgh") && !hasAppRole("admin") && !hasAppRole("lead"))) return;
   ui.grade = e.target.value;
   ui.classId = (GRADES[ui.grade] || ["6A1"])[0];
+  if (!hasAppRole("admin") && !hasAppRole("bgh"))
+    ui.classId =
+      classesForAssignment().find((id) => gradeText(id) === ui.grade) ||
+      ui.classId;
   render();
 });
 
 $("classSel").addEventListener("change", (e) => {
-  if (!auth.account || ui.role === "gvcn") return;
-  if (ui.role === "lead" && !GRADES[ui.grade].includes(e.target.value))
+  if (!auth.account || (hasAppRole("gvcn") && !hasAppRole("lead") && !hasAppRole("admin"))) return;
+  if (!classesForAssignment().includes(e.target.value))
     return;
   ui.classId = e.target.value;
+  if (hasAppRole("lead")) ui.grade = gradeText(e.target.value);
   ui.profileId = "";
   render();
 });
@@ -29,6 +34,8 @@ $("monthSel").addEventListener("change", (e) => {
 // All Excel import/export operations use browser-native APIs; no network dependencies.
 
 $("xlsxInput").addEventListener("change", importRoster);
+
+$("directoryInput").addEventListener("change", importDirectoryFile);
 
 $("backupInput").addEventListener("change", importBackup);
 

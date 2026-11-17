@@ -24,8 +24,9 @@ function renderSelectors() {
   const assignment = auth.assignment;
   if (!assignment || !auth.account) return;
   const grade = $("gradeSel"),
-    classPicker = $("classSel");
-  if (assignment.role === "gvcn") {
+    classPicker = $("classSel"),
+    roles = assignmentRoles(assignment);
+  if (!roles.includes("admin") && !roles.includes("bgh") && !roles.includes("lead")) {
     ui.grade = gradeText(assignment.classId);
     ui.classId = assignment.classId;
     grade.innerHTML = `<option value="${ui.grade}">Khối ${ui.grade}</option>`;
@@ -34,18 +35,21 @@ function renderSelectors() {
     classPicker.innerHTML = `<option value="${ui.classId}">${ui.classId}</option>`;
     classPicker.value = ui.classId;
     classPicker.disabled = true;
-  } else if (assignment.role === "lead") {
-    ui.grade = String(assignment.grade);
-    let ids = GRADES[ui.grade] || [];
-    if (!ids.includes(ui.classId)) ui.classId = ids[0] || "";
-    grade.innerHTML = `<option value="${ui.grade}">Khối ${ui.grade}</option>`;
+  } else if (roles.includes("lead") && !roles.includes("admin") && !roles.includes("bgh")) {
+    const assigned = assignedGrades(assignment);
+    if (!assigned.includes(String(ui.grade))) ui.grade = assigned[0];
+    let ids = classesForAssignment(assignment);
+    if (!ids.includes(ui.classId)) ui.classId = assignment.classId || ids[0] || "";
+    grade.innerHTML = assigned
+      .map((g) => `<option value="${g}">Khối ${g}</option>`)
+      .join("");
     grade.value = ui.grade;
-    grade.disabled = true;
+    grade.disabled = assigned.length === 1;
     classPicker.innerHTML = ids
       .map((id) => `<option value="${id}">${id}</option>`)
       .join("");
     classPicker.value = ui.classId;
-    classPicker.disabled = false;
+    classPicker.disabled = ids.length === 1;
   } else {
     let grades = Object.keys(GRADES);
     if (ui.grade !== "all" && !grades.includes(ui.grade))
@@ -65,7 +69,9 @@ function renderSelectors() {
     classPicker.value = ui.classId;
     classPicker.disabled = ui.grade === "all";
   }
-  $("roleLabel").textContent = ROLE_NAMES[ui.role] || ui.role;
+  $("roleLabel").textContent = roles
+    .map((role) => ROLE_NAMES[role] || role)
+    .join(" · ");
   $("identityLabel").textContent = auth.email;
   $("monthSel").innerHTML = MONTHS.map(
     (m) => `<option value="${m}">${m}</option>`,
@@ -78,8 +84,8 @@ function render() {
   renderSelectors();
   let allowed = canViewPersonal() || ui.role === "lead";
   let permitted = VIEW_LIST.filter(([k]) =>
-    ["teachers", "database"].includes(k)
-      ? ui.role === "admin"
+    ["teachers", "database", "users"].includes(k)
+      ? hasAppRole("admin")
       : allowed || ["dashboard", "check", "export"].includes(k),
   );
   $("nav").innerHTML = permitted
@@ -96,6 +102,7 @@ function render() {
     dashboard: renderDashboard,
     students: renderStudents,
     teachers: renderTeachers,
+    users: renderUsers,
     database: renderDatabase,
     m01: renderM01,
     m02: renderM02,

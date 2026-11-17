@@ -10,19 +10,31 @@ async function transition(classId, target) {
   let c = cls(classId),
     m = mdata(c, ui.month),
     prev = m.approval?.state || "draft";
-  if (target === "submitted" && ui.role !== "gvcn") return;
   if (
-    target === "reviewed" &&
-    (ui.role !== "lead" || prev !== "submitted")
+    target === "submitted" &&
+    (!hasAppRole("gvcn") || auth.assignment?.classId !== classId)
   )
     return;
-  if (target === "approved" && (ui.role !== "bgh" || prev !== "reviewed"))
+  if (
+    target === "reviewed" &&
+    (!hasAppRole("lead") ||
+      prev !== "submitted" ||
+      m.approval.history?.some(
+        (event) => event.state === "submitted" && event.actor === auth.email,
+      ))
+  )
+    return;
+  if (target === "approved" && (!hasAppRole("bgh") || prev !== "reviewed"))
     return;
   if (
     target === "returned" &&
     !(
-      (ui.role === "lead" && prev === "submitted") ||
-      (ui.role === "bgh" && prev === "reviewed")
+      (hasAppRole("lead") &&
+        prev === "submitted" &&
+        !m.approval.history?.some(
+          (event) => event.state === "submitted" && event.actor === auth.email,
+        )) ||
+      (hasAppRole("bgh") && prev === "reviewed")
     )
   )
     return;

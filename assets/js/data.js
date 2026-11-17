@@ -6,6 +6,7 @@ function defaultSchool() {
   return {
     schema: 2,
     year: YEARS,
+    users: [],
     classes: Object.fromEntries(
       CLASSES.map((id) => [
         id,
@@ -71,12 +72,7 @@ function save() {
 function cls(id = ui.classId) {
   if (!auth.account || !auth.assignment || !appData)
     throw Error("Chưa có quyền truy cập dữ liệu.");
-  if (auth.assignment.role === "gvcn" && id !== auth.assignment.classId)
-    throw Error("Không được xem lớp ngoài phạm vi được phân công.");
-  if (
-    auth.assignment.role === "lead" &&
-    String(gradeText(id)) !== String(auth.assignment.grade)
-  )
+  if (!classesForAssignment().includes(id))
     throw Error("Không được xem lớp ngoài khối được phân công.");
   return appData.classes[id];
 }

@@ -65,7 +65,7 @@ function restorePendingDrafts(raw) {
   for (const [id, draft] of Object.entries(drafts.classes)) {
     if (
       !Object.hasOwn(cloud.baselines, id) ||
-      !["admin", "gvcn"].includes(auth.assignment?.role) ||
+      (!hasAppRole("admin") && !hasAppRole("gvcn")) ||
       !draft.data
     ) {
       cloud.unassignedDrafts[id] = draft;
@@ -169,6 +169,7 @@ function useBootstrap(data) {
     ...defaults,
     classes: { ...defaults.classes, ...data.classes },
     teachers: data.teachers || {},
+    users: data.users || [],
   };
   cloud.baselines = Object.fromEntries(
     Object.entries(data.classes).map(([id, c]) => [
@@ -179,13 +180,18 @@ function useBootstrap(data) {
   cloud.pending.clear();
   cloud.error = "";
   cloud.lastSync = new Date().toLocaleTimeString("vi-VN");
-  if (ui.role === "gvcn") {
+  const roles = assignmentRoles(data.assignment),
+    grades = assignedGrades(data.assignment);
+  if (roles.includes("admin") || roles.includes("bgh")) {
+    if (ui.grade !== "all" && !CLASSES.some((id) => gradeText(id) === ui.grade))
+      ui.grade = "all";
+  } else if (roles.includes("lead")) {
+    if (!grades.includes(String(ui.grade))) ui.grade = grades[0];
+    if (!classesForAssignment(data.assignment).includes(ui.classId))
+      ui.classId = data.assignment.classId || GRADES[ui.grade]?.[0] || "";
+  } else if (roles.includes("gvcn")) {
     ui.classId = data.assignment.classId;
     ui.grade = gradeText(ui.classId);
-  } else if (ui.role === "lead") {
-    ui.grade = String(data.assignment.grade);
-    if (!GRADES[ui.grade].includes(ui.classId))
-      ui.classId = GRADES[ui.grade][0];
   }
   try {
     localStorage.setItem(cloudCacheKey(), JSON.stringify(appData));
@@ -217,7 +223,7 @@ async function connectCloud() {
 }
 
 function scanPendingClasses() {
-  if (!cloud.ready || !["admin", "gvcn"].includes(auth.assignment?.role))
+  if (!cloud.ready || (!hasAppRole("admin") && !hasAppRole("gvcn")))
     return;
   for (const id of Object.keys(cloud.baselines)) {
     if (classFingerprint(appData.classes[id]) !== cloud.baselines[id])
@@ -374,7 +380,7 @@ function updateStorageNotice() {
 }
 
 function enableFirebase() {
-  if (auth.assignment?.role !== "admin") return;
+  if (!hasAppRole("admin")) return;
   if (
     !confirm(
       "Bật kết nối API Firebase đã triển khai? Dữ liệu cục bộ sẽ được giữ riêng để chuyển lên sau.",

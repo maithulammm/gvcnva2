@@ -10,6 +10,8 @@ function rowAction(type, id) {
 
 function lookup(type, id) {
   if (type === "teacherAccount") return (appData.teachers || {})[id];
+  if (type === "userRoles")
+    return (appData.users || []).find((user) => user.email === id);
   let c = cls(),
     m = mdata();
   if (type === "teacher") return c;
@@ -34,16 +36,21 @@ function openModal(type, id = "") {
     toast("Đang xử lý dữ liệu. Vui lòng chờ.");
     return;
   }
-  if (type === "teacherAccount" && auth.assignment?.role !== "admin")
+  if (
+    ["teacherAccount", "userRoles"].includes(type) &&
+    !hasAppRole("admin")
+  )
     return;
   if (
-    (["teacherAccount", "student"].includes(type) && !canEditSetup()) ||
-    (!["teacherAccount", "student"].includes(type) && !editable())
+    (["teacherAccount", "student", "userRoles"].includes(type) &&
+      !canEditSetup()) ||
+    (!["teacherAccount", "student", "userRoles"].includes(type) &&
+      !editable())
   ) {
     toast("Biểu mẫu đã khóa hoặc vai trò không có quyền sửa.");
     return;
   }
-  if (type === "teacher" && ui.role !== "admin" && ui.role !== "gvcn")
+  if (type === "teacher" && !hasAppRole("admin") && !hasAppRole("gvcn"))
     return;
   let c = cls(),
     rec = lookup(type, id) || {},
@@ -55,6 +62,8 @@ function openModal(type, id = "") {
       name: c.teacher,
       email: c.email,
     });
+  if (type === "userRoles" && !id)
+    Object.assign(rec, { name: "", email: "", roles: [], grades: [], active: true });
   if (!opts) return;
   ui.editing = { type, id };
   $("modalTitle").textContent =
@@ -66,12 +75,33 @@ function openModal(type, id = "") {
   if (type === "m05detail") {
     h += `<div class="footnote wide">Lượt gặp: ${esc(rec.actual || "")} · Mã xác nhận ${esc(rec.evidence || "Chưa có")}</div>`;
   }
+  if (type === "userRoles")
+    h += `<div class="footnote wide">Phân công GVCN được quản lý trong mục Quản lý GVCN; vai trò GVCN hiện có không thể bị bỏ tại đây.</div>`;
   for (let [key, label, kind, required, options] of opts) {
     let value = rec[key] ?? (kind === "boolean" ? false : "");
     let control = "";
     let req = required ? "required" : "";
     if (kind === "boolean") {
       control = `<select name="${key}"><option value="0" ${value ? "" : "selected"}>Không</option><option value="1" ${value ? "selected" : ""}>Có</option></select>`;
+    } else if (kind === "roles") {
+      const current = Array.isArray(value) ? value : [];
+      control = `<div class="stack">${Object.entries(ROLE_NAMES)
+        .map(([role, roleLabel]) => {
+          const fixedGvcn = role === "gvcn" && rec.teacherId;
+          const managedByTeacherPage = role === "gvcn" && !rec.teacherId;
+          return `<label class="filterline"><input type="checkbox" name="roles" value="${role}" ${current.includes(role) ? "checked" : ""} ${fixedGvcn || managedByTeacherPage ? "disabled" : ""}> ${esc(roleLabel)}</label>${fixedGvcn ? `<input type="hidden" name="roles" value="gvcn">` : ""}`;
+        })
+        .join("")}</div>`;
+    } else if (kind === "grades") {
+      const current = Array.isArray(value) ? value.map(String) : [];
+      control = `<div class="filterline">${Object.keys(GRADES)
+        .map(
+          (grade) =>
+            `<label><input type="checkbox" name="grades" value="${grade}" ${current.includes(grade) ? "checked" : ""}> Khối ${grade}</label>`,
+        )
+        .join("")}</div>`;
+    } else if (type === "userRoles" && key === "email" && id) {
+      control = `<input name="${key}" type="email" value="${esc(value)}" readonly>`;
     } else if (kind === "students") {
       control = `<select name="${key}" ${req}><option value="">— Chọn học sinh —</option>${c.students.map((s) => `<option value="${s.id}" ${value === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select>`;
     } else if (kind === "classes") {
@@ -100,7 +130,7 @@ async function submitForm(e) {
   let { type, id } = ui.editing;
   if (
     cloud.busy ||
-    (["student", "teacherAccount"].includes(type)
+    (["student", "teacherAccount", "userRoles"].includes(type)
       ? !canEditSetup()
       : !editable())
   ) {
@@ -113,12 +143,34 @@ async function submitForm(e) {
   fields.forEach(([key, label, kind]) => {
     let v = fd.get(key);
     record[key] =
-      kind === "boolean"
+      kind === "roles" || kind === "grades"
+        ? typeof fd.getAll === "function"
+          ? fd.getAll(key)
+          : v
+            ? [v]
+            : []
+        : kind === "boolean"
         ? v === "1"
         : typeof v === "string"
           ? v.trim()
           : "";
   });
+  if (type === "userRoles") {
+    if (!record.roles.includes("lead")) record.grades = [];
+    $("modalSave").disabled = true;
+    try {
+      if ((await saveUserRole({ ...record, id })) === false) return;
+      $("editor").close();
+      ui.editing = null;
+      render();
+      toast("Đã cập nhật vai trò trên Firebase.");
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      $("modalSave").disabled = false;
+    }
+    return;
+  }
   if (type === "teacherAccount") {
     $("modalSave").disabled = true;
     try {

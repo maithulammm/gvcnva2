@@ -74,7 +74,7 @@ Tài liệu: [Firebase Admin SDK](https://firebase.google.com/docs/admin/setup),
 ```text
 gvcn/v1/years/2026-2027/
   bootstrapAdminOid              # Chỉ thiết lập Admin đầu tiên một lần
-  users/{base64url(email)}/       # email, oid, role, classId/grade, active, teacherId
+  users/{base64url(email)}/       # email, oid, roles, classId, grades, active, teacherId
   teachers/{teacherId}/           # name, email, classId, active, thời điểm tạo/sửa
   teacherArchive/{eventId}/       # GVCN đã xóa, giữ dấu vết phân công
   classes/{classId}/
@@ -96,13 +96,9 @@ gvcn/v1/years/2026-2027/
 
 Giao diện/JSON cũ vẫn sử dụng `schema: 2` và tên tháng `T11/2026`. API chuyển đổi khóa tháng và khôi phục mảng rỗng bị Firebase lược bỏ. Không dùng email chứa dấu chấm trực tiếp làm khóa Firebase.
 
-Để cấp vai trò khối trưởng hoặc BGH trước khi có màn hình quản lý các vai trò này, người triển khai tạo bản ghi trong `users` qua Firebase Console. Ví dụ khối trưởng có `email`, `name`, `role: "lead"`, `grade: "8"`, `active: true`; BGH có `role: "bgh"`. Không đặt `oid` tùy ý: lần đăng nhập đầu sẽ liên kết tài khoản Microsoft đã xác thực. Tính khóa email bằng:
+Tài khoản có thể có nhiều vai trò, ví dụ `roles: ["gvcn","lead"]`, `classId: "8C6"`, `grades: ["8"]`. Khối trưởng nhiều khối dùng mảng `grades`, chẳng hạn `["10","11","12"]`. `role` và `grade` đơn vẫn được lưu để tương thích dữ liệu cũ; API luôn xác thực phạm vi từng yêu cầu. GVCN kiêm khối trưởng chỉ được sửa lớp GVCN của mình và không thể tự rà soát báo cáo do chính tài khoản đó gửi.
 
-```powershell
-node -e "console.log(Buffer.from('email@vietanhschool.edu.vn').toString('base64url'))"
-```
-
-Người dùng không thể tự sửa nhánh `users` từ trình duyệt. Rules chặn đọc/ghi trực tiếp nhánh `gvcn`; API kiểm tra quyền từng yêu cầu và ghi dữ liệu bằng Admin SDK.
+Admin quản lý tài khoản tại **Người dùng & vai trò** trong ứng dụng khi đã kết nối Firebase. Có thể sửa vai trò/phạm vi, bật hoặc ngừng tài khoản và nhập danh sách phân công JSON đã chuẩn bị; API kiểm tra toàn bộ xung đột trước khi ghi. Không sửa trực tiếp nhánh `users` trong Firebase Console. Tài khoản mới không có `oid` cho đến khi đăng nhập Microsoft lần đầu; API liên kết với `oid` đã xác thực.
 
 ## Giữ và chuyển dữ liệu cũ
 
@@ -110,7 +106,7 @@ Người dùng không thể tự sửa nhánh `users` từ trình duyệt. Rules
 - Chế độ Firebase sử dụng bộ nhớ đệm riêng theo tài khoản, không lấy cache làm nguồn quyết định quyền.
 - Xuất JSON trước khi chuyển đổi. Admin chọn **Dữ liệu Firebase → Chuyển dữ liệu cũ lên Firebase**. Chỉ nhập lớp còn trống; không trộn hoặc ghi đè lớp đã có hồ sơ.
 - Lịch sử báo cáo cũ trong dữ liệu do Admin nhập được giữ lại như dữ liệu chuyển đổi, không được xem là chữ ký xác nhận mới của máy chủ.
-- Kiểm tra và bổ sung phân công trong **Quản lý GVCN** sau khi chuyển dữ liệu. Chỉ khi có bản ghi phân công máy chủ, giáo viên mới được đăng nhập online vào lớp.
+- Kiểm tra và bổ sung phân công trong **Quản lý GVCN** và **Người dùng & vai trò** sau khi chuyển dữ liệu. Chỉ khi có bản ghi phân công máy chủ, người dùng mới được đăng nhập online theo vai trò.
 - Khi có xung đột, xuất JSON/bản lưu chờ đồng bộ rồi tải dữ liệu máy chủ để đối chiếu. Thử đồng bộ lại không bỏ qua kiểm tra phiên bản.
 - Dữ liệu cục bộ hỏng/khác schema được giữ nguyên và báo lỗi, không tự thay bằng dữ liệu trống.
 

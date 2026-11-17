@@ -47,6 +47,96 @@ test('teacher CRUD grants scope, moves assignment, then revokes access without d
   assert.equal(Object.keys(db.state().teacherArchive).length,1);
 });
 
+test('GVCN can also lead multiple grades while keeping edits limited to their own class',async()=>{
+  const {api}=await fixture();
+  let boot=await api.saveTeacher(admin,{...teacherInput,roles:['gvcn','lead'],grades:['10','11','12'],classId:'12C1'});
+  const leadIdentity={...teacher,email:teacherInput.email};
+  boot=await api.bootstrap(leadIdentity);
+  assert.deepEqual(boot.assignment.roles,['gvcn','lead']);
+  assert.deepEqual(boot.assignment.grades,['10','11','12']);
+  assert.deepEqual(Object.keys(boot.classes).sort(),['10A1','10A2','10A3','10A4','11B1','11B2','12C1','12C2','12C3']);
+  const own=boot.classes['12C1'];
+  own.months['T11/2026']={...emptyMonth(),notes:{teacher:'Own class'}};
+  await api.putClass(leadIdentity,'12C1',{classData:own,revision:boot.revisions['12C1']});
+  const peer=boot.classes['12C2'];
+  peer.months['T11/2026']={...emptyMonth(),notes:{teacher:'Other class'}};
+  await assert.rejects(api.putClass(leadIdentity,'12C2',{classData:peer,revision:boot.revisions['12C2']}),e=>e.status===403);
+});
+
+test('a combined GVCN and lead cannot review its own submission but can review another class',async()=>{
+  const {api}=await fixture();
+  let boot=await api.saveTeacher(admin,{...teacherInput,roles:['gvcn','lead'],grades:['8']});
+  const other={email:'other@vietanhschool.edu.vn',oid:'other-oid',name:'Other teacher'};
+  boot=await api.saveTeacher(admin,{...teacherInput,id:undefined,name:other.name,email:other.email,classId:'8C2',roles:['gvcn'],grades:[]});
+  const revision8C3=boot.revisions['8C3'],revision8C2=boot.revisions['8C2'];
+  const populated=c=>{
+    c.students=[{id:'S1',name:'Student',code:''}];
+    c.months['T11/2026']={...emptyMonth(),schedule:{S1:{planTime:'01/11/2026'}},meetings:[
+      {id:'R1',studentId:'S1',actual:'01/11/2026',concern:'A',participation:'B',progressEvidence:'Có',
+        goal:'C',action:'D',cooperation:'Chưa cần',needsCoop:'Không',evidence:'EV1'}
+    ]};
+    return c;
+  };
+  let c=populated(boot.classes['8C3']);
+  const saved8C3=await api.putClass(admin,'8C3',{classData:c,revision:revision8C3});
+  c=populated(boot.classes['8C2']);
+  await api.putClass(admin,'8C2',{classData:c,revision:revision8C2});
+  await api.bootstrap(teacher);
+  await api.bootstrap(other);
+  let submitted=await api.transition(teacher,'8C3',{month:'T11/2026',target:'submitted',revision:saved8C3.revision});
+  await assert.rejects(api.transition(teacher,'8C3',{month:'T11/2026',target:'reviewed',revision:submitted.revisions['8C3']}),e=>e.status===403);
+  submitted=await api.transition(other,'8C2',{month:'T11/2026',target:'submitted',revision:submitted.revisions['8C2']});
+  const reviewed=await api.transition(teacher,'8C2',{month:'T11/2026',target:'reviewed',revision:submitted.revisions['8C2']});
+  assert.equal(reviewed.classes['8C2'].months['T11/2026'].approval.state,'reviewed');
+});
+
+test('Admin can atomically import teacher assignments and management roles without replacing class data',async()=>{
+  const {api}=await fixture();
+  let boot=await api.bootstrap(admin);
+  const c=boot.classes['8C3'];
+  c.students=[{id:'S1',name:'Existing student',code:'S1'}];
+  await api.putClass(admin,'8C3',{classData:c,revision:boot.revisions['8C3']});
+  boot=await api.importDirectory(admin,{
+    teachers:[{...teacherInput,roles:['gvcn','lead'],grades:['8']}],
+    users:[
+      {name:'School leader',email:'bgh@vietanhschool.edu.vn',roles:['bgh'],grades:[]},
+      {name:'Academic admin',email:'academic@vietanhschool.edu.vn',roles:['admin'],grades:[]}
+    ]
+  });
+  assert.equal(boot.classes['8C3'].students[0].name,'Existing student');
+  assert.deepEqual(boot.teachers[Object.keys(boot.teachers)[0]].classId,'8C3');
+  assert.equal(boot.users.length,4);
+  const lead=await api.bootstrap(teacher);
+  assert.deepEqual(lead.assignment.roles,['gvcn','lead']);
+  const bgh=await api.bootstrap({email:'bgh@vietanhschool.edu.vn',oid:'bgh-oid',name:'School leader'});
+  assert.equal(Object.keys(bgh.classes).length,32);
+  assert(!JSON.stringify(bgh).includes('Existing student'));
+  const academic=await api.bootstrap({email:'academic@vietanhschool.edu.vn',oid:'academic-oid',name:'Academic admin'});
+  assert.equal(academic.assignment.role,'admin');
+  await assert.rejects(api.saveUserRoles(teacher,{email:'another@vietanhschool.edu.vn',name:'Other',roles:['admin'],grades:[]}),e=>e.status===403);
+});
+
+test('Admin role management cannot downgrade or deactivate the active Admin session',async()=>{
+  const {api}=await fixture();
+  await api.saveUserRoles(admin,{email:'bgh@vietanhschool.edu.vn',name:'School leader',roles:['bgh'],grades:[],active:true});
+  await assert.rejects(api.saveUserRoles(admin,{id:admin.email,email:admin.email,name:admin.name,roles:['gvcn'],grades:[],active:true}),e=>e.status===409);
+  await assert.rejects(api.saveUserRoles(admin,{id:admin.email,email:admin.email,name:admin.name,roles:['admin'],grades:[],active:false}),e=>e.status===409);
+});
+
+test('directory import validates all assignments before writing any and refuses conflicting classes',async()=>{
+  const {db,api}=await fixture();
+  const payload={teachers:[
+    {...teacherInput,roles:['gvcn'],grades:[]},
+    {...teacherInput,name:'Second teacher',email:'second@vietanhschool.edu.vn'}
+  ],users:[]};
+  await assert.rejects(api.importDirectory(admin,payload),e=>e.status===400);
+  assert.equal(Object.keys(db.state().teachers||{}).length,0);
+  assert.equal(Object.keys(db.state().users||{}).length,1);
+  await api.saveTeacher(admin,teacherInput);
+  await assert.rejects(api.importDirectory(admin,{teachers:[{...teacherInput,name:'Another teacher',email:'other@vietanhschool.edu.vn'}],users:[]}),e=>e.status===409);
+  assert.equal(Object.values(db.state().teachers).length,1);
+});
+
 test('non-Admin cannot edit teacher/student rosters or forge a role',async()=>{
   const {api}=await fixture();await api.saveTeacher(admin,teacherInput);
   let boot=await api.bootstrap(teacher);

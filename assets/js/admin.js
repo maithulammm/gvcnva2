@@ -3,7 +3,7 @@
 // Admin teacher assignments and database settings.
 
 function renderTeachers() {
-  if (auth.assignment?.role !== "admin") return "";
+  if (!hasAppRole("admin")) return "";
   const teachers = Object.values(appData.teachers || {}).sort((a, b) =>
     a.classId.localeCompare(b.classId, undefined, { numeric: true }),
   );
@@ -12,8 +12,103 @@ function renderTeachers() {
     <section class="card no-pad"><div class="table-wrap"><table><thead><tr><th>Họ tên</th><th>Email Microsoft</th><th>Lớp</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${teachers.map((t) => `<tr><td>${esc(t.name)}</td><td>${esc(t.email)}</td><td>${esc(t.classId)}</td><td>${statusTag(t.active !== false ? "Đang hoạt động" : "Ngừng hoạt động")}</td><td class="actions-cell">${btn("Sửa", `openModal('teacherAccount','${t.id}')`, "small")}${btn("Học sinh", `openClassStudents('${t.classId}')`, "small")}${btn("Xóa", `deleteTeacherAccount('${t.id}')`, "small danger")}</td></tr>`).join("") || '<tr><td colspan="5"><div class="empty">Chưa có GVCN trong danh sách quản lý. Bấm Thêm GVCN để bắt đầu.</div></td></tr>'}</tbody></table></div></section>`;
 }
 
+function renderUsers() {
+  if (!hasAppRole("admin")) return "";
+  const users = [...(appData.users || [])].sort((a, b) =>
+    a.email.localeCompare(b.email),
+  );
+  const rows = users
+    .map((user) => {
+      const roles = assignmentRoles(user)
+        .map((role) => ROLE_NAMES[role] || role)
+        .join(" · ");
+      const grades = assignedGrades(user);
+      const scope = user.classId
+        ? `Lớp ${user.classId}`
+        : grades.length
+          ? `Khối ${grades.join(", ")}`
+          : "Toàn trường";
+      return `<tr><td><b>${esc(user.name || user.email)}</b></td><td>${esc(user.email)}</td><td>${esc(roles)}</td><td>${esc(scope)}</td><td>${statusTag(user.active !== false ? "Đang hoạt động" : "Ngừng hoạt động")}</td><td>${btn("Sửa vai trò", `openModal('userRoles','${esc(user.email)}')`, "small")}</td></tr>`;
+    })
+    .join("");
+  return `<div class="section-head"><h2>Tài khoản & vai trò · ${users.length} tài khoản</h2><div class="actions">${cloud.ready ? btn("＋ Thêm tài khoản", "openModal('userRoles')", "primary") + btn("Nhập danh sách đã chuẩn bị", "$('directoryInput').click()") : ""}</div></div>
+    <p class="help">GVCN có thể kiêm khối trưởng; Admin có quyền quản lý toàn trường. Vai trò được kiểm tra tại API. Tài khoản mới liên kết với Microsoft khi đăng nhập lần đầu.</p>
+    ${cloud.ready ? `<section class="card no-pad"><div class="table-wrap"><table><thead><tr><th>Họ tên</th><th>Email công vụ</th><th>Vai trò</th><th>Phạm vi</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${rows || '<tr><td colspan="6"><div class="empty">Chưa có tài khoản được phân công.</div></td></tr>'}</tbody></table></div></section>` : '<section class="card"><p class="help">Kết nối Firebase để xem và quản lý vai trò máy chủ.</p></section>'}`;
+}
+
+async function saveUserRole(record) {
+  if (!canEditSetup() || !cloud.ready)
+    throw Error("Cần quyền Admin và kết nối Firebase để quản lý vai trò.");
+  record.email = record.email.toLowerCase().trim();
+  const previous = (appData.users || []).find(
+    (user) => user.email === record.email,
+  );
+  const previousRoles = assignmentRoles(previous);
+  const gained = record.roles.filter((role) => !previousRoles.includes(role));
+  if (
+    gained.some((role) => ["admin", "bgh", "lead"].includes(role)) &&
+    !confirm(
+      `Cấp vai trò ${gained.map((role) => ROLE_NAMES[role]).join(", ")} cho ${record.email}? Vai trò này mở quyền truy cập theo phạm vi được nêu.`,
+    )
+  )
+    return false;
+  await flushCloud();
+  cloud.busy = true;
+  try {
+    useBootstrap(await databaseRequest("/users", "POST", record));
+  } finally {
+    cloud.busy = false;
+  }
+  return true;
+}
+
+async function importDirectoryFile(e) {
+  const input = e.target,
+    file = input.files?.[0];
+  input.value = "";
+  if (!file) return;
+  if (!canEditSetup() || !cloud.ready) {
+    alert("Chỉ Admin đang kết nối Firebase mới được nhập phân công.");
+    return;
+  }
+  try {
+    const data = JSON.parse(await file.text());
+    if (
+      data.schema !== 1 ||
+      data.year !== YEARS ||
+      !Array.isArray(data.teachers) ||
+      !Array.isArray(data.users)
+    )
+      throw Error("Tệp phân công không đúng định dạng năm học 2026–2027.");
+    if (
+      !confirm(
+        `Nhập ${data.teachers.length} phân công GVCN và ${data.users.length} tài khoản vai trò lên Firebase? Lớp đã có GVCN khác hoặc tài khoản có quyền ngoài tệp sẽ bị từ chối, không ghi đè.`,
+      )
+    )
+      return;
+    await flushCloud();
+    cloud.busy = true;
+    try {
+      useBootstrap(
+        await databaseRequest("/directory/import", "POST", data),
+      );
+    } finally {
+      cloud.busy = false;
+    }
+    render();
+    toast(
+      `Đã đồng bộ ${data.teachers.length} GVCN và ${data.users.length} tài khoản vai trò.`,
+    );
+  } catch (error) {
+    alert("Không thể nhập phân công: " + error.message);
+  } finally {
+    cloud.busy = false;
+    updateStorageNotice();
+  }
+}
+
 function renderDatabase() {
-  if (auth.assignment?.role !== "admin") return "";
+  if (!hasAppRole("admin")) return "";
   return `<div class="section-head"><h2>${cloud.ready ? "Firebase đã kết nối" : "Đang dùng dữ liệu cục bộ"}</h2></div>
     <div class="cols2"><section class="card"><h2>Kết nối dữ liệu dùng chung</h2><p class="help">32 lớp · năm học ${YEARS}. Tài khoản Admin đầu tiên: lammt@vietanhschool.edu.vn.</p>
     <p class="help" style="overflow-wrap:anywhere">Database: ${esc(FIREBASE_DATABASE_URL)}</p>

@@ -34,6 +34,8 @@ export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=pr
       if(method==='GET'&&route==='/bootstrap') result=await service.bootstrap(identity);
       else if(method==='POST'&&route==='/teachers') result=await service.saveTeacher(identity,body);
       else if(method==='DELETE'&&/^\/teachers\/[A-Za-z0-9_-]+$/.test(route)) result=await service.deleteTeacher(identity,route.split('/')[2]);
+      else if(method==='POST'&&route==='/users') result=await service.saveUserRoles(identity,body);
+      else if(method==='POST'&&route==='/directory/import') result=await service.importDirectory(identity,body);
       else if(method==='PUT'&&/^\/classes\/[A-Za-z0-9]+$/.test(route)) result=await service.putClass(identity,route.split('/')[2],body);
       else if(method==='POST'&&/^\/import\/[A-Za-z0-9]+$/.test(route)) result=await service.putClass(identity,route.split('/')[2],body,true);
       else if(method==='POST'&&/^\/classes\/[A-Za-z0-9]+\/transition$/.test(route)) result=await service.transition(identity,route.split('/')[2],body);

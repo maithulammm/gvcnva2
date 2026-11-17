@@ -23,7 +23,7 @@ function frontend({memory=new Map(),api}={}) {
   const ctx={console:{log:console.log,warn(){},error(){}},TextEncoder,TextDecoder,Blob,Response,DecompressionStream,Uint8Array,DataView,URL,atob,AbortController,
     setTimeout(){return 1;},clearTimeout(){},setInterval(){return 1;},clearInterval(){},
     alert:m=>alerts.push(m),confirm:()=>true,prompt:()=> 'Test reason',
-    FormData:class {constructor(record){this.record=record;}get(key){return this.record[key]??null;}},
+    FormData:class {constructor(record){this.record=record;}get(key){return this.record[key]??null;}getAll(key){const value=this.record[key];return value===undefined?[]:Array.isArray(value)?value:[value];}},
     localStorage:{getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)},
     document:{getElementById:el,hidden:false,body:{classList:{add:c=>bodyClasses.add(c),remove:c=>bodyClasses.delete(c)}}},
     location:{origin:'http://127.0.0.1:5500',pathname:'/index.html',protocol:'http:'}};
@@ -35,6 +35,8 @@ function frontend({memory=new Map(),api}={}) {
       if(path==='/bootstrap') result=await api.bootstrap(admin);
       else if(path==='/teachers'&&options.method==='POST') result=await api.saveTeacher(admin,body);
       else if(path.startsWith('/teachers/')&&options.method==='DELETE') result=await api.deleteTeacher(admin,path.split('/')[2]);
+      else if(path==='/users'&&options.method==='POST') result=await api.saveUserRoles(admin,body);
+      else if(path==='/directory/import'&&options.method==='POST') result=await api.importDirectory(admin,body);
       else if(path.startsWith('/classes/')&&options.method==='PUT') result=await api.putClass(admin,path.split('/')[2],body);
       else if(path.startsWith('/import/')) result=await api.putClass(admin,path.split('/')[2],body,true);
       else throw Error(`Unexpected test route ${path}`);
@@ -96,6 +98,22 @@ test('Firebase sync uses API, preserves original local data and has no phantom w
   assert.equal((await api.bootstrap(admin)).classes['8C3'].students[0].name,'Student');
   assert.equal(memory.get('VA_GVCN_MSAL_PROTOTYPE_DATA_V1'),original);
   assert(!memory.has(f.run('cloudCacheKey()+"_PENDING"')));
+});
+
+test('Admin can manage roles and import the approved directory through the authenticated API',async()=>{
+  const api=createService(memoryDatabase()),memory=new Map([['VA_GVCN_FIREBASE_CONNECTION_V1','{"enabled":true}']]);
+  const f=frontend({api,memory});await f.login();
+  await f.run(`saveUserRole({name:'School leader',email:'bgh@vietanhschool.edu.vn',roles:['bgh'],grades:[],active:true});`);
+  assert.equal(f.run(`appData.users.find(x=>x.email==='bgh@vietanhschool.edu.vn').roles[0]`),'bgh');
+  assert(f.run(`renderUsers().includes('Tài khoản & vai trò')`));
+  f.run(`navTo('users');openModal('userRoles','bgh@vietanhschool.edu.vn');`);
+  assert(f.el('modalBody').innerHTML.includes('name="roles"'));
+  f.run(`$('editor').close();`);
+  const directory={schema:1,year:'2026-2027',teachers:[{name:'Teacher',email:'teacher@vietanhschool.edu.vn',classId:'8C3',roles:['gvcn','lead'],grades:['8'],active:true}],users:[]};
+  await f.run(`importDirectoryFile({target:{files:[{text:async()=>${JSON.stringify(JSON.stringify(directory))}}],value:'selected'}});`);
+  const boot=await api.bootstrap({email:'teacher@vietanhschool.edu.vn',oid:'teacher-oid',name:'Teacher'});
+  assert.deepEqual(boot.assignment.roles,['gvcn','lead']);
+  assert.equal(f.run('cloud.error'),'');
 });
 
 test('reload restores unsynced draft and conflict refuses to overwrite a newer server record',async()=>{

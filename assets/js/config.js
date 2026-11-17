@@ -35,6 +35,7 @@ const VIEW_LIST = [
   ["dashboard", "◈", "Tổng quan"],
   ["students", "♙", "Danh sách học sinh"],
   ["teachers", "♟", "Quản lý GVCN"],
+  ["users", "♙", "Người dùng & vai trò"],
   ["database", "☁", "Dữ liệu Firebase"],
   ["m01", "▦", "Mẫu 01 · Lịch gặp"],
   ["m02", "☷", "Mẫu 02 · Sổ gặp"],
@@ -70,6 +71,10 @@ const HEADINGS = {
   teachers: [
     "Quản lý giáo viên chủ nhiệm",
     "Admin thêm, sửa, xóa GVCN và phân công lớp",
+  ],
+  users: [
+    "Người dùng & vai trò",
+    "Admin quản lý vai trò, phạm vi khối và tài khoản được cấp quyền",
   ],
   database: [
     "Kết nối dữ liệu Firebase",
