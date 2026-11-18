@@ -101,7 +101,8 @@ function renderSelectors() {
   $("roleLabel").textContent = roles
     .map((role) => ROLE_NAMES[role] || role)
     .join(" · ");
-  $("identityLabel").textContent = auth.email;
+  $("identityLabel").textContent = accountDisplayName();
+  $("accountMenuButton").title = $("identityLabel").textContent;
   $("roleLabel").title = $("roleLabel").textContent;
   $("monthSel").innerHTML = MONTHS.map(
     (m) => `<option value="${m}">${m}</option>`,
@@ -111,6 +112,7 @@ function renderSelectors() {
 
 function render() {
   if (!auth.account || !appData) return;
+  closeAccountMenu();
   ui.role = viewAssignment()?.role;
   renderRolePreview();
   renderSelectors();

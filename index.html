@@ -7,7 +7,7 @@
     <title>Quản lý GVCN VA2</title>
     <link rel="stylesheet" href="assets/css/app.css?v=20261118-quick-meeting" />
     <link rel="stylesheet" href="assets/css/responsive.css?v=20261118-quick-meeting" />
-    <link rel="stylesheet" href="assets/css/header.css?v=20261118-quick-meeting" />
+    <link rel="stylesheet" href="assets/css/header.css?v=20261118-account-menu" />
     <link rel="stylesheet" href="assets/css/dialogs.css?v=20261118-quick-meeting" />
   </head>
   <body>
@@ -53,6 +53,7 @@
         <nav class="nav" id="nav"></nav>
       </aside>
       <main class="main">
+        <div class="page-toolbar">
         <div class="topline app-toolbar">
           <div class="top-heading">
             <h1 id="pageTitle" tabindex="-1">Tổng quan công tác chủ nhiệm</h1>
@@ -61,15 +62,6 @@
             </p>
           </div>
           <div class="selectors">
-            <div class="toolbar-account"><span class="toolbar-caption">Tài khoản</span><span class="auth-id" id="identityBox"
-              ><span id="identityLabel">Đang xác thực</span
-              ><button
-                type="button"
-                id="msLogoutBtn"
-                title="Đăng xuất tài khoản Microsoft"
-              >
-                Đăng xuất
-              </button></span></div>
             <label class="role-selector">Vai trò <span id="roleLabel" class="pill">—</span></label
             ><label class="grade-selector">Khối / phạm vi<select id="gradeSel" data-choice-mode="dropdown"></select></label
             ><label class="class-selector">Lớp<select id="classSel" data-choice-mode="dropdown"></select></label
@@ -80,10 +72,13 @@
             Đang kiểm tra trạng thái lưu dữ liệu…
           </div>
         </div>
+        <div id="identityBox" class="account-control"><button type="button" id="accountMenuButton" aria-haspopup="menu" aria-controls="accountMenu" aria-expanded="false" onclick="toggleAccountMenu()"><span id="identityLabel">Đang xác thực</span><span aria-hidden="true">▾</span></button></div>
+        </div>
         <div id="syncActions" class="actions"></div>
         <div id="view"></div>
       </main>
     </div>
+    <div id="accountMenu" class="account-dropdown" role="menu" aria-labelledby="accountMenuButton" hidden><button type="button" id="msLogoutBtn" role="menuitem">Đăng xuất</button></div>
     <dialog id="mobileNav" class="mobile-nav" aria-labelledby="mobileNavTitle">
       <div class="mobile-nav-header"><h2 id="mobileNavTitle">Chọn chức năng</h2><button type="button" class="btn" aria-label="Đóng menu" onclick="closeMobileNavigation()">✕</button></div>
       <nav id="mobileNavLinks" class="nav" aria-label="Điều hướng trên điện thoại"></nav>
@@ -136,43 +131,44 @@
       defer
       src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"
     ></script>
-    <script defer src="assets/js/config.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/state.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/helpers.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/loading.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/dialogs.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/data.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/permissions.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/validation.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/router.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/responsive.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/views/dashboard.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/views/students.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/views/reports.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/views/work.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/forms/m01.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/forms/schedule.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/forms/m02.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/forms/m03.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/forms/m04.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/forms/m05.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/forms/schema.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/forms/meeting.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/forms/history.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/forms/quick-meeting.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/choices.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/forms/editor.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/forms/drafts.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/approval.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/excel/template.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/excel/codec.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/excel/export.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/excel/import.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/backup.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/demo.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/firebase.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/admin.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/auth.js?v=20261118-quick-meeting"></script>
-    <script defer src="assets/js/main.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/config.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/state.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/helpers.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/loading.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/dialogs.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/data.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/permissions.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/validation.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/router.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/responsive.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/account-menu.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/views/dashboard.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/views/students.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/views/reports.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/views/work.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/forms/m01.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/forms/schedule.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/forms/m02.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/forms/m03.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/forms/m04.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/forms/m05.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/forms/schema.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/forms/meeting.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/forms/history.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/forms/quick-meeting.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/choices.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/forms/editor.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/forms/drafts.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/approval.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/excel/template.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/excel/codec.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/excel/export.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/excel/import.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/backup.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/demo.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/firebase.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/admin.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/auth.js?v=20261118-account-menu"></script>
+    <script defer src="assets/js/main.js?v=20261118-account-menu"></script>
   </body>
 </html>

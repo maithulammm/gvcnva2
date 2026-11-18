@@ -68,6 +68,12 @@ $("msLoginBtn").addEventListener("click", async () => {
 });
 
 $("msLogoutBtn").addEventListener("click", logoutMicrosoft);
+document.addEventListener?.('pointerdown',event=>{if(!event.target.closest?.('#identityBox,#accountMenu'))closeAccountMenu();});
+document.addEventListener?.('focusin',event=>{if(!event.target.closest?.('#identityBox,#accountMenu'))closeAccountMenu();});
+$('accountMenuButton').addEventListener('keydown',event=>{if(event.key==='ArrowDown'){event.preventDefault();if($('accountMenu').hidden)toggleAccountMenu();else $('msLogoutBtn').focus();}});
+document.addEventListener?.('keydown',event=>{if(event.key==='Escape'&&!$('accountMenu').hidden){event.preventDefault();closeAccountMenu(true);}});
+window.addEventListener?.('resize',()=>closeAccountMenu());
+window.addEventListener?.('scroll',()=>closeAccountMenu(),true);
 window.addEventListener?.("storage", handleMicrosoftLogoutStorage);
 $("requestOverlay").addEventListener("cancel",e=>e.preventDefault());
 $("mobileNav").addEventListener("close",()=>$("mobileMenuButton").setAttribute("aria-expanded","false"));

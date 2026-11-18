@@ -14,6 +14,13 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('header shows the signed-in teacher name and keeps it while previewing another role/class',async()=>{
+  const f=frontend();await f.login();
+  f.run(`auth.account.name='Mai Thư Lâm';appData.classes['8C3'].teacher='Another teacher';ui.classId='8C3';render()`);
+  assert.equal(f.el('identityLabel').textContent,'Mai Thư Lâm');
+  f.run(`setRolePreview('gvcn','8C3')`);assert.equal(f.el('identityLabel').textContent,'Mai Thư Lâm');
+  assert.equal(f.el('accountMenu').hidden,true);
+});
 test('quick meeting saves before moving to the next appointment and survives background acknowledgement',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
   f.run(`cls().students=[{id:'S1',name:'First'},{id:'S2',name:'Second'}];
