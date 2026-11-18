@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {DOMParser,XMLSerializer} from '@xmldom/xmldom';
 import {createService} from '../service.mjs';
 import {memoryDatabase} from './helpers.mjs';
 
@@ -12,6 +13,57 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('classes above 28 students save to Firebase and export all students across every month',async()=>{
+  const api=createService(memoryDatabase());
+  const f=frontend({api});await f.login();
+  // Supply the browser XML DOM surface to exercise the real XLSX exporter in Node.
+  const sample=new DOMParser().parseFromString('<root><cell/></root>','application/xml');
+  for(const list of [sample.childNodes,sample.getElementsByTagName('*')])
+    Object.getPrototypeOf(list)[Symbol.iterator]=Array.prototype[Symbol.iterator];
+  const elementPrototype=Object.getPrototypeOf(sample.documentElement);
+  if(!Object.getOwnPropertyDescriptor(elementPrototype,'children'))
+    Object.defineProperty(elementPrototype,'children',{get(){return Array.from(this.childNodes).filter(n=>n.nodeType===1);}});
+  f.ctx.DOMParser=DOMParser;f.ctx.XMLSerializer=XMLSerializer;
+  f.run(`cls().students=Array.from({length:35},(_,i)=>({id:'S'+i,name:'Student '+i,code:'HS'+i}));
+    for(const month of MONTHS) mdata(cls(),month).schedule.S34={goal:'Last student '+month};
+    save();`);
+  await f.run('flushCloud()');
+  assert.equal((await api.bootstrap(admin)).classes['6A1'].students.length,35);
+  let exported;
+  f.ctx.downloadFile=blob=>{exported=blob;};
+  await f.run('exportClass()');
+  assert(exported, f.alerts.join('\n'));
+  f.ctx.exportedBuffer=await exported.arrayBuffer();
+  const files=await f.run('readZip(exportedBuffer)');
+  const parse=path=>new DOMParser().parseFromString(new TextDecoder().decode(files[path]),'application/xml');
+  const paths=f.run('getSheetNamePaths');
+  const entries=paths(files);
+  const sheet=name=>parse(entries.find(s=>s.name===name).path);
+  const cell=(doc,addr)=>Array.from(doc.getElementsByTagName('c')).find(c=>c.getAttribute('r')===addr);
+  assert.equal(cell(sheet('DanhSach'),'B39').textContent,'Student 34');
+  assert.match(cell(sheet('TheoDoiHS'),'B39').textContent,/DanhSach!\$B\$39/);
+  const m01=sheet('M01');
+  for(let month=0;month<9;month++) {
+    const row=5+month*35+34;
+    assert.equal(cell(m01,'E'+row).textContent,'Last student '+f.run(`MONTHS[${month}]`));
+    assert.match(cell(m01,'C'+row).textContent,/DanhSach!\$B\$39/);
+    assert(cell(m01,'J'+row).textContent.includes('C'+row));
+  }
+  assert(cell(sheet('TongHop'),'G5').textContent.includes('$A$319'));
+  assert(cell(sheet('ThongTin'),'B9').textContent.includes('$B$39'));
+  assert(new TextDecoder().decode(files['xl/workbook.xml']).includes('DanhSach!$B$5:$B$39'));
+});
+
+test('healthy synchronization uses a green check while errors remain visible',async()=>{
+  const f=frontend({api:createService(memoryDatabase())});await f.login();
+  assert.equal(f.el('offlineNotice').textContent,'✓');
+  assert.equal(f.el('offlineNotice').className,'sync-ok');
+  f.run(`cloud.error='Network unavailable';updateStorageNotice()`);
+  assert(f.el('offlineNotice').textContent.includes('Network unavailable'));
+  assert.equal(f.el('offlineNotice').className,'notice');
+  assert(!entryHtml.includes('sidebarStorage'));
+  assert(!entryHtml.includes('TRƯỜNG VIỆT ANH · HỆ THỐNG QUẢN LÝ'));
+});
 test('new devices use source login and Firebase configuration without setup controls',async()=>{
   for (const memory of [new Map(),new Map([
     ['VA_GVCN_MICROSOFT_AUTH_CONFIG_V1','{"tenantId":"old","clientId":"old"}'],
@@ -101,7 +153,7 @@ function frontend({memory=new Map(),api}={}) {
   const nodes=new Map(),alerts=[],bodyClasses=new Set();
   const el=id=>{
     if(!nodes.has(id)) nodes.set(id,{innerHTML:'',textContent:'',value:'',disabled:false,checked:false,open:false,
-      classList:{add(){},remove(){}},addEventListener(){},replaceChildren(){this.innerHTML='';},
+      classList:{add(){},remove(){}},setAttribute(k,v){this[k]=v;},addEventListener(){},replaceChildren(){this.innerHTML='';},
       close(){this.open=false;},showModal(){this.open=true;},focus(){},select(){}});
     return nodes.get(id);
   };

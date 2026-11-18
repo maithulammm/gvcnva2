@@ -89,7 +89,7 @@ const HEADINGS = {
   ],
   dashboard: [
     "Tổng quan công tác chủ nhiệm",
-    "Thống kê tiến độ theo tháng và toàn trường",
+    "",
   ],
   students: [
     "Hồ sơ lớp học",

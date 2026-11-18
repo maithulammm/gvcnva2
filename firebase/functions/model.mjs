@@ -97,7 +97,6 @@ function safeTree(v, depth=0) {
 export function validateClass(c) {
   safeTree(c);
   requireValue(CLASSES.includes(c.id),'Lớp không hợp lệ.');
-  requireValue(c.students.length<=28,'Mẫu Excel hiện hỗ trợ tối đa 28 học sinh/lớp.');
   requireValue(c.profiles.length<=40,'Tối đa 40 hồ sơ M05/lớp.');
   const ids=new Set(),studentCodes=new Set();
   for(const st of c.students) {

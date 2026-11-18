@@ -109,7 +109,7 @@ async function importDirectoryFile(e) {
 
 function renderDatabase() {
   if (!hasAppRole("admin")) return "";
-  return `<div class="section-head"><h2>${cloud.ready ? "Firebase đã kết nối" : "Đang dùng dữ liệu cục bộ"}</h2></div>
+  return `<div class="section-head"><h2>Dữ liệu</h2></div>
     <div class="cols2"><section class="card"><h2>Kết nối dữ liệu dùng chung</h2><p class="help">32 lớp · năm học ${YEARS}. Tài khoản Admin đầu tiên: lammt@vietanhschool.edu.vn.</p>
     <p class="help" style="overflow-wrap:anywhere">Database: ${esc(FIREBASE_DATABASE_URL)}</p>
     <p class="help">${cloud.ready ? esc(cloud.error || "Dữ liệu tự đồng bộ khi lưu; kiểm tra cập nhật mỗi 45 giây khi không có bản đang sửa.") : "Cần triển khai API Firebase trước khi bật kết nối. Mã nguồn và hướng dẫn nằm trong thư mục firebase của dự án."}</p>

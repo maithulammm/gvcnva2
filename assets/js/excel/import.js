@@ -101,10 +101,6 @@ async function importRoster(e) {
       throw Error(
         "Không tìm thấy cột Họ và tên và danh sách học sinh trong tệp.",
       );
-    if (chosen.records.length > 28)
-      throw Error(
-        `Tệp có ${chosen.records.length} học sinh, vượt giới hạn 28 của mẫu chuẩn. Không cắt bớt dữ liệu.`,
-      );
     if (!canEditSetup() || cloud.epoch !== targetEpoch ||
         appData.classes[targetClass.id] !== targetClass ||
         stableString(targetClass.students) !== targetRoster)

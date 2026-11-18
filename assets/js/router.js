@@ -126,6 +126,7 @@ function render() {
   const head = HEADINGS[ui.page];
   $("pageTitle").textContent = head[0];
   $("pageSubtitle").textContent = head[1];
+  $("pageSubtitle").hidden = !head[1];
   $("view").innerHTML = {
     dashboard: renderDashboard,
     students: renderStudents,

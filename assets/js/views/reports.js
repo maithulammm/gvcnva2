@@ -99,7 +99,7 @@ function renderExport() {
     <div class="stack marg-top">${perClass ? btn("⇩ Xuất Excel 15 sheet · " + c.id, "exportClass()", "primary") : ""}
     ${hasAppRole("bgh") || hasAppRole("admin") || hasAppRole("lead") ? btn("⇩ Xuất Excel tổng hợp các lớp", "exportSchool()", "primary") : ""}
     ${canEditSetup() ? btn("⇧ Nhập danh sách học sinh từ Excel", "$('xlsxInput').click()") : ""}
-    <p class="footnote">Mẫu Excel: tối đa 28 học sinh/lớp; M02: 600 dòng; M03: 500 dòng; M04: 180 dòng mỗi phần; M05: 40 hồ sơ và 200 lượt theo dõi.</p></div></section>
+    <p class="footnote">Mẫu Excel tự mở rộng theo sĩ số lớp; M02: 600 dòng; M03: 500 dòng; M04: 180 dòng mỗi phần; M05: 40 hồ sơ và 200 lượt theo dõi.</p></div></section>
     <section class="card"><h2>Sao lưu dữ liệu</h2><p class="help">JSON lưu dữ liệu trong phạm vi được phân công, gồm cả bản đang sửa chưa đồng bộ. Giữ bản sao trước khi khôi phục hoặc tải lại dữ liệu máy chủ.</p>
     <div class="stack marg-top">${btn("⇩ Xuất bản sao lưu JSON", "jsonBackup()")}
     ${!cloud.ready && (hasAppRole("admin") || hasAppRole("gvcn")) ? btn("⇧ Nhập / ghép bản sao JSON", "$('backupInput').click()") : ""}

@@ -11,5 +11,8 @@
   "dependencies": {
     "firebase-admin": "^14.5.1",
     "jose": "^6.0.0"
+  },
+  "devDependencies": {
+    "@xmldom/xmldom": "^0.9.12"
   }
 }

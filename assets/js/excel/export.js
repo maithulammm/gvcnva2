@@ -2,6 +2,60 @@
 
 // Export original class workbook and school summaries.
 
+// Expand only the generated workbook; preserve the embedded original template.
+function expandRosterTemplate(files, count) {
+  const baseSize = 28;
+  if (count <= baseSize) return baseSize;
+  const paths = getSheetNamePaths(files);
+  for (const item of paths.filter(s => ["DanhSach", "TheoDoiHS", "M01"].includes(s.name))) {
+    const doc = xmlparse(decoder.decode(files[item.path]));
+    const data = doc.getElementsByTagNameNS(S_NS, "sheetData")[0];
+    const original = [...data.getElementsByTagNameNS(S_NS, "row")];
+    const first = original.find(r => r.getAttribute("r") === "5");
+    const monthly = item.name === "M01";
+    const last = 4 + count * (monthly ? MONTHS.length : 1);
+    for (const row of original) if (+row.getAttribute("r") >= 5) data.removeChild(row);
+    for (let i = 0; i < count * (monthly ? MONTHS.length : 1); i++) {
+      const rowNumber = 5 + i, studentIndex = i % count;
+      const row = first.cloneNode(true);
+      row.setAttribute("r", rowNumber);
+      for (const cell of row.getElementsByTagNameNS(S_NS, "c")) {
+        const col = cell.getAttribute("r").replace(/\d+$/, "");
+        cell.setAttribute("r", col + rowNumber);
+        const formula = cell.getElementsByTagNameNS(S_NS, "f")[0];
+        if (formula) {
+          formula.textContent = formula.textContent.replace(/(\$?[A-Z]{1,3})(\$?)(\d+)/g,
+            (ref, column, absolute, n) => absolute ? ref : column + (+n + i));
+          if (col === (monthly ? "C" : "B"))
+            formula.textContent = `IF(DanhSach!$B$${5+studentIndex}="","",DanhSach!$B$${5+studentIndex})`;
+          for (const value of [...cell.getElementsByTagNameNS(S_NS, "v")]) cell.removeChild(value);
+        } else if (col === (monthly ? "B" : "A")) {
+          const value = cell.getElementsByTagNameNS(S_NS, "v")[0];
+          if (value) value.textContent = studentIndex + 1;
+        }
+      }
+      data.appendChild(row);
+    }
+    // Extend filters, validation and formatting to the generated final row.
+    const oldLast = 4 + baseSize * (monthly ? MONTHS.length : 1);
+    for (const node of doc.getElementsByTagName("*")) {
+      for (const attr of ["ref", "sqref"]) {
+        const value = node.getAttribute(attr);
+        if (value) node.setAttribute(attr, value.replace(new RegExp(`(\\$?[A-Z]+\\$?)${oldLast}\\b`, "g"), `$1${last}`));
+      }
+    }
+    files[item.path] = encoder.encode(new XMLSerializer().serializeToString(doc));
+  }
+  // Update cross-sheet formulas and named ranges, including student dropdowns.
+  for (const path of Object.keys(files).filter(p => p.endsWith(".xml"))) {
+    let xml = decoder.decode(files[path]);
+    xml = xml.replace(/((?:'DanhSach'|DanhSach)!\$?[A-Z]+\$?\d+:\$?[A-Z]+\$?)32\b/g, `$1${count+4}`);
+    xml = xml.replace(/((?:'M01'|M01)!\$?[A-Z]+\$?\d+:\$?[A-Z]+\$?)256\b/g, `$1${4+count*MONTHS.length}`);
+    files[path] = encoder.encode(xml);
+  }
+  return count;
+}
+
 async function exportClass() {
   try {
     let c = cls();
@@ -9,10 +63,9 @@ async function exportClass() {
       alert("Lớp chưa có danh sách học sinh.");
       return;
     }
-    if (c.students.length > 28)
-      throw Error("Vượt giới hạn 28 học sinh của workbook chuẩn.");
     let b = b64bytes(TEMPLATE_B64);
     const files = await readZip(b.buffer);
+    const rosterSize = expandRosterTemplate(files, c.students.length);
     let maps = {};
     let add = (sheet, addr, value) => {
       if (!maps[sheet]) maps[sheet] = {};
@@ -36,7 +89,8 @@ async function exportClass() {
       c.students.forEach((st, si) => {
         let a = m.schedule?.[st.id] || {},
           meet = m.meetings.filter((x) => x.studentId === st.id),
-          row = 5 + mi * 28 + si;
+          row = 5 + mi * rosterSize + si;
+        add("M01", "A" + row, month);
         if (a.priority) add("M01", "D" + row, "Có");
         if (a.goal) add("M01", "E" + row, a.goal);
         if (a.planTime) add("M01", "F" + row, a.planTime);

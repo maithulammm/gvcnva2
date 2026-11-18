@@ -130,6 +130,12 @@ small,
   width: 21px;
   text-align: center;
 }
+.sync-ok {
+  color: #15803d;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 8px 0;
+}
 .side-foot {
   margin-top: auto;
   font-size: 12px;

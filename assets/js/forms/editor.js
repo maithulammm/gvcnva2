@@ -196,10 +196,6 @@ async function submitForm(e) {
     c.teacher = record.teacher;
     c.email = record.email;
   } else if (type === "student") {
-    if (!id && c.students.length >= 28) {
-      alert("Đã đủ 28 học sinh theo sức chứa file mẫu.");
-      return;
-    }
     if (
       c.students.some(
         (x) =>

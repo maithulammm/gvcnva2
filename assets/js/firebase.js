@@ -346,9 +346,12 @@ function updateStorageNotice() {
         " Bản đang sửa được giữ cục bộ. Xuất JSON trước khi tải lại."
       : cloud.worker || cloud.pending.size
         ? "Đang chờ đồng bộ Firebase · " + cloud.pending.size + " lớp."
-        : "Đã kết nối Firebase · Đồng bộ lúc " +
-          cloud.lastSync +
-          " · Quyền truy cập được kiểm tra tại máy chủ.";
+        : "✓";
+  const synced = cloud.ready && !cloud.error && !cloud.worker && !cloud.pending.size &&
+    !Object.keys(cloud.unassignedDrafts).length;
+  $("offlineNotice").className = synced ? "sync-ok" : "notice";
+  $("offlineNotice").setAttribute("aria-label", synced ? "Đã đồng bộ dữ liệu" : "Trạng thái đồng bộ");
+  $("offlineNotice").title = synced ? "Đã đồng bộ dữ liệu" : "";
   $("offlineNotice").textContent =
     message +
     (Object.keys(cloud.unassignedDrafts).length
@@ -364,11 +367,6 @@ function updateStorageNotice() {
         btn("Thử đồng bộ lại", "retryCloud()") +
         btn("Tải dữ liệu máy chủ", "refreshCloud()")
       : "";
-  $("sidebarStorage").textContent = cloud.ready
-    ? cloud.error
-      ? "Firebase: cần kiểm tra"
-      : "Firebase đã kết nối"
-    : "Dữ liệu cục bộ";
 }
 
 function enableFirebase() {
