@@ -12,6 +12,35 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('Excel roster matches codes before names and rejects ambiguous duplicate names',()=>{
+  const {run}=frontend();
+  const result=JSON.parse(run(`JSON.stringify(reconcileRoster(
+    [{id:'A',name:'Same',code:'01'},{id:'B',name:'Same',code:'02'}],
+    [{name:'Renamed',code:'02'},{name:'Same',code:'01'}]))`));
+  assert.deepEqual(result.map(s=>s.id),['B','A']);
+  assert.throws(()=>run(`reconcileRoster([{id:'A',name:'Same',code:'01'},{id:'B',name:'Same',code:'02'}],[{name:'Same',code:''}])`));
+  assert.throws(()=>run(`reconcileRoster([],[{name:'Same',code:''},{name:'Same',code:''}])`));
+  assert.throws(()=>run(`reconcileRoster([],[{name:'A',code:'01'},{name:'B',code:'01'}])`));
+});
+test('changing selected class during Excel parsing keeps the import in its original class',async()=>{
+  const f=frontend();await f.login();
+  f.run(`ui.classId='8C3';ui.grade='8';
+    readZip=async()=>({sheet:new Uint8Array()});
+    getSheetNamePaths=()=>[{name:'DanhSach',path:'sheet'}];
+    xmlparse=()=>({getElementsByTagNameNS:()=>[{
+      getAttribute:()=> '5',getElementsByTagNameNS:()=>[
+        {getAttribute:k=>k==='r'?'B5':'inlineStr',getElementsByTagNameNS:(ns,k)=>k==='is'?[{textContent:'Imported student'}]:[]},
+        {getAttribute:k=>k==='r'?'C5':'inlineStr',getElementsByTagNameNS:(ns,k)=>k==='is'?[{textContent:'HS01'}]:[]}
+      ]
+    }]});`);
+  let release;
+  const gate=new Promise(resolve=>{release=resolve;});
+  f.ctx.importEvent={target:{value:'file',files:[{arrayBuffer:()=>gate}]}};
+  const pending=f.run('importRoster(importEvent)');
+  f.run(`ui.classId='8C2'`);release(new ArrayBuffer(0));await pending;
+  assert.equal(f.run(`appData.classes['8C3'].students[0].code`),'HS01');
+  assert.equal(f.run(`appData.classes['8C2'].students.length`),0);
+});
 function frontend({memory=new Map(),api}={}) {
   const nodes=new Map(),alerts=[],bodyClasses=new Set();
   const el=id=>{

@@ -11,6 +11,9 @@ async function importRoster(e) {
     alert("Không đủ quyền nhập danh sách.");
     return;
   }
+  const targetClass = cls();
+  const targetEpoch = cloud.epoch;
+  const targetRoster = stableString(targetClass.students);
   if (
     cls().students.length &&
     !confirm(
@@ -102,17 +105,12 @@ async function importRoster(e) {
       throw Error(
         `Tệp có ${chosen.records.length} học sinh, vượt giới hạn 28 của mẫu chuẩn. Không cắt bớt dữ liệu.`,
       );
-    let c = cls(),
-      existing = new Map(
-        c.students.map((x) => [x.name.toLowerCase(), x]),
-      );
-    let roster = chosen.records.map((s, i) => ({
-      id:
-        existing.get(s.name.toLowerCase())?.id ||
-        `S${String(i + 1).padStart(3, "0")}-${Math.random().toString(36).slice(2, 5)}`,
-      name: s.name,
-      code: s.code,
-    }));
+    if (!canEditSetup() || cloud.epoch !== targetEpoch ||
+        appData.classes[targetClass.id] !== targetClass ||
+        stableString(targetClass.students) !== targetRoster)
+      throw Error("Phiên hoặc danh sách lớp đã thay đổi trong khi đọc Excel. Hãy nhập lại.");
+    const c = targetClass;
+    const roster = reconcileRoster(c.students, chosen.records);
     let missing = c.students.filter(
       (s) => !roster.some((r) => r.id === s.id),
     );
@@ -124,11 +122,41 @@ async function importRoster(e) {
         "Danh sách mới thiếu học sinh đã có dữ liệu biểu mẫu. Hãy giữ học sinh trong danh sách để bảo toàn liên kết hồ sơ.",
       );
     c.students = roster;
-    save();
+    if (!save()) throw Error("Chưa lưu được danh sách. Hãy kiểm tra bộ nhớ và xuất bản sao dữ liệu.");
     render();
     toast(`Đã nhập ${roster.length} học sinh từ sheet ${chosen.sh}.`);
   } catch (err) {
     console.error(err);
     alert("Không thể nhập danh sách: " + err.message);
   }
+}
+
+function reconcileRoster(existing, records) {
+  const used = new Set(), codes = new Set();
+  const names = new Map();
+  for (const record of records) {
+    const key = String(record.name || "").trim().toLowerCase();
+    const group = names.get(key) || [];
+    group.push(record);
+    names.set(key, group);
+  }
+  for (const group of names.values()) {
+    if (group.length > 1 && group.some(record => !String(record.code || "").trim()))
+      throw Error("Học sinh cùng tên cần có mã học sinh để phân biệt.");
+  }
+  return records.map(record => {
+    const name = String(record.name || "").trim();
+    const code = String(record.code || "").trim();
+    if (code && codes.has(code)) throw Error("Tệp Excel có mã học sinh trùng.");
+    if (code) codes.add(code);
+    let matches = code ? existing.filter(s => s.code === code) : [];
+    if (!matches.length) {
+      matches = existing.filter(s => s.name.trim().toLowerCase() === name.toLowerCase() && (!code || !s.code));
+    }
+    if (matches.length > 1) throw Error("Không thể phân biệt học sinh cùng tên. Hãy bổ sung mã học sinh.");
+    const id = matches[0]?.id || newID();
+    if (used.has(id)) throw Error("Tệp Excel có dòng học sinh trùng hoặc thiếu mã phân biệt.");
+    used.add(id);
+    return {id, name, code};
+  });
 }

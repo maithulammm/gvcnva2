@@ -61,10 +61,11 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
   function publicClass(s,id) { return entry(s,id); }
   function publicBootstrap(s,identity) {
     const u=assignmentFor(s,identity),ids=scopeFor(u),classes={},revisions={},summaries={},checks={};
-    const summaryOnly=hasRole(u,'bgh')&&!hasRole(u,'admin')&&!hasRole(u,'gvcn')&&!hasRole(u,'lead');
     for(const id of ids) {
       const {data:c,revision}=entry(s,id); revisions[id]=revision;
-      if(!summaryOnly) { classes[id]=c; continue; }
+      const detailAllowed=hasRole(u,'admin') || (hasRole(u,'gvcn')&&u.classId===id) ||
+        (hasRole(u,'lead')&&gradesOf(u).includes(String(gradeOf(id))));
+      if(detailAllowed) { classes[id]=c; continue; }
       classes[id]={...blankClass(id),teacher:c.teacher,months:{}}; summaries[id]={}; checks[id]={};
       for(const month of MONTHS) {
         summaries[id][month]=summary(c,month);
@@ -83,6 +84,12 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
   }
   return {
     async bootstrap(identity) {
+      const current=normalizeSchool((await ref.get()).val());
+      const stored=current.users[emailKey(identity.email)];
+      if(stored?.oid===identity.oid && current.bootstrapAdminOid &&
+        (!hasRole(stored,'admin') || CLASSES.every(id=>current.classes[id]))) {
+        return publicBootstrap(current,identity);
+      }
       const s=await mutate(identity,null,(school,u)=>{
         if(hasRole(u,'admin')) for(const id of CLASSES) if(!school.classes[id]) school.classes[id]={data:encodeClass(blankClass(id)),revision:0};
       },{bind:true});
@@ -124,6 +131,10 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
         const requestedRoles=body.roles||[...new Set([...assignedRoles,'gvcn'])];
         requireValue(requestedRoles.includes('gvcn'),'Phân công GVCN cần có vai trò GVCN.',400);
         const roleData=roleFields(requestedRoles,body.grades??gradesOf(assigned).filter(grade=>requestedRoles.includes('lead')));
+        if(assigned&&hasRole(assigned,'admin')&&(!roleData.roles.includes('admin')||!body.active)) {
+          requireValue(email!==identity.email,'Không thể thu hồi quyền Admin đang sử dụng qua hồ sơ GVCN.',409);
+          requireValue(Object.values(school.users).filter(user=>user.active!==false&&hasRole(user,'admin')).length>1,'Không thể vô hiệu hóa Admin cuối cùng qua hồ sơ GVCN.',409);
+        }
         if(roleData.roles.includes('lead')) requireValue(roleData.grades.includes(String(gradeOf(classId))),'Khối GVCN phải nằm trong phạm vi khối trưởng của chính tài khoản đó.');
         requireValue(!assigned||assignedRoles.includes('gvcn')||!assignedRoles.some(role=>['admin','bgh','lead'].includes(role))||roleData.roles.some(role=>['admin','bgh','lead'].includes(role)),'Email này đã có vai trò quản lý; hãy giữ vai trò hiện có khi phân công GVCN.',409);
         requireValue(!assigned?.teacherId||assigned.teacherId===id,'Email đã được liên kết với GVCN khác.',409);

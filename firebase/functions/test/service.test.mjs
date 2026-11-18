@@ -12,6 +12,41 @@ async function fixture() {
 }
 const teacherInput={name:'Giáo viên A',email:teacher.email,classId:'8C3',active:true};
 
+test('repeated bootstrap reads do not transact or change stored data',async()=>{
+  const {db}=await fixture();
+  const before=db.state();
+  let writes=0;
+  const api=createService({ref(path){const ref=db.ref(path);return {...ref,transaction(...args){writes++;return ref.transaction(...args);}};}});
+  await api.bootstrap(admin);await api.bootstrap(admin);
+  assert.equal(writes,0);assert.deepEqual(db.state(),before);
+});
+
+test('teacher editor cannot deactivate or downgrade the current Admin',async()=>{
+  const {api}=await fixture();
+  let boot=await api.saveTeacher(admin,{...teacherInput,email:admin.email,roles:['admin','gvcn']});
+  const id=Object.keys(boot.teachers)[0];
+  for(const changes of [{active:false},{roles:['gvcn']}]) {
+    await assert.rejects(api.saveTeacher(admin,{...teacherInput,email:admin.email,id,roles:['admin','gvcn'],...changes}),e=>e.status===409);
+  }
+  boot=await api.bootstrap(admin);assert(boot.assignment.roles.includes('admin'));
+});
+
+test('BGH combined roles receive personal data only within their detailed scope',async()=>{
+  const {api}=await fixture();
+  let boot=await api.saveTeacher(admin,{...teacherInput,roles:['bgh','gvcn','lead'],grades:['8']});
+  for(const id of ['6A1','8C2','8C3']) {
+    const c=boot.classes[id];c.students=[{id:'S1',name:'PRIVATE-'+id,code:''}];
+    boot={...boot};
+    await api.putClass(admin,id,{classData:c,revision:boot.revisions[id]});
+  }
+  const result=await api.bootstrap(teacher);
+  assert.equal(result.classes['8C3'].students.length,1);
+  assert.equal(result.classes['8C2'].students.length,1);
+  assert.equal(result.classes['6A1'].students.length,0);
+  assert(!JSON.stringify(result).includes('PRIVATE-6A1'));
+  assert(result.summaries['6A1']);
+});
+
 test('first Admin binds once, creates 32 empty classes and denies an unassigned identity',async()=>{
   const {db,api}=await fixture();
   const boot=await api.bootstrap(admin);
