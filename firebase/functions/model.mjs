@@ -187,8 +187,8 @@ export function validateReport(c,month) {
   const missing=(x,keys)=>keys.some(k=>!x[k]);
   for(const [i,r] of m.meetings.entries()) {
     if(!r.actual) add('K2',`M02 lượt ${i+1} thiếu thời gian thực tế.`);
-    if(missing(r,['studentId','actual','concern','participation','progressEvidence','goal','action','cooperation','needsCoop','evidence'])) add('K3',`M02 lượt ${i+1} thiếu thông tin.`);
-    if(r.profileId && (missing(r,['profileProgress','profileNext','evidence']) || !c.profiles.some(p=>p.id===r.profileId && p.studentId===r.studentId))) add('K6',`M05 lượt ${i+1} thiếu chi tiết hoặc liên kết.`);
+    if(missing(r,['studentId','actual','concern','participation','progressEvidence','goal','action','cooperation','needsCoop'])) add('K3',`M02 lượt ${i+1} thiếu thông tin.`);
+    if(r.profileId && (missing(r,['profileProgress','profileNext']) || !c.profiles.some(p=>p.id===r.profileId && p.studentId===r.studentId))) add('K6',`M05 lượt ${i+1} thiếu chi tiết hoặc liên kết.`);
   }
   for(const [i,r] of m.connections.entries()) if(missing(r,['studentId','date','channel','message','recipient','reply'])) add('K4',`M03 lượt ${i+1} thiếu thông tin.`);
   for(const r of m.previous) if(missing(r,['studentId','action','observation','next'])) add('K5','M04 phần I thiếu thông tin.');
@@ -196,7 +196,6 @@ export function validateReport(c,month) {
   for(const p of c.profiles.filter(p=>p.startMonth===month)) if(missing(p,['studentId','code','strength','concern','goal'])) add('K6','M05 thiếu thông tin.');
   const planned=c.students.filter(s=>m.schedule[s.id]?.planTime || m.schedule[s.id]?.status || m.meetings.some(r=>r.studentId===s.id)).length;
   if(planned<c.students.length) add('K7',`M01 mới lên lịch ${planned}/${c.students.length} học sinh.`,false);
-  if(m.connections.some(r=>!r.evidence)) add('K8','M03 còn thiếu mã minh chứng.',false);
   if(!m.connections.length) add('K9','Chưa có kết nối PHHS trong tháng.',false);
   const hasData=!!(planned+m.meetings.length+m.connections.length+m.previous.length+m.plans.length);
   const codes=Object.fromEntries(Array.from({length:9},(_,i)=>{const k=`K${i+1}`;return [k,errors.some(e=>e.key===k)?'LỖI':warnings.some(e=>e.key===k)?'CHÚ Ý':hasData?'OK':'—'];}));

@@ -2,6 +2,44 @@
 
 // Export original class workbook and school summaries.
 
+function hideWorkbookColumn(doc,index) {
+  let cols=doc.getElementsByTagNameNS(S_NS,'cols')[0];
+  if(!cols) {cols=doc.createElementNS(S_NS,'cols');doc.documentElement.insertBefore(cols,doc.getElementsByTagNameNS(S_NS,'sheetData')[0]);}
+  for(const col of [...cols.getElementsByTagNameNS(S_NS,'col')]) {
+    const min=+col.getAttribute('min'),max=+col.getAttribute('max');
+    if(index<min||index>max)continue;
+    if(min<index) {const before=col.cloneNode(true);before.setAttribute('max',index-1);cols.insertBefore(before,col);}
+    const hidden=col.cloneNode(true);hidden.setAttribute('min',index);hidden.setAttribute('max',index);hidden.setAttribute('hidden','1');cols.insertBefore(hidden,col);
+    if(max>index) {const after=col.cloneNode(true);after.setAttribute('min',index+1);cols.insertBefore(after,col);}
+    cols.removeChild(col);return;
+  }
+  const col=doc.createElementNS(S_NS,'col');col.setAttribute('min',index);col.setAttribute('max',index);col.setAttribute('hidden','1');cols.appendChild(col);
+}
+
+function retireWorkbookCodeFields(files) {
+  const hiddenColumns={DanhSach:3,M02:12,M03:8,M05_CacLan:11,KiemTra:10};
+  for(const sheet of getSheetNamePaths(files)) {
+    if(!hiddenColumns[sheet.name])continue;
+    const doc=xmlparse(decoder.decode(files[sheet.path]));
+    hideWorkbookColumn(doc,hiddenColumns[sheet.name]);
+    for(const formula of doc.getElementsByTagNameNS(S_NS,'f')) {
+      const address=formula.parentNode.getAttribute('r'),row=Number(address.replace(/\D/g,''));
+      let text=formula.textContent;
+      if(sheet.name==='M02'&&address.startsWith('N'))text=text.replace(`&IF(L${row}="","Mã minh chứng; ","")`,'');
+      if(sheet.name==='M05_CacLan'&&address.startsWith('L')) {
+        text=text.replace(`&IF(K${row}="","Mã xác nhận; ","")`,'');
+        text=text.replace(`&IF(AND(K${row}<>"",COUNTIF('M02'!$L$5:$L$604,K${row})=0),"Mã chưa khớp dòng M02; ","")`,'');
+      }
+      if(sheet.name==='KiemTra'&&address.startsWith('J')&&row>=5)text=`IF($B${row}=0,"—","OK")`;
+      if(text!==formula.textContent) {
+        formula.textContent=text;
+        for(const value of [...formula.parentNode.getElementsByTagNameNS(S_NS,'v')])formula.parentNode.removeChild(value);
+      }
+    }
+    files[sheet.path]=encoder.encode(new XMLSerializer().serializeToString(doc));
+  }
+}
+
 // Expand only the generated workbook; preserve the embedded original template.
 function expandRosterTemplate(files, count) {
   const baseSize = 28;
@@ -66,6 +104,7 @@ async function exportClass() {
     let b = b64bytes(TEMPLATE_B64);
     const files = await readZip(b.buffer);
     const rosterSize = expandRosterTemplate(files, c.students.length);
+    retireWorkbookCodeFields(files);
     let maps = {};
     let add = (sheet, addr, value) => {
       if (!maps[sheet]) maps[sheet] = {};

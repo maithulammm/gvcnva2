@@ -39,7 +39,6 @@ function summarize(c, month) {
   let actual = uniq(meet.map((x) => x.studentId)),
     planned = plannedStudentIds(c, m);
   let metSet = new Set(actual);
-  let confirmed = meet.filter((x) => x.evidence).length;
   return {
     classId: c.id,
     grade: c.grade,
@@ -117,12 +116,11 @@ function validations(c, month) {
       !x.goal ||
       !x.action ||
       !x.cooperation ||
-      !x.needsCoop ||
-      !x.evidence
+      !x.needsCoop
     )
       add(
         "K3",
-        `M02 lượt ${i + 1} thiếu thông tin bắt buộc hoặc mã xác nhận.`,
+        `M02 lượt ${i + 1} thiếu thông tin bắt buộc.`,
         true,
       );
   }
@@ -172,7 +170,6 @@ function validations(c, month) {
     if (
       !profile ||
       profile.studentId !== x.studentId ||
-      !x.evidence ||
       !x.profileProgress ||
       !x.profileNext
     )
@@ -186,12 +183,6 @@ function validations(c, month) {
     add(
       "K7",
       `M01 mới lên kế hoạch cho ${s.planned}/${c.students.length} học sinh.`,
-      false,
-    );
-  if (m.connections.some((x) => !x.evidence))
-    add(
-      "K8",
-      `M03 có ${m.connections.filter((x) => !x.evidence).length} lượt thiếu mã minh chứng.`,
       false,
     );
   if (!m.connections.length)

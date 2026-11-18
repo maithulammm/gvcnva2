@@ -14,6 +14,33 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('forms omit evidence/student-code columns and allow complete linked reports without evidence codes',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student',code:'OLD-CODE'}];cls().profiles=[{id:'P1',studentId:'S1',code:'P01',startMonth:ui.month,strength:'A',concern:'B',goal:'C'}];save()`);
+  await f.run('flushCloud()');f.run(`openModal('m02')`);
+  assert(!f.el('modalBody').innerHTML.includes('name="evidence"'));
+  f.ctx.meeting={...completeMeeting};delete f.ctx.meeting.evidence;
+  await f.run('submitForm({preventDefault(){},currentTarget:meeting})');
+  f.run(`openModal('m03')`);assert(!f.el('modalBody').innerHTML.includes('name="evidence"'));
+  await f.run(`submitForm({preventDefault(){},currentTarget:{studentId:'S1',date:'2026-11-18',channel:'Tin nhắn',message:'Chủ động học tập',recipient:'Mẹ',reply:'Đã gửi'}})`);
+  await f.run('flushCloud()');
+  const boot=await api.bootstrap(admin),c=boot.classes['6A1'],checks=validateReport(c,'T11/2026');
+  assert.equal(checks.errors.length,0);assert.equal(checks.warnings.length,0);
+  assert.equal(f.run('validations(cls(),ui.month).errors.length'),0);
+  assert.equal(f.run('validations(cls(),ui.month).warnings.length'),0);
+  assert(!f.run('renderStudents()').includes('<th>Mã học sinh</th>'));
+  assert(!f.run('renderStudents()').includes('OLD-CODE'));
+  assert(!f.run('renderM02()').includes('Mã minh chứng'));
+  assert(!f.run('renderM03()').includes('<th>Minh chứng</th>'));
+  assert(!f.run('renderM05()').includes('Mã HS xác nhận'));
+  assert.equal(c.students[0].code,'OLD-CODE');
+  c.months['T11/2026'].meetings[0].evidence='OLD-EVIDENCE';
+  await api.putClass(admin,'6A1',{revision:boot.revisions['6A1'],classData:c});
+  await f.run('refreshCloud(true)');
+  f.run(`openModal('m02',mdata().meetings[0].id)`);
+  await f.run('submitForm({preventDefault(){},currentTarget:meeting})');await f.run('flushCloud()');
+  assert.equal((await api.bootstrap(admin)).classes['6A1'].months['T11/2026'].meetings[0].evidence,'OLD-EVIDENCE');
+});
 test('automatic saving and polling synchronize without showing the blocking loading screen',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
   f.run(`globalThis.loadingCalls=0;globalThis.originalLoading=beginPageLoading;
@@ -450,6 +477,13 @@ test('classes above 28 students save to Firebase and export all students across 
   const entries=paths(files);
   const sheet=name=>parse(entries.find(s=>s.name===name).path);
   const cell=(doc,addr)=>Array.from(doc.getElementsByTagName('c')).find(c=>c.getAttribute('r')===addr);
+  const hidden=(name,index)=>Array.from(sheet(name).getElementsByTagName('col')).some(col=>+col.getAttribute('min')<=index&&+col.getAttribute('max')>=index&&col.getAttribute('hidden')==='1');
+  assert(hidden('DanhSach',3));assert(hidden('M02',12));assert(hidden('M03',8));assert(hidden('M05_CacLan',11));
+  assert(!cell(sheet('M02'),'N5').textContent.includes('Mã minh chứng'));
+  assert(!cell(sheet('M05_CacLan'),'L5').textContent.includes('Mã xác nhận'));
+  assert(!cell(sheet('M05_CacLan'),'L5').textContent.includes('Mã chưa khớp dòng M02'));
+  assert.equal(cell(sheet('KiemTra'),'J5').textContent,'IF($B5=0,"—","OK")');
+  assert.equal(cell(sheet('DanhSach'),'C39').textContent,'HS34');
   assert.equal(cell(sheet('DanhSach'),'B39').textContent,'Student 34');
   assert.match(cell(sheet('TheoDoiHS'),'B39').textContent,/DanhSach!\$B\$39/);
   const m01=sheet('M01');

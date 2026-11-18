@@ -55,12 +55,12 @@ function renderMonthlyWork() {
     ${kpis([["Đã gặp",`${s.met}/${s.count}`],["Lượt gặp",s.meetings],["Kết nối PHHS",s.connections],["Kế hoạch hỗ trợ",s.supportPlans]])}
     ${!canEdit ? '<p class="readonly">Đang xem dữ liệu. Chỉ GVCN phụ trách hoặc Admin được ghi nhận khi tháng còn mở; chế độ xem thử chỉ cho phép xem.</p>' : ''}
     <section class="card"><div class="section-head"><h2>Ghi nhận theo học sinh</h2>
-      <input class="work-search" type="search" aria-label="Tìm học sinh" placeholder="Tìm tên hoặc mã học sinh…" oninput="filterMonthlyWork(this.value)"></div>
+      <input class="work-search" type="search" aria-label="Tìm học sinh" placeholder="Tìm tên học sinh…" oninput="filterMonthlyWork(this.value)"></div>
     <div class="table-wrap"><table><thead><tr><th>Học sinh</th><th>Lịch / việc tiếp theo</th><th>Đã ghi nhận</th><th>Thao tác</th></tr></thead><tbody id="workStudents">
     ${c.students.map(st=>{
       const meetings=m.meetings.filter(r=>r.studentId===st.id), contacts=m.connections.filter(r=>r.studentId===st.id);
       const schedule=m.schedule[st.id]||{}, plan=m.plans.find(p=>p.studentId===st.id&&p.result!=="Đạt");
-      return `<tr data-search="${esc((st.name+' '+(st.code||'')).toLocaleLowerCase('vi'))}"><td><b>${esc(st.name)}</b><div class="hint">${esc(st.code||'')}</div></td>
+      return `<tr data-search="${esc((st.name+' '+(st.code||'')).toLocaleLowerCase('vi'))}"><td><b>${esc(st.name)}</b></td>
         <td><div class="work-appointments">${esc(schedule.planTime||'Chưa hẹn lịch')}</div><div class="hint work-appointments">${esc(schedule.goal||plan?.goal||'')}</div></td>
         <td>${meetings.length} lượt gặp · ${contacts.length} kết nối${meetings.length?'<div class="hint">Đã gặp</div>':''}</td>
         <td><div class="actions">${canEdit?action('Ghi cuộc gặp','m02',st.id)+action('Kết nối PHHS','m03',st.id)+action('Hẹn gặp','m01',st.id)+action('Kế hoạch','plans',st.id):'—'}</div></td></tr>`;

@@ -12,6 +12,17 @@ async function fixture() {
 }
 const teacherInput={name:'Giáo viên A',email:teacher.email,classId:'8C3',active:true};
 
+test('GVCN can submit a complete report with linked M05 and parent contact without evidence codes',async()=>{
+  const {api}=await fixture();let boot=await api.saveTeacher(admin,teacherInput),c=boot.classes['8C3'];
+  c.students=[{id:'S1',name:'Student',code:'OLD-CODE'}];
+  c.profiles=[{id:'P1',studentId:'S1',code:'P01',startMonth:'T11/2026',strength:'A',concern:'B',goal:'C'}];
+  c.months['T11/2026']={...emptyMonth(),meetings:[{id:'R1',studentId:'S1',actual:'2026-11-18',concern:'A',participation:'B',progressEvidence:'Chưa đủ căn cứ',goal:'C',action:'D',cooperation:'Chưa cần',needsCoop:'Không',profileId:'P1',profileProgress:'E',profileNext:'F'}],connections:[{id:'C1',studentId:'S1',date:'2026-11-18',channel:'Tin nhắn',message:'Chủ động học tập',recipient:'Mẹ',reply:'Đã gửi'}]};
+  await api.putClass(admin,'8C3',{revision:boot.revisions['8C3'],classData:c});
+  boot=await api.bootstrap(teacher);
+  const result=await api.transition(teacher,'8C3',{month:'T11/2026',target:'submitted',revision:boot.revisions['8C3']});
+  assert.equal(result.classes['8C3'].months['T11/2026'].approval.state,'submitted');
+});
+
 test('API enforces weekdays, grade-12 Saturday morning, three appointments and unique actual links',async()=>{
   const {api}=await fixture();
   const make=(id,date,session='morning')=>({id,date,session,topics:[],note:'',goal:'',

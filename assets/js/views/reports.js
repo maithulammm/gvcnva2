@@ -58,17 +58,16 @@ function renderCheck() {
     K3: "M02 đủ thông tin từng cuộc gặp",
     K4: "M03 đủ thông tin kết nối",
     K5: "M04 đủ kết quả / kế hoạch hỗ trợ",
-    K6: "M05 mã xác nhận khớp và đủ chi tiết",
+    K6: "M05 liên kết đúng học sinh và đủ chi tiết",
     K7: "M01 bao quát sĩ số (khuyến nghị)",
-    K8: "M03 có mã minh chứng (khuyến nghị)",
     K9: "M03 có kết nối tích cực trong tháng (khuyến nghị)",
   };
   return `<div class="section-head"><h2>Chốt kiểm tra · lớp ${c.id}</h2>${statusTag(stageName(state))}</div>${kpis(
     [
       [
         "Kiểm tra đạt",
-        Object.values(v.codes).filter((x) => x === "OK").length + "/9",
-        "Tiêu chí K1–K9",
+        Object.keys(names).filter((key) => v.codes[key] === "OK").length + "/" + Object.keys(names).length,
+        "Tiêu chí đang áp dụng",
       ],
       ["Lỗi cần sửa", v.errors.length, "Không được nộp khi còn lỗi"],
       ["Chú ý", v.warnings.length, "Khuyến nghị bổ sung"],

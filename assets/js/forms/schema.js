@@ -62,7 +62,6 @@ const FIELDS = {
       1,
       ["Không", "Có"],
     ],
-    ["evidence", "Mã minh chứng / xác nhận học sinh", "text", 1],
     ["profileId", "Liên kết phiếu theo dõi M05 (nếu có)", "profiles", 0],
     ["profileProgress", "M05 · Tiến bộ / khó khăn cụ thể", "textarea", 0],
     ["profileNext", "M05 · Mốc kiểm tra tiếp theo", "text", 0],
@@ -91,7 +90,6 @@ const FIELDS = {
       "textarea",
       1,
     ],
-    ["evidence", "Mã minh chứng (nếu có)", "text", 0],
   ],
   previous: [
     ["studentId", "Học sinh", "students", 1],
