@@ -887,6 +887,8 @@ body.auth-ready #authGate {
   gap: 12px;
   margin-bottom: 18px;
 }
+.auth-brand > div { min-width:0; }
+.auth-brand .eyebrow { margin-top:6px;line-height:1.6; }
 .auth-brand .logo-badge { width:64px;height:76px; }
 .auth-brand strong {
   font-size: 20px;

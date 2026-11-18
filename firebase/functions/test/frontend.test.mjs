@@ -749,6 +749,7 @@ function frontend({memory=new Map(),api}={}) {
 
 test('local Admin can manage GVCN; non-Admin sees roster without CRUD controls',async()=>{
   const f=frontend();await f.login();assert.equal(f.run('ui.role'),'admin');
+  const initialAlerts=f.alerts.length;
   for(const page of f.run('VIEW_LIST.map(v=>v[0])')) f.run(`navTo('${page}')`);
   f.run(`ui.classId='8C3';ui.grade='8';openModal('teacherAccount');`);
   assert(f.el('modalBody').innerHTML.includes('value="1" selected'));
@@ -760,11 +761,12 @@ test('local Admin can manage GVCN; non-Admin sees roster without CRUD controls',
   f.run(`auth.assignment={role:'gvcn',classId:'8C2'};ui.role='gvcn';ui.classId='8C2';ui.grade='8';navTo('students');`);
   assert.equal(f.run('canEditSetup()'),false);
   assert(!f.el('nav').innerHTML.includes('Quản lý GVCN'));assert(!f.el('view').innerHTML.includes('Thêm học sinh'));
-  assert.equal(f.alerts.length,0);
+  assert.equal(f.alerts.length,initialAlerts);
 });
 
 test('Admin student form add/edit/delete and linked student cannot be removed',async()=>{
   const f=frontend();await f.login();
+  const initialAlerts=f.alerts.length;
   f.run(`ui.classId='6A1';openModal('student');`);
   await f.run(`submitForm({preventDefault(){},currentTarget:{name:'Học sinh A',code:'HS01'}});`);
   assert.equal(f.run('cls().students.length'),1);
@@ -774,7 +776,7 @@ test('Admin student form add/edit/delete and linked student cannot be removed',a
   assert.equal(f.run('cls().students[0].name'),'Tên cập nhật');
   await f.run(`removeRecord('student','${id}')`);assert.equal(f.run('cls().students.length'),0);
   await f.run(`cls().students.push({id:'S2',name:'Có hồ sơ',code:'HS02'});mdata().previous.push({id:'R1',studentId:'S2'});removeRecord('student','S2')`);
-  assert.equal(f.run('cls().students.length'),1);assert.equal(f.alerts.length,1);
+  assert.equal(f.run('cls().students.length'),1);assert.equal(f.alerts.length,initialAlerts+1);
 });
 
 test('Firebase sync uses API, preserves original local data and has no phantom writes on empty views',async()=>{

@@ -6,6 +6,8 @@ function loginStatus(message, error = false) {
   const el = $("authStatus");
   el.textContent = message;
   el.className = "auth-status" + (error ? " error" : "");
+  $("msLoginBtn").title = error ? message : "Đăng nhập với Microsoft";
+  if(error)appAlert(message);
 }
 
 function currentRedirectUri() {
