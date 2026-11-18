@@ -117,7 +117,33 @@ export function validateClass(c) {
   for(const [month,m] of Object.entries(c.months)) {
     requireValue(MONTHS.includes(month),'Tháng báo cáo không hợp lệ.');
     requireValue(['draft','returned','submitted','reviewed','approved'].includes(m.approval.state),'Trạng thái báo cáo không hợp lệ.');
-    for(const id of Object.keys(m.schedule)) requireValue(ids.has(id),'Lịch gặp có học sinh không còn trong danh sách.');
+    const slots=new Map();
+    for(const [id,appointment] of Object.entries(m.schedule)) {
+      requireValue(ids.has(id),'Lịch gặp có học sinh không còn trong danh sách.');
+      const structured=appointment.date!==undefined||appointment.session!==undefined;
+      let date=appointment.date,session=appointment.session;
+      if(structured) {
+        const parts=/^T(\d{2})\/(\d{4})$/.exec(month), prefix=`${parts[2]}-${parts[1]}-`;
+        const day=Number(String(date||'').slice(-2));
+        requireValue(typeof date==='string' && date.startsWith(prefix) && /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+          day>=1 && day<=new Date(+parts[2],+parts[1],0).getDate(),'Ngày hẹn không hợp lệ hoặc không thuộc tháng báo cáo.');
+        requireValue(['morning','afternoon'].includes(session),'Buổi hẹn phải là sáng hoặc chiều.');
+        const displayDate=`${date.slice(8)}/${date.slice(5,7)}/${date.slice(0,4)}`;
+        requireValue(appointment.planTime===`${displayDate} · ${session==='morning'?'Sáng 9:55–10:15':'Chiều 15:00–15:20'}`,
+          'Giờ hẹn không đúng khung giờ sáng hoặc chiều.');
+        requireValue(appointment.topics===undefined || Array.isArray(appointment.topics)&&appointment.topics.every(t=>['Mục tiêu','Vở ghi','Học sinh chia sẻ'].includes(t)),
+          'Mục tiêu hẹn gặp không hợp lệ.');
+      } else {
+        const text=String(appointment.planTime||''), iso=text.match(/\b\d{4}-\d{2}-\d{2}\b/), local=text.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/);
+        date=iso?.[0]||(local?`${local[3]}-${local[2].padStart(2,'0')}-${local[1].padStart(2,'0')}`:'');
+        session=/\b0?9:55\b/.test(text)?'morning':/\b15:00\b/.test(text)?'afternoon':'';
+      }
+      if(date&&session) {
+        const key=`${date}:${session}`, prior=slots.get(key);
+        requireValue(!prior || !structured&&!prior.structured,'Khung giờ đã được hẹn cho học sinh khác. Hãy chọn lịch khác.',409);
+        slots.set(key,{structured:structured||prior?.structured});
+      }
+    }
     for(const key of ['meetings','connections','previous','plans']) {
       requireValue(m[key].length<=2000,'Số bản ghi tháng vượt giới hạn.');
       const recordIds=new Set();

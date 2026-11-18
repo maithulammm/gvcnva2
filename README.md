@@ -20,6 +20,7 @@ Mở **`index.html`** bằng Live Server hoặc máy chủ HTTP/HTTPS. Giao di�
 | `assets/js/views/reports.js` | Màn hình kiểm tra báo cáo, nhập/xuất và sao lưu |
 | `assets/js/views/work.js` | Công việc tháng: ghi nhận theo học sinh và tiếp tục kế hoạch tháng trước |
 | `assets/js/forms/m01.js` | Mẫu 01: lịch gặp học sinh |
+| `assets/js/forms/schedule.js` | Lịch tháng và nút chọn buổi/mục tiêu hẹn gặp, kiểm tra trùng khung giờ |
 | `assets/js/forms/m02.js` | Mẫu 02: sổ ghi cuộc gặp thực tế |
 | `assets/js/forms/m03.js` | Mẫu 03: kết nối tích cực với phụ huynh |
 | `assets/js/forms/m04.js` | Mẫu 04: kết quả và kế hoạch hỗ trợ |
@@ -46,6 +47,8 @@ Ví dụ: muốn đổi cột hiển thị của M02, sửa `forms/m02.js`. Mu�
 ## Công việc tháng cho GVCN
 
 GVCN vào trang **Công việc tháng**, chọn học sinh rồi ghi cuộc gặp, kết nối PHHS, lịch hẹn hoặc kế hoạch hỗ trợ. Mục tiêu và hành động có sẵn được đưa vào hộp thoại để giáo viên kiểm tra trước khi lưu. Ngày thực tế gợi ý hôm nay chỉ khi đang mở đúng tháng hiện tại. Phần phối hợp chỉ mở khi cần; chi tiết M05 chỉ mở khi chọn phiếu thuộc học sinh đó.
+
+Trong M01 hoặc Công việc tháng, nút **Hẹn gặp** mở lịch đúng tháng báo cáo và các nút **Sáng 9:55–10:15**, **Chiều 15:00–15:20**, **Mục tiêu**, **Vở ghi**, **Học sinh chia sẻ** cùng ô ghi chú. Mỗi lớp có tối đa một học sinh ở mỗi khung giờ/ngày; giao diện và API đều chặn trùng lịch. Các ngày cuối tuần vẫn chọn được. Ngày, buổi và nhóm mục tiêu được lưu vào `date`, `session`, `topics`, đồng thời duy trì `planTime`, `goal` cho Excel và báo cáo cũ. Lịch tự do cũ được giữ nguyên; những lịch có ngày/giờ nhận diện được cũng được dùng để kiểm tra trùng khung. Hẹn gặp chỉ là dự kiến, không tự tạo lượt gặp thực tế.
 
 Một cuộc gặp được lưu duy nhất trong `meetings`: M01 lấy trạng thái từ bản ghi này và M05 hiển thị qua `profileId`, không tạo bản sao. Kết nối PHHS luôn phải ghi riêng sau khi thực hiện. Không thay đổi công thức thống kê, điều kiện kiểm tra hoặc quy trình duyệt báo cáo.
 

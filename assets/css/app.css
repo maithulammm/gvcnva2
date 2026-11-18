@@ -144,6 +144,81 @@ small,
 #editorDraftStatus {
   margin: 12px 22px 0;
 }
+.schedule-editor {
+  display: grid;
+  gap: 18px;
+}
+.schedule-student {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  color: #19566a;
+}
+.schedule-editor fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.schedule-editor legend {
+  font-weight: 650;
+  margin-bottom: 10px;
+}
+.schedule-sessions, .schedule-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.schedule-sessions .schedule-choice {
+  flex: 1;
+  display: grid;
+  gap: 5px;
+  min-width: 120px;
+}
+.schedule-choice, .calendar-day {
+  border: 1px solid #bfd2d8;
+  border-radius: 10px;
+  background: #fff;
+  color: #19566a;
+  font: inherit;
+  cursor: pointer;
+  padding: 10px 14px;
+}
+.schedule-choice[aria-pressed="true"], .calendar-day[aria-pressed="true"] {
+  background: #195b72;
+  color: #fff;
+  border-color: #195b72;
+  box-shadow: inset 0 0 0 1px #195b72;
+}
+.schedule-choice:focus-visible, .calendar-day:focus-visible {
+  outline: 3px solid #d89b25;
+  outline-offset: 2px;
+}
+.schedule-choice:disabled, .calendar-day:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+.schedule-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+.calendar-heading {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 650;
+  padding: 5px 0;
+}
+.calendar-day {
+  min-height: 48px;
+  padding: 7px 1px;
+  display: grid;
+  gap: 3px;
+}
+.calendar-day small {
+  font-size: 9px;
+}
 .sync-ok {
   color: #15803d;
   font-size: 22px;

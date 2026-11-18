@@ -59,7 +59,7 @@ function renderMonthlyWork() {
       return `<tr data-search="${esc((st.name+' '+(st.code||'')).toLocaleLowerCase('vi'))}"><td><b>${esc(st.name)}</b><div class="hint">${esc(st.code||'')}</div></td>
         <td>${esc(schedule.planTime||'Chưa hẹn lịch')}<div class="hint">${esc(schedule.goal||plan?.goal||'')}</div></td>
         <td>${meetings.length} lượt gặp · ${contacts.length} kết nối${meetings.length?'<div class="hint">Đã gặp</div>':''}</td>
-        <td><div class="actions">${canEdit?action('Ghi cuộc gặp','m02',st.id)+action('Kết nối PHHS','m03',st.id)+action('Hẹn lịch','m01',st.id)+action('Kế hoạch','plans',st.id):'—'}</div></td></tr>`;
+        <td><div class="actions">${canEdit?action('Ghi cuộc gặp','m02',st.id)+action('Kết nối PHHS','m03',st.id)+action('Hẹn gặp','m01',st.id)+action('Kế hoạch','plans',st.id):'—'}</div></td></tr>`;
     }).join('')||'<tr><td colspan="4">Chưa có danh sách học sinh.</td></tr>'}</tbody></table></div></section>
     ${carry.length?`<section class="card marg-top"><h2>Kế hoạch chưa hoàn tất từ tháng trước</h2><p class="help">Mở để xem lại, cập nhật thời hạn rồi lưu. Không tự ghi nhận kết quả hoặc hoạt động đã thực hiện.</p>
       <div class="stack">${carry.map(({plan,month})=>`<div class="readonly"><b>${esc(studentName(c,plan.studentId))}</b> · ${esc(plan.goal)}<div class="hint">${esc(month)} · ${esc(plan.result||'Chưa chốt')}</div>${canEdit?btn('Tiếp tục kế hoạch',`continueWorkPlan('${plan.id}')`,'small'):''}</div>`).join('')}</div></section>`:''}

@@ -12,7 +12,7 @@ function renderM01() {
         let a = m.schedule[s.id] || {},
           meet = m.meetings.filter((x) => x.studentId === s.id),
           status = meet.length ? "Đã gặp" : a.status || "Chưa gặp";
-        return `<tr><td>${i + 1}</td><td><b>${esc(s.name)}</b></td><td>${a.priority ? statusTag("Ưu tiên") : "—"}</td><td class="long">${esc(a.goal || "—")}</td><td class="long">${esc(a.planTime || "—")}</td><td class="long">${esc(meet[0]?.actual || "—")}</td><td>${statusTag(status)}</td><td class="long">${esc(a.note || "")}</td><td>${editable() ? btn("Sửa lịch", `openModal('m01','${s.id}')`, "small") : "—"}</td></tr>`;
+        return `<tr><td>${i + 1}</td><td><b>${esc(s.name)}</b></td><td>${a.priority ? statusTag("Ưu tiên") : "—"}</td><td class="long">${esc(a.goal || "—")}</td><td class="long">${esc(a.planTime || "—")}</td><td class="long">${esc(meet[0]?.actual || "—")}</td><td>${statusTag(status)}</td><td class="long">${esc(a.note || "")}</td><td>${editable() ? btn("Hẹn gặp", `openModal('m01','${s.id}')`, "small") : "—"}</td></tr>`;
       })
       .join("") ||
     '<tr><td colspan="9"><div class="empty">Chưa có học sinh. Hãy nhập Excel trong mục Danh sách học sinh.</div></td></tr>'

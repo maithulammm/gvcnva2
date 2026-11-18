@@ -28,7 +28,7 @@ function restoreEditorDraft() {
     const draft=JSON.parse(localStorage.getItem(key));
     if (draft?.schema!==1 || draft.baseline!==ui.editing.baseline) return null;
     return Object.fromEntries(FIELDS[ui.editing.type].filter(([k])=>typeof draft.fields?.[k]==="string")
-      .map(([k,,kind])=>[k,kind==="boolean"?draft.fields[k]==="1":draft.fields[k]]));
+      .map(([k,,kind])=>[k,kind==="boolean"?draft.fields[k]==="1":kind==="choices"?JSON.parse(draft.fields[k]):draft.fields[k]]));
   } catch { return null; }
 }
 
@@ -37,7 +37,8 @@ function saveEditorDraft(form=$("entryForm")) {
   if (!key || !editorContextCurrent() || !editable()) return;
   try {
     const fd=new FormData(form), fields={};
-    for (const [key] of FIELDS[ui.editing.type]) fields[key]=String(fd.get(key)||"");
+    for (const [key,,kind] of FIELDS[ui.editing.type])
+      fields[key]=kind==="choices"?JSON.stringify(fd.getAll(key)):String(fd.get(key)||"");
     localStorage.setItem(key,JSON.stringify({schema:1,baseline:ui.editing.baseline,fields}));
     $("editorDraftStatus").textContent="Đã giữ bản nháp trên máy này · Chưa ghi vào báo cáo.";
   } catch {

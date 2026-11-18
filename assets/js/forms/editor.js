@@ -78,10 +78,16 @@ function openModal(type, id = "", seed = {}) {
   $("editorDraftStatus").textContent = restored ? "Đã khôi phục bản nháp trên máy này. Chưa ghi vào báo cáo." : "";
   $("modalTitle").textContent =
     MODAL_TITLES[type] + (id ? " · Chỉnh sửa" : "");
-  let h = "";
   if (type === "m01") {
-    h += `<div class="footnote wide">Học sinh: <b>${esc(studentName(c, id))}</b>. Trạng thái Đã gặp được xác định tự động theo Mẫu 02.</div>`;
+    if (!c.students.some(s=>s.id===id)) return;
+    ui.editing.schedule = scheduleEditorState(rec);
+    $("modalTitle").textContent = "Hẹn gặp · " + studentName(c,id);
+    renderScheduleEditor();
+    $("editor").showModal();
+    $("modalBody").scrollTop = 0;
+    return;
   }
+  let h = "";
   if (type === "m05detail") {
     h += `<div class="footnote wide">Lượt gặp: ${esc(rec.actual || "")} · Mã xác nhận ${esc(rec.evidence || "Chưa có")}</div>`;
   }
@@ -158,7 +164,7 @@ async function submitForm(e) {
   fields.forEach(([key, label, kind]) => {
     let v = fd.get(key);
     record[key] =
-      kind === "roles" || kind === "grades"
+      kind === "roles" || kind === "grades" || kind === "choices"
         ? typeof fd.getAll === "function"
           ? fd.getAll(key)
           : v
@@ -229,7 +235,8 @@ async function submitForm(e) {
     if (id) Object.assign(lookup("student", id), record);
     else c.students.push({ ...record, id: newID() });
   } else if (type === "m01") {
-    m.schedule[id] = { ...record };
+    try { m.schedule[id] = buildScheduleRecord(c,ui.month,id,record); }
+    catch(error) { alert(error.message); return; }
   } else if (type === "m05detail") {
     let meeting = lookup(type, id);
     Object.assign(meeting, record);

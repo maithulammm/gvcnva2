@@ -14,6 +14,31 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('M01 uses the real monthly calendar and click choices, preserving legacy data and draft topics',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student',code:''},{id:'S2',name:'Other',code:''}];
+    mdata().schedule.S1={priority:true,goal:'Mục tiêu cũ',status:'Hẹn lại',planTime:'Tuần 3',note:'Ghi chú cũ'};
+    openModal('m01','S1')`);
+  assert(!f.el('modalBody').innerHTML.includes('<select'));
+  assert.equal(f.run(`scheduleMonthDates('T11/2026').length`),30);
+  assert.equal(f.run(`scheduleMonthDates('T02/2027').length`),28);
+  assert.equal(f.run(`scheduleMonthDates('T10/2026').length`),31);
+  assert.equal((f.el('modalBody').innerHTML.match(/class="calendar-day"/g)||[]).length,30);
+  f.ctx.appointment={date:'2026-11-18',session:'morning',topics:['Vở ghi','Học sinh chia sẻ'],note:'Ghi chú mới'};
+  f.run('saveEditorDraft(appointment)');f.run(`openModal('m01','S1')`);
+  assert.deepEqual(JSON.parse(f.run('JSON.stringify(ui.editing.schedule.topics)')),['Vở ghi','Học sinh chia sẻ']);
+  await f.run('submitForm({preventDefault(){},currentTarget:appointment})');
+  assert.equal(f.run('mdata().schedule.S1.priority'),true);
+  assert.equal(f.run('mdata().schedule.S1.status'),'Hẹn lại');
+  assert.equal(f.run('mdata().schedule.S1.goal'),'Mục tiêu cũ · Vở ghi · Học sinh chia sẻ');
+  assert.equal(f.run('mdata().schedule.S1.planTime'),'18/11/2026 · Sáng 9:55–10:15');
+  assert.equal(f.run('summarize(cls(),ui.month).met'),0);
+  assert.equal(f.run('summarize(cls(),ui.month).planned'),1);
+  f.run(`openModal('m01','S2')`);
+  await f.run('submitForm({preventDefault(){},currentTarget:appointment})');
+  assert.equal(f.run('mdata().schedule.S2'),undefined);
+  assert(f.alerts.some(x=>x.includes('đã hẹn')));
+});
 const completeMeeting={studentId:'S1',actual:'2026-11-10 · Phòng học',concern:'Học tập',participation:'Chủ động',
   progressEvidence:'Chưa đủ căn cứ',goal:'Mục tiêu',action:'Rà soát tuần sau',needsCoop:'Không',cooperation:'Chưa cần',
   evidence:'EV01',profileId:'P1',profileProgress:'Đã xác định khó khăn',profileNext:'2026-11-20'};

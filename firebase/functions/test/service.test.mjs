@@ -12,6 +12,38 @@ async function fixture() {
 }
 const teacherInput={name:'Giáo viên A',email:teacher.email,classId:'8C3',active:true};
 
+test('M01 enforces two distinct-student sessions per day without counting actual meetings',async()=>{
+  const {api}=await fixture();let boot=await api.saveTeacher(admin,teacherInput),c=boot.classes['8C3'];
+  c.students=['S1','S2','S3'].map(id=>({id,name:id,code:id}));
+  const morning={date:'2026-11-18',session:'morning',topics:['Vở ghi'],goal:'Vở ghi',planTime:'18/11/2026 · Sáng 9:55–10:15',note:''};
+  c.months['T11/2026']={...emptyMonth(),schedule:{S1:morning,S2:{...morning,topics:[],goal:'',session:'afternoon',planTime:'18/11/2026 · Chiều 15:00–15:20'}}};
+  await api.putClass(admin,'8C3',{revision:boot.revisions['8C3'],classData:c});
+  boot=await api.bootstrap(teacher);c=boot.classes['8C3'];
+  // RTDB omits empty topic arrays; a subsequent save must still work.
+  const roundtrip=await api.putClass(teacher,'8C3',{revision:boot.revisions['8C3'],classData:c});
+  const revision=roundtrip.revision;c=roundtrip.data;
+  c.months['T11/2026'].schedule.S3={...morning};
+  await assert.rejects(api.putClass(teacher,'8C3',{revision,classData:c}),e=>e.status===409);
+  delete c.months['T11/2026'].schedule.S3;
+  const before=structuredClone(c);
+  for(const changes of [{date:'2026-12-18'},{date:'2026-11-31'},{session:'evening'},{planTime:'18/11/2026 · Sáng 10:00–11:00'}]) {
+    c=structuredClone(before);Object.assign(c.months['T11/2026'].schedule.S1,changes);
+    await assert.rejects(api.putClass(teacher,'8C3',{revision,classData:c}),e=>e.status===400);
+  }
+  const stored=(await api.bootstrap(teacher)).classes['8C3'].months['T11/2026'];
+  assert.equal(Object.keys(stored.schedule).length,2);assert.equal(stored.meetings.length,0);assert.equal(stored.connections.length,0);
+});
+
+test('new M01 slots respect identifiable legacy appointments and preserve free text schedules',async()=>{
+  const {api}=await fixture();let boot=await api.saveTeacher(admin,teacherInput),c=boot.classes['8C3'];
+  c.students=['S1','S2','S3'].map(id=>({id,name:id,code:id}));
+  c.months['T11/2026']={...emptyMonth(),schedule:{S1:{planTime:'18/11/2026 09:55-10:15'},S2:{planTime:'Tuần 3 tại lớp',goal:'Nội dung cũ'}}};
+  let saved=await api.putClass(admin,'8C3',{revision:boot.revisions['8C3'],classData:c});
+  c=saved.data;c.months['T11/2026'].schedule.S3={date:'2026-11-18',session:'morning',topics:[],planTime:'18/11/2026 · Sáng 9:55–10:15'};
+  await assert.rejects(api.putClass(admin,'8C3',{revision:saved.revision,classData:c}),e=>e.status===409);
+  assert.equal((await api.bootstrap(admin)).classes['8C3'].months['T11/2026'].schedule.S2.goal,'Nội dung cũ');
+});
+
 test('repeated bootstrap reads do not transact or change stored data',async()=>{
   const {db}=await fixture();
   const before=db.state();
