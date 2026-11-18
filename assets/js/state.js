@@ -25,6 +25,7 @@ let ui = {
   profileId: "",
   editing: null,
   preview: null,
+  adminMenuOpen: false,
 };
 
 let toastTimer = null;

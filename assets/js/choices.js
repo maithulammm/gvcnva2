@@ -4,6 +4,7 @@
 function refreshButtonChoices(root=document) {
   if(!root.querySelectorAll)return;
   for(const select of root.querySelectorAll('select')) {
+    if(select.dataset.choiceMode==='dropdown')continue;
     let host=select.buttonChoices;
     if(!host?.isConnected) {
       host=document.createElement('div');host.className='button-choices';
@@ -18,6 +19,7 @@ function refreshButtonChoices(root=document) {
         group.querySelector('button:not(:disabled)')?.focus();
       });
     }
+    host.classList.toggle('choice-row-five',select.dataset.choiceLayout==='row-five');
     const label=select.getAttribute('aria-label')||select.closest('.field')?.querySelector('label')?.textContent||
       [...(select.closest('label')?.childNodes||[])].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim()||'Chọn giá trị';
     const options=[...select.options].filter(option=>!option.hidden);
@@ -34,7 +36,7 @@ function refreshButtonChoices(root=document) {
     for(const option of options) {
       if(select.disabled&&!option.selected)continue;
       // Required placeholders are replaced by the field label and inline validation.
-      if(select.required&&!option.value)continue;
+      if(!option.value&&(select.required||select.dataset.choiceLayout==='row-five'))continue;
       const button=document.createElement('button');button.type='button';
       button.textContent=option.textContent;button.dataset.value=option.value;
       button.disabled=select.disabled||option.disabled||!!option.parentElement?.disabled;

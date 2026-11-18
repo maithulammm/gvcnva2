@@ -139,7 +139,7 @@ function openModal(type, id = "", seed = {}) {
     } else if (type === "userRoles" && key === "email" && id) {
       control = `<input name="${key}" type="email" value="${esc(value)}" readonly>`;
     } else if (kind === "students") {
-      control = `<select name="${key}" ${req} onchange="updateMeetingFields()"><option value="">— Chọn học sinh —</option>${c.students.map((s) => `<option value="${s.id}" ${value === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select>`;
+      control = `<select name="${key}" data-choice-mode="dropdown" ${req} onchange="updateMeetingFields()"><option value="">— Chọn học sinh —</option>${c.students.map((s) => `<option value="${s.id}" ${value === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select>`;
     } else if (kind === "classes") {
       control = `<select name="${key}" ${req}>${CLASSES.map((classId) => `<option value="${classId}" ${value === classId ? "selected" : ""}>${classId}</option>`).join("")}</select>`;
     } else if (kind === "profiles") {
@@ -147,12 +147,12 @@ function openModal(type, id = "", seed = {}) {
     } else if (kind === "months") {
       control = `<select name="${key}">${MONTHS.map((s) => `<option value="${s}" ${(value || ui.month) === s ? "selected" : ""}>${s}</option>`).join("")}</select>`;
     } else if (kind === "select") {
-      control = `<select name="${key}" ${req} ${key==="needsCoop"?'onchange="updateMeetingFields()"':''}><option value="" ${!value ? "selected" : ""}>— Chọn —</option>${options.map((s) => `<option value="${esc(s)}" ${value === s ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>`;
+      control = `<select name="${key}" ${type==='m03'&&key==='channel'||type==='profile'&&key==='result'?'data-choice-layout="row-five"':''} ${req} ${key==="needsCoop"?'onchange="updateMeetingFields()"':''}><option value="" ${!value ? "selected" : ""}>— Chọn —</option>${options.map((s) => `<option value="${esc(s)}" ${value === s ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>`;
     } else if (kind === "textarea") {
       control = `<textarea name="${key}" ${req} placeholder="${esc(label)}">${esc(value)}</textarea>`;
     } else
       control = `<input name="${key}" type="${kind}" value="${esc(value)}" ${req} placeholder="${esc(label)}">`;
-    h += `<div data-field="${key}" class="field ${kind === "textarea" || type==='m02'&&['actual','progressEvidence'].includes(key) ? "wide" : ""}"><label>${esc(label)}${required ? " *" : ""}</label>${control}</div>`;
+    h += `<div data-field="${key}" class="field ${kind === "textarea" || type==='m02'&&['actual','progressEvidence'].includes(key) || type==='m03'&&key==='channel' || type==='profile'&&key==='result' ? "wide" : ""}"><label>${esc(label)}${required ? " *" : ""}</label>${control}</div>`;
   }
   if (type === "m02")
     h += `<div class="footnote wide">Muốn cập nhật diễn biến Mẫu 05: chọn phiếu phù hợp và bổ sung hai trường M05, sau đó xem tiến trình theo phiếu cá nhân.</div>`;

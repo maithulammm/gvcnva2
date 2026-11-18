@@ -122,6 +122,29 @@ test('mobile menu preserves role scope, closes on navigation and clears after lo
   assert(!f.el('mobileNavLinks').innerHTML.includes("navTo('work')"));
   f.run('lockUi()');assert(!f.el('mobileNav').open);assert.equal(f.el('mobileNavLinks').innerHTML,'');
 });
+
+test('roster and management navigation is grouped last and limited to effective Admin role',async()=>{
+  const f=frontend();await f.login();f.run('render()');
+  let nav=f.el('nav').innerHTML;
+  assert(nav.includes('class="admin-nav"'));assert(nav.endsWith('</details>'));
+  assert(nav.indexOf("navTo('students')")>nav.indexOf('class="admin-nav"'));
+  for(const page of ['students','teachers','users','database']) {
+    assert(nav.includes(`navTo('${page}')`));
+    f.run(`navTo('${page}')`);assert.equal(f.run('ui.page'),page);
+  }
+  for(const role of ['gvcn','lead','bgh']) {
+    f.run(`auth.assignment={role:'${role}',roles:['${role}'],classId:'8C3',grades:['8']};ui.classId='8C3';ui.grade='8';render()`);
+    nav=f.el('nav').innerHTML;assert(!nav.includes('class="admin-nav"'));
+    assert(!f.el('mobileNavLinks').innerHTML.includes('class="admin-nav"'));
+    for(const page of ['students','teachers','users','database']) {
+      assert(!nav.includes(`navTo('${page}')`));
+      f.run(`navTo('${page}')`);assert.equal(f.run('ui.page'),'dashboard');
+    }
+  }
+  f.run(`auth.assignment={role:'admin',roles:['admin']};setRolePreview('gvcn','8C3')`);
+  assert(!f.el('nav').innerHTML.includes('class="admin-nav"'));
+  f.run(`setRolePreview('')`);assert(f.el('nav').innerHTML.includes('class="admin-nav"'));
+});
 test('M02 shows a locale-independent 24-hour clock and rejects AM/PM or out-of-range hours',async()=>{
   const f=frontend();await f.login();
   f.run(`cls().students=[{id:'S1',name:'Student',code:''}];openWorkEntry('m02','S1')`);

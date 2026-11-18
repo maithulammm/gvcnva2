@@ -43,7 +43,7 @@ function renderRolePreview() {
   if (!assignmentRoles(auth.assignment).includes("admin")) return;
   const role = isRolePreview() ? ui.preview.role : "";
   const classId = ui.preview?.classId || ui.classId;
-  host.innerHTML = `<label>Admin · Xem thử vai trò <select onchange="setRolePreview(this.value)">
+  host.innerHTML = `<label>Admin · Xem thử vai trò <select data-choice-mode="dropdown" onchange="setRolePreview(this.value)">
     <option value="">Quyền thực tế</option>${["gvcn","lead","bgh","admin"].map(r=>`<option value="${r}" ${role===r?"selected":""}>${esc(ROLE_NAMES[r])}</option>`).join("")}</select></label>
     ${role ? `<label>Lớp / khối mô phỏng <select onchange="setRolePreview('${role}',this.value)">${CLASSES.map(id=>`<option value="${id}" ${id===classId?"selected":""}>${id} · Khối ${gradeText(id)}</option>`).join("")}</select></label>
     <span role="status">Đang xem thử ${esc(ROLE_NAMES[role])} · Chỉ xem, không lưu thay đổi.</span>${btn("Thoát xem thử", "setRolePreview('')", "small")}` : ""}`;
@@ -115,17 +115,16 @@ function render() {
   renderSelectors();
   let allowed = canViewPersonal() || ui.role === "lead";
   let permitted = VIEW_LIST.filter(([k]) =>
-    ["teachers", "database", "users"].includes(k)
+    ["students", "teachers", "database", "users"].includes(k)
       ? hasAppRole("admin")
       : allowed || ["dashboard", "check", "export"].includes(k),
   );
-  $("nav").innerHTML = permitted
-    .map(
-      ([k, i, s]) =>
-        `<button class="${ui.page === k ? "active" : ""}" aria-label="${esc(s)}" title="${esc(s)}" ${ui.page===k?'aria-current="page"':''} onclick="navTo('${k}')"><span class="ico" aria-hidden="true">${i}</span><span class="nav-text">${esc(s)}</span></button>`,
-    )
-    .join("");
+  const adminPages=['students','teachers','users','database'];
   if (!permitted.some((x) => x[0] === ui.page)) ui.page = "dashboard";
+  const navButton=([k,i,s])=>
+    `<button class="${ui.page===k?'active':''}" aria-label="${esc(s)}" title="${esc(s)}" ${ui.page===k?'aria-current="page"':''} onclick="navTo('${k}')"><span class="ico" aria-hidden="true">${i}</span><span class="nav-text">${esc(s)}</span></button>`;
+  $("nav").innerHTML = permitted.filter(([k])=>!adminPages.includes(k)).map(navButton).join('')+
+    (hasAppRole('admin')?`<details class="admin-nav" ${adminPages.includes(ui.page)||ui.adminMenuOpen?'open':''} ontoggle="ui.adminMenuOpen=this.open"><summary title="Quản trị viên"><span class="ico" aria-hidden="true">⚙</span><span class="nav-text">Quản trị viên</span></summary><div class="admin-nav-links">${permitted.filter(([k])=>adminPages.includes(k)).map(navButton).join('')}</div></details>`:'');
   const head = HEADINGS[ui.page];
   $("pageTitle").textContent = head[0];
   $("pageSubtitle").textContent = head[1];
