@@ -2,6 +2,25 @@
 
 Production: https://gvcnva2.lammt.workers.dev/index.html
 
+## Xem giao diện mới trên GitHub Pages
+
+Frontend không tự chuyển từ GitHub Pages sang Cloudflare. Mở
+`https://maithulammm.github.io/gvcnva2/index.html` sau khi GitHub Pages cập nhật.
+Trong repository → Settings → Pages, có thể chọn Deploy from a branch → `main`
+→ `/(root)` vì frontend dùng các đường dẫn tài nguyên tương đối.
+
+Để đăng nhập và dùng dữ liệu thật trên GitHub Pages, thêm SPA Redirect URI
+`https://maithulammm.github.io/gvcnva2/index.html` trong Entra và thêm origin
+`https://maithulammm.github.io` vào danh sách CORS của API. `wrangler.jsonc` đã
+chuẩn bị cả origin Cloudflare và GitHub; cấu hình này chỉ có hiệu lực trên máy
+chủ khi chủ dự án yêu cầu triển khai Cloudflare. GitHub Pages chỉ chạy frontend,
+API dùng chung vẫn tại Cloudflare. Không chuyển API sang đường dẫn `/api` của
+GitHub Pages hoặc bỏ kiểm tra phân quyền để xem trước.
+
+Theo yêu cầu chủ dự án: chỉ commit/push GitHub, không tự triển khai Cloudflare.
+Kết nối tự triển khai Cloudflare đã được chủ dự án xác nhận ngắt; chỉ triển khai
+Cloudflare khi có lệnh rõ ràng.
+
 ## Kết nối GitHub và tự triển khai
 
 Trong Cloudflare → Compute → Workers & Pages → `gvcnva2` → Settings → Builds,
@@ -41,7 +60,7 @@ Các giá trị công khai đã được khai báo trong `wrangler.jsonc`:
 
 - `MICROSOFT_TENANT_ID`: `22215a7f-b9e3-4b53-bd27-3a317311e6ca`
 - `MICROSOFT_CLIENT_ID`: `94c476b3-4723-4161-9dea-d64ff8bf505c`
-- `GVCN_ALLOWED_ORIGINS`: `https://gvcnva2.lammt.workers.dev`
+- `GVCN_ALLOWED_ORIGINS`: `https://gvcnva2.lammt.workers.dev,https://maithulammm.github.io`
 - `GVCN_ADMIN_EMAIL`: `lammt@vietanhschool.edu.vn`
 
 Đừng thêm đường dẫn `/index.html` hoặc dấu `/` cuối vào giá trị allowed origin.

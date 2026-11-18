@@ -14,15 +14,17 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
-test('GitHub mirror moves to the configured production site without forwarding tokens or deleting local data',()=>{
+test('GitHub Pages keeps its own login callback without redirecting or deleting local data',async()=>{
   const f=frontend(),before=[...f.memory.entries()];let target;
   Object.assign(f.ctx.location,{origin:'https://maithulammm.github.io',pathname:'/gvcnva2/index.html',search:'?code=private',hash:'#id_token=private',replace:url=>{target=url;}});
-  assert.equal(f.run('redirectGitHubMirror()'),true);
-  assert.equal(target,'https://gvcnva2.lammt.workers.dev/index.html');
+  f.run(`makeMsalClient=async()=>({handleRedirectPromise:async()=>null,getAllAccounts:()=>[]})`);
+  await f.run('initializeMsLogin()');
+  assert.equal(target,undefined);
+  assert.equal(f.run('currentRedirectUri()'),'https://maithulammm.github.io/gvcnva2/index.html');
   assert.deepEqual([...f.memory.entries()],before);
   for(const [origin,pathname] of [['https://gvcnva2.lammt.workers.dev','/index.html'],['http://127.0.0.1:5500','/index.html'],['https://maithulammm.github.io','/another-project/index.html']]) {
     Object.assign(f.ctx.location,{origin,pathname});target=undefined;
-    assert.equal(f.run('redirectGitHubMirror()'),false);assert.equal(target,undefined);
+    await f.run('initializeMsLogin()');assert.equal(target,undefined);
   }
 });
 test('meeting totals count repeated appointments, legacy plans and actual records independently',async()=>{
