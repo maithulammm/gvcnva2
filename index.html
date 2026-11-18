@@ -5,8 +5,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content" />
     <title>Việt Anh School • Quản lý GVCN · Microsoft 365</title>
-    <link rel="stylesheet" href="assets/css/app.css" />
-    <link rel="stylesheet" href="assets/css/responsive.css" />
+    <link rel="stylesheet" href="assets/css/app.css?v=20261118-toolbar2" />
+    <link rel="stylesheet" href="assets/css/responsive.css?v=20261118-toolbar2" />
+    <link rel="stylesheet" href="assets/css/header.css?v=20261118-toolbar2" />
   </head>
   <body>
     <!-- Microsoft login gate: before authentication NO application view is rendered. -->
@@ -55,7 +56,7 @@
         <nav class="nav" id="nav"></nav>
       </aside>
       <main class="main">
-        <div class="topline">
+        <div class="topline app-toolbar">
           <div class="top-heading">
             <h1 id="pageTitle" tabindex="-1">Tổng quan công tác chủ nhiệm</h1>
             <p class="subtitle" id="pageSubtitle">
@@ -63,7 +64,7 @@
             </p>
           </div>
           <div class="selectors">
-            <span class="auth-id" id="identityBox"
+            <div class="toolbar-account"><span class="toolbar-caption">Tài khoản</span><span class="auth-id" id="identityBox"
               ><span id="identityLabel">Đang xác thực</span
               ><button
                 type="button"
@@ -71,8 +72,7 @@
                 title="Đăng xuất tài khoản Microsoft"
               >
                 Đăng xuất
-              </button></span
-            >
+              </button></span></div>
             <label class="role-selector">Vai trò <span id="roleLabel" class="pill">—</span></label
             ><label class="grade-selector">Khối / phạm vi<select id="gradeSel" data-choice-mode="dropdown"></select></label
             ><label class="class-selector">Lớp<select id="classSel" data-choice-mode="dropdown"></select></label

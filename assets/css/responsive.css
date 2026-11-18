@@ -180,30 +180,3 @@ body:has(#editor[open]), body:has(#mobileNav[open]) { overflow: hidden; }
 .work-filters button{min-height:44px}
 .work-filters button[aria-pressed="true"]{background:#205e73;color:white}
 @media(max-width:600px){.today-grid{grid-template-columns:1fr}}
-
-/* One compact header row; narrow screens scroll the row, never the whole page. */
-.topline { display:flex;flex-wrap:nowrap;align-items:flex-end;justify-content:flex-start;gap:12px;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;padding:2px 2px 12px;margin-bottom:12px; }
-.topline .top-heading { flex:0 0 auto;max-width:300px;align-self:center; }
-.topline h1 { font-size:clamp(18px,1.5vw,25px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-.topline .subtitle { white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px; }
-.topline .selectors { display:contents; }
-.topline .selectors > label { flex:0 0 auto;display:grid;gap:4px;min-width:0;width:auto;white-space:nowrap; }
-.topline .auth-id { flex:0 0 auto;align-self:center;white-space:nowrap; }
-.topline #identityLabel { white-space:nowrap; }
-.topline .selectors select,.topline #rolePreview select { min-width:0;min-height:44px;height:44px;padding:8px 10px;border:1px solid #cddddd;border-radius:9px;background:#fff;color:var(--ink);font-size:14px; }
-.topline #classSel { width:84px; }
-.topline #gradeSel { width:142px; }
-.topline #monthSel { width:136px; }
-.topline #roleLabel { max-width:240px;min-height:44px;display:block;line-height:28px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-.topline #rolePreview { flex:0 0 auto;display:flex;flex-wrap:nowrap;align-items:flex-end;gap:10px;margin:0; }
-.topline #rolePreview:empty { display:none; }
-.topline #rolePreview label { display:grid;gap:4px;min-width:0;width:auto;font-size:11px;font-weight:700;color:#46636e;white-space:nowrap; }
-.topline #rolePreview select { width:174px; }
-.topline #rolePreview [role="status"] { max-width:220px;align-self:center;font-size:12px; }
-.topline #offlineNotice { flex:0 0 240px;align-self:center;margin:0;padding:8px;font-size:12px; }
-.topline #offlineNotice.sync-ok { flex:0 0 22px;padding:0;font-size:22px; }
-@media(max-width:900px){
-  .topline .top-heading { max-width:230px; }
-  .topline .selectors select,.topline #rolePreview select { font-size:16px; }
-  .single-class-view .topline .grade-selector,.single-class-view .topline .role-selector { display:none; }
-}
