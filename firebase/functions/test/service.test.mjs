@@ -12,6 +12,30 @@ async function fixture() {
 }
 const teacherInput={name:'Giáo viên A',email:teacher.email,classId:'8C3',active:true};
 
+test('Admin calendar is shared read-only with teachers and does not replace class records',async()=>{
+  const {api}=await fixture();await api.saveTeacher(admin,teacherInput);
+  const before=await api.bootstrap(admin);await api.bootstrap(teacher);
+  const result=await api.saveCalendar(admin,{excludedDates:['2027-01-01','2026-11-20'],revision:0});
+  assert.deepEqual(result.calendar,{excludedDates:['2026-11-20','2027-01-01'],revision:1});
+  assert.deepEqual((await api.bootstrap(teacher)).calendar,result.calendar);
+  const after=await api.bootstrap(admin);
+  assert.deepEqual(after.classes,before.classes);assert.deepEqual(after.revisions,before.revisions);
+  await assert.rejects(api.saveCalendar(teacher,{excludedDates:[],revision:1}),{status:403});
+  await assert.rejects(api.saveCalendar(admin,{excludedDates:[],revision:0}),{status:409});
+  assert.deepEqual((await api.bootstrap(admin)).calendar,result.calendar);
+});
+
+test('calendar rejects invalid or out-of-school-year dates without changing stored days',async()=>{
+  const {api}=await fixture();
+  for(const dates of [['2026-11-31'],['2027-02-29'],['2026-08-31'],['2027-09-01'],['2026-11-20','2026-11-20'],['20/11/2026'],[null]]) {
+    await assert.rejects(api.saveCalendar(admin,{excludedDates:dates,revision:0}),{status:400});
+  }
+  assert.deepEqual((await api.bootstrap(admin)).calendar,{excludedDates:[],revision:0});
+  await api.saveCalendar(admin,{excludedDates:['2026-09-01','2027-08-31'],revision:0});
+  await api.saveCalendar(admin,{excludedDates:[],revision:1});
+  assert.deepEqual((await api.bootstrap(admin)).calendar,{excludedDates:[],revision:2});
+});
+
 test('GVCN can submit a complete report with linked M05 and parent contact without evidence codes',async()=>{
   const {api}=await fixture();let boot=await api.saveTeacher(admin,teacherInput),c=boot.classes['8C3'];
   c.students=[{id:'S1',name:'Student',code:'OLD-CODE'}];

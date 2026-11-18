@@ -118,11 +118,11 @@ function render() {
   renderSelectors();
   let allowed = canViewPersonal() || ui.role === "lead";
   let permitted = VIEW_LIST.filter(([k]) =>
-    ["students", "teachers", "database", "users", "export"].includes(k)
+    ["students", "teachers", "database", "users", "export", "calendar"].includes(k)
       ? hasAppRole("admin")
       : allowed || ["dashboard", "check"].includes(k),
   );
-  const adminPages=['students','teachers','users','database','export'];
+  const adminPages=['students','teachers','users','database','export','calendar'];
   if (!permitted.some((x) => x[0] === ui.page)) ui.page = "dashboard";
   const navButton=([k,i,s])=>
     `<button class="${ui.page===k?'active':''}" aria-label="${esc(s)}" title="${esc(s)}" ${ui.page===k?'aria-current="page"':''} onclick="navTo('${k}')"><span class="ico" aria-hidden="true">${i}</span><span class="nav-text">${esc(s)}</span></button>`;
@@ -139,6 +139,7 @@ function render() {
     teachers: renderTeachers,
     users: renderUsers,
     database: renderDatabase,
+    calendar: renderSchoolCalendar,
     m01: renderM01,
     m02: renderM02,
     m03: renderM03,

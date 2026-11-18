@@ -76,6 +76,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     }
     return {schema:2,year:YEAR,assignment:{role:u.role,roles:u.roles,classId:u.classId||'',grade:u.grade||'',grades:u.grades,display:u.name||identity.email},
       classes,revisions,summaries,checks,teachers:hasRole(u,'admin')?s.teachers:{},
+      calendar:s.calendar,
       users:hasRole(u,'admin')?Object.values(s.users).map(user=>{
         const normalized=normalizeAssignment(user);
         return {email:normalized.email,name:normalized.name||normalized.email,roles:normalized.roles,
@@ -83,6 +84,22 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       }):[],serverTime:now()};
   }
   return {
+    async saveCalendar(identity,body) {
+      const dates=body.excludedDates;
+      requireValue(Array.isArray(dates)&&dates.length<=366,'Danh sách ngày nghỉ không hợp lệ.');
+      requireValue(new Set(dates).size===dates.length,'Danh sách có ngày nghỉ trùng nhau.');
+      for(const date of dates) {
+        requireValue(typeof date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(date),'Ngày nghỉ không đúng định dạng.');
+        const parsed=new Date(date+'T00:00:00Z');
+        requireValue(Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===date&&date>='2026-09-01'&&date<='2027-08-31','Ngày nghỉ phải hợp lệ và thuộc năm học 2026–2027.');
+      }
+      const s=await mutate(identity,'calendar:update',(school,u)=>{
+        requireValue(hasRole(u,'admin'),'Chỉ Quản trị viên được sửa lịch không gặp.',403);
+        requireValue(Number.isInteger(body.revision)&&body.revision===school.calendar.revision,'Lịch không gặp đã được cập nhật ở máy khác. Hãy tải lại trước khi lưu.',409);
+        school.calendar={excludedDates:[...dates].sort(),revision:school.calendar.revision+1};
+      });
+      return {calendar:s.calendar};
+    },
     async bootstrap(identity) {
       const current=normalizeSchool((await ref.get()).val());
       const stored=current.users[emailKey(identity.email)];

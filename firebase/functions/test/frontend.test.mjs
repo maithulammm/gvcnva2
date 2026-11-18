@@ -14,6 +14,31 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('calendar saves globally, automatic scheduling reads fresh exclusions and keeps existing visits',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`cls().students=Array.from({length:30},(_,i)=>({id:'S'+i,name:'Student '+i}));save()`);await f.run('flushCloud()');
+  await api.saveCalendar(admin,{excludedDates:['2026-11-02','2026-11-03'],revision:0});
+  assert.equal(f.run('schoolCalendar().excludedDates.length'),0);
+  await f.run('autoScheduleMonth()');
+  assert(f.run(`monthlyAppointments().every(a=>!['2026-11-02','2026-11-03'].includes(a.date))`));
+  assert.equal(f.run('summarize(cls(),ui.month).meetings'),0);
+  await f.run('flushCloud()');const original=f.run('JSON.stringify(mdata().schedule)');
+  f.run(`navTo('calendar');toggleExcludedDate('2026-11-04')`);
+  assert.equal(f.run(`schoolCalendar().excludedDates.includes('2026-11-04')`),false);
+  await f.run('saveSchoolCalendar()');
+  assert((await api.bootstrap(admin)).calendar.excludedDates.includes('2026-11-04'));
+  assert.equal(f.run('JSON.stringify(mdata().schedule)'),original);
+  await f.run('autoScheduleMonth()');
+  assert.equal(f.run('JSON.stringify(mdata().schedule)'),original);
+});
+
+test('calendar navigation is Admin-only and drafts cannot cross accounts',async()=>{
+  const f=frontend();await f.login();f.run(`navTo('calendar');toggleExcludedDate('2026-11-20')`);
+  assert(f.el('nav').innerHTML.includes("navTo('calendar')"));assert.equal(f.run('calendarDirty()'),true);
+  f.run(`auth.email='another@vietanhschool.edu.vn';render()`);assert.equal(f.run('calendarDraft().dates.length'),0);
+  f.run(`auth.assignment={role:'gvcn',roles:['gvcn'],classId:'6A1'};navTo('calendar')`);
+  assert.equal(f.run('ui.page'),'dashboard');assert(!f.el('nav').innerHTML.includes("navTo('calendar')"));
+});
 test('header shows the signed-in teacher name and keeps it while previewing another role/class',async()=>{
   const f=frontend();await f.login();
   f.run(`auth.account.name='Mai Thư Lâm';appData.classes['8C3'].teacher='Another teacher';ui.classId='8C3';render()`);
@@ -768,6 +793,7 @@ function frontend({memory=new Map(),api}={}) {
     try {
       let result;
       if(path==='/bootstrap') result=await api.bootstrap(admin);
+      else if(path==='/calendar'&&options.method==='PUT') result=await api.saveCalendar(admin,body);
       else if(path==='/teachers'&&options.method==='POST') result=await api.saveTeacher(admin,body);
       else if(path.startsWith('/teachers/')&&options.method==='DELETE') result=await api.deleteTeacher(admin,path.split('/')[2]);
       else if(path==='/users'&&options.method==='POST') result=await api.saveUserRoles(admin,body);

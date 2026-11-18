@@ -191,4 +191,12 @@ body:has(#editor[open]), body:has(#mobileNav[open]) { overflow: hidden; }
 .meeting-template-list > div { display:flex;gap:3px;max-width:100%; }
 .meeting-template-list button { overflow-wrap:anywhere;white-space:normal; }
 #modalSaveNext { min-height:44px; }
+.calendar-months { display:flex;flex-wrap:wrap;gap:8px;margin:16px 0; }
+.calendar-months button { min-height:44px; }
+.school-calendar-body { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px; }
+.school-calendar-body h3 { margin-bottom:12px; }
+.school-calendar-body .calendar-day { min-height:64px; }
+.calendar-weekend:not([aria-pressed="true"]) { background:#f0f4f4;color:#657b83; }
+.calendar-selected { display:flex;flex-wrap:wrap;gap:8px; }
+@media(max-width:650px){.school-calendar-body{grid-template-columns:minmax(0,1fr)}.calendar-months{gap:6px}.calendar-months button{padding:8px;font-size:13px}.school-calendar-body .calendar-day{min-height:48px}}
 @media(max-width:600px){#editor .modal-f{flex-wrap:wrap;gap:6px}#editor .modal-f .btn{font-size:12px;padding:8px}#modalSaveNext{flex:1 1 100%}}

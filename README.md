@@ -17,6 +17,16 @@ theo sau khi lưu cục bộ thành công; mỗi học sinh vẫn cần được
 Trang Công việc tháng đã được bỏ khỏi menu; lối gọi cũ `navTo('work')` đưa về Mẫu 2.
 Trang Nhập / xuất dữ liệu nằm trong nhóm Quản trị viên và chỉ Admin nhìn thấy.
 
+**Quản trị viên → Lịch không gặp:** chọn ngày nghỉ trong 12 tháng từ 09/2026 đến
+08/2027 rồi bấm Lưu. Thiết lập dùng chung được lưu riêng tại `calendar` trong
+năm học Firebase qua `PUT /api/calendar`; chỉ Admin được ghi, có revision để
+tránh ghi đè khi hai Admin sửa đồng thời. Tất cả tài khoản nhận lịch trong
+bootstrap; trước khi tự động xếp lịch, trình duyệt đọc bootstrap mới nhất và bỏ
+qua ngày nghỉ. Không sửa/xóa lịch hẹn đã có, không tạo lượt gặp thực tế. Quy tắc
+T2–T6 và sáng T7 lớp 12 vẫn áp dụng. Chế độ cục bộ chỉ giữ lịch trên thiết bị.
+API mới cần được triển khai Cloudflare theo lệnh chủ dự án; nếu bản đang chạy
+trả 404 khi lưu lịch, việc chỉ push GitHub chưa đủ để cập nhật API.
+
 ## Sửa chức năng ở đâu?
 
 | File / thư mục | Nội dung |

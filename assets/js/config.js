@@ -37,6 +37,7 @@ const VIEW_LIST = [
   ["teachers", "♟", "Quản lý GVCN"],
   ["users", "♙", "Người dùng & vai trò"],
   ["database", "☁", "Dữ liệu Firebase"],
+  ["calendar", "▦", "Lịch không gặp"],
   ["m01", "▦", "Mẫu 01 · Lịch gặp"],
   ["m02", "☷", "Mẫu 02 · Sổ gặp"],
   ["m03", "✉", "Mẫu 03 · Kết nối PHHS"],
@@ -80,6 +81,7 @@ const ROLE_NAMES = {
 };
 
 const HEADINGS = {
+  calendar: ["Lịch không gặp", ""],
   work: ["Công việc tháng", ""],
   teachers: [
     "Quản lý giáo viên chủ nhiệm",

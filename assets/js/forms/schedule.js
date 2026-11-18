@@ -155,6 +155,7 @@ function buildAutomaticSchedule(c=cls(),month=ui.month) {
   let next=0,added=0;
   if (!students.length) return {classData:copy,added};
   for (const date of scheduleMonthDates(month)) for (const session of Object.keys(MEETING_SESSIONS)) {
+    if(isExcludedMeetingDate(date))continue;
     if (!scheduleSessionAllowed(copy,date,session)||scheduleOccupant(date,session,'',copy,month,'')) continue;
     for (let attempt=0;attempt<students.length;attempt++) {
       const student=students[next];next=(next+1)%students.length;
@@ -171,6 +172,14 @@ function buildAutomaticSchedule(c=cls(),month=ui.month) {
 
 async function autoScheduleMonth() {
   if (!editable()) return;
+  const context={owner:auth.email,epoch:cloud.epoch,classId:ui.classId,month:ui.month};
+  if(cloud.ready) {
+    try {
+      const data=await databaseRequest('/bootstrap','GET',undefined,{silent:true});
+      if(auth.email!==context.owner||cloud.epoch!==context.epoch||ui.classId!==context.classId||ui.month!==context.month||!editable())return;
+      if(data.calendar)appData.calendar=data.calendar;
+    } catch(error){appAlert('Chưa kiểm tra được lịch không gặp mới nhất: '+error.message);return;}
+  }
   if (!cls().students.length) return toast('Cần nhập danh sách học sinh trước khi xếp lịch.');
   const c=cls(),result=buildAutomaticSchedule(c);
   if (!result.added) return toast('Không còn khung giờ trống hoặc học sinh đã đủ 3 lịch hẹn.');

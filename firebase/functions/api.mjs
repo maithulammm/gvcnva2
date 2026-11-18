@@ -32,6 +32,7 @@ export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=pr
       service ||= createService(getDatabase(),{adminEmail:(env.GVCN_ADMIN_EMAIL||'lammt@vietanhschool.edu.vn').toLowerCase().trim()});
       let result;
       if(method==='GET'&&route==='/bootstrap') result=await service.bootstrap(identity);
+      else if(method==='PUT'&&route==='/calendar') result=await service.saveCalendar(identity,body);
       else if(method==='POST'&&route==='/teachers') result=await service.saveTeacher(identity,body);
       else if(method==='DELETE'&&/^\/teachers\/[A-Za-z0-9_-]+$/.test(route)) result=await service.deleteTeacher(identity,route.split('/')[2]);
       else if(method==='POST'&&route==='/users') result=await service.saveUserRoles(identity,body);

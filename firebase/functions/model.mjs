@@ -56,7 +56,8 @@ export function encodeClass(c) {
   return {...c,months:Object.fromEntries(Object.entries(c.months).map(([m,v])=>[m.replace('/','_'),v]))};
 }
 export function normalizeSchool(s) {
-  return {...s,year:YEAR,schema:1,classes:s?.classes||{},teachers:s?.teachers||{},users:s?.users||{},audit:s?.audit||{}};
+  return {...s,year:YEAR,schema:1,classes:s?.classes||{},teachers:s?.teachers||{},users:s?.users||{},audit:s?.audit||{},
+    calendar:{excludedDates:list(s?.calendar?.excludedDates),revision:s?.calendar?.revision||0}};
 }
 export function assignmentFor(s, identity) {
   const stored=s.users[emailKey(identity.email)];
