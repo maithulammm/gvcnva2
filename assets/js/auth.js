@@ -135,6 +135,8 @@ function handleMicrosoftLogoutStorage(event) {
 }
 
 function lockUi() {
+  closeMobileNavigation();
+  $('mobileNavLinks').replaceChildren();
   ui.preview = null;
   resetCloud();
   $("editor").close();

@@ -64,5 +64,9 @@ $("msLoginBtn").addEventListener("click", async () => {
 $("msLogoutBtn").addEventListener("click", logoutMicrosoft);
 window.addEventListener?.("storage", handleMicrosoftLogoutStorage);
 $("requestOverlay").addEventListener("cancel",e=>e.preventDefault());
+$("mobileNav").addEventListener("close",()=>$("mobileMenuButton").setAttribute("aria-expanded","false"));
+window.addEventListener?.("resize",updateVisualViewport);
+window.visualViewport?.addEventListener("resize",updateVisualViewport);
+updateVisualViewport();
 
 initializeMsLogin();

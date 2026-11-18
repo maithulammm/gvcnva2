@@ -3,9 +3,10 @@
   <head>
     <!-- Main application page and Microsoft Entra callback. -->
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content" />
     <title>Việt Anh School • Quản lý GVCN · Microsoft 365</title>
     <link rel="stylesheet" href="assets/css/app.css" />
+    <link rel="stylesheet" href="assets/css/responsive.css" />
   </head>
   <body>
     <!-- Microsoft login gate: before authentication NO application view is rendered. -->
@@ -41,6 +42,11 @@
       </div>
     </section>
     <div class="app">
+      <header class="mobile-bar">
+        <button type="button" class="btn" id="mobileMenuButton" aria-haspopup="dialog" aria-controls="mobileNav" aria-expanded="false" onclick="openMobileNavigation()">☰ Menu</button>
+        <strong>VIỆT ANH</strong>
+        <button type="button" class="btn" id="mobileWorkButton" hidden onclick="navTo('work')">Công việc</button>
+      </header>
       <aside class="sidebar">
         <div class="logo">
           <div class="logo-badge">VA</div>
@@ -51,7 +57,7 @@
       <main class="main">
         <div class="topline">
           <div>
-            <h1 id="pageTitle">Tổng quan công tác chủ nhiệm</h1>
+            <h1 id="pageTitle" tabindex="-1">Tổng quan công tác chủ nhiệm</h1>
             <p class="subtitle" id="pageSubtitle">
               Theo dõi đồng bộ 5 biểu mẫu trên 32 lớp
             </p>
@@ -67,10 +73,10 @@
                 Đăng xuất
               </button></span
             >
-            <label>Vai trò <span id="roleLabel" class="pill">—</span></label
-            ><label>Khối / phạm vi<select id="gradeSel"></select></label
-            ><label>Lớp<select id="classSel"></select></label
-            ><label>Tháng báo cáo<select id="monthSel"></select></label>
+            <label class="role-selector">Vai trò <span id="roleLabel" class="pill">—</span></label
+            ><label class="grade-selector">Khối / phạm vi<select id="gradeSel"></select></label
+            ><label class="class-selector">Lớp<select id="classSel"></select></label
+            ><label class="month-selector">Tháng báo cáo<select id="monthSel"></select></label>
           </div>
         </div>
         <div id="rolePreview" class="actions"></div>
@@ -81,6 +87,10 @@
         <div id="view"></div>
       </main>
     </div>
+    <dialog id="mobileNav" class="mobile-nav" aria-labelledby="mobileNavTitle">
+      <div class="mobile-nav-header"><h2 id="mobileNavTitle">Chọn chức năng</h2><button type="button" class="btn" aria-label="Đóng menu" onclick="closeMobileNavigation()">✕</button></div>
+      <nav id="mobileNavLinks" class="nav" aria-label="Điều hướng trên điện thoại"></nav>
+    </dialog>
     <dialog id="editor">
       <div class="modal-h">
         <h2 id="modalTitle">Biểu mẫu</h2>
@@ -130,6 +140,7 @@
     <script defer src="assets/js/permissions.js"></script>
     <script defer src="assets/js/validation.js"></script>
     <script defer src="assets/js/router.js"></script>
+    <script defer src="assets/js/responsive.js"></script>
     <script defer src="assets/js/views/dashboard.js"></script>
     <script defer src="assets/js/views/students.js"></script>
     <script defer src="assets/js/views/reports.js"></script>

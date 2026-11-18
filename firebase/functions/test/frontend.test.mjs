@@ -14,6 +14,18 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('mobile menu preserves role scope, closes on navigation and clears after logout',async()=>{
+  const f=frontend();await f.login();f.ctx.window.innerWidth=390;
+  f.run(`auth.assignment={role:'gvcn',roles:['gvcn'],classId:'8C3'};ui.classId='8C3';render();openMobileNavigation()`);
+  assert(f.el('mobileNav').open);assert(f.el('mobileNavLinks').innerHTML.includes("navTo('work')"));
+  assert(!f.el('mobileNavLinks').innerHTML.includes("navTo('users')"));
+  assert.equal(f.el('mobileWorkButton').hidden,false);assert(f.bodyClasses.has('single-class-view'));
+  f.run(`navTo('m02')`);assert(!f.el('mobileNav').open);
+  f.run(`auth.assignment={role:'bgh',roles:['bgh']};render();openMobileNavigation()`);
+  assert.equal(f.el('mobileWorkButton').hidden,true);
+  assert(!f.el('mobileNavLinks').innerHTML.includes("navTo('work')"));
+  f.run('lockUi()');assert(!f.el('mobileNav').open);assert.equal(f.el('mobileNavLinks').innerHTML,'');
+});
 test('M02 shows a locale-independent 24-hour clock and rejects AM/PM or out-of-range hours',async()=>{
   const f=frontend();await f.login();
   f.run(`cls().students=[{id:'S1',name:'Student',code:''}];openWorkEntry('m02','S1')`);

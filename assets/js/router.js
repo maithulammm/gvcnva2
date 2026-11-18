@@ -13,11 +13,14 @@ function markChanged() {
 }
 
 function navTo(page) {
+  closeMobileNavigation();
   ui.page = page;
   ui.search = "";
   if (page === "m05" && !ui.profileId)
     ui.profileId = cls().profiles[0]?.id || "";
   render();
+  window.scrollTo?.({top:0,behavior:'auto'});
+  $('pageTitle').focus({preventScroll:true});
 }
 
 function setRolePreview(role, classId = ui.preview?.classId || ui.classId) {
@@ -119,7 +122,7 @@ function render() {
   $("nav").innerHTML = permitted
     .map(
       ([k, i, s]) =>
-        `<button class="${ui.page === k ? "active" : ""}" onclick="navTo('${k}')"><span class="ico">${i}</span><span class="nav-text">${esc(s)}</span></button>`,
+        `<button class="${ui.page === k ? "active" : ""}" aria-label="${esc(s)}" title="${esc(s)}" ${ui.page===k?'aria-current="page"':''} onclick="navTo('${k}')"><span class="ico" aria-hidden="true">${i}</span><span class="nav-text">${esc(s)}</span></button>`,
     )
     .join("");
   if (!permitted.some((x) => x[0] === ui.page)) ui.page = "dashboard";
@@ -142,5 +145,7 @@ function render() {
     check: renderCheck,
     export: renderExport,
   }[ui.page]();
+  renderResponsiveNavigation(permitted);
+  adaptResponsiveTables();
   updateStorageNotice();
 }

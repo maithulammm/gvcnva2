@@ -8,6 +8,7 @@ Mở **`index.html`** bằng Live Server hoặc máy chủ HTTP/HTTPS. Giao di�
 | --- | --- |
 | `index.html` | Trang chính: bố cục, thanh điều hướng, khung đăng nhập và hộp thoại |
 | `assets/css/app.css` | Toàn bộ màu sắc, kích thước, bố cục và giao diện di động |
+| `assets/css/responsive.css` | Bố cục điện thoại/tablet, thẻ bản ghi, nút cảm ứng và biểu mẫu thích ứng bàn phím |
 | `assets/js/config.js` | Năm học, 32 lớp, tháng, nhãn trang, tài khoản cục bộ và địa chỉ API |
 | `assets/js/state.js` | Trạng thái dùng chung: `auth`, `ui`, `appData`, `cloud` |
 | `assets/js/helpers.js` | Hiển thị trạng thái, thông báo, định dạng và nút giao diện |
@@ -16,6 +17,7 @@ Mở **`index.html`** bằng Live Server hoặc máy chủ HTTP/HTTPS. Giao di�
 | `assets/js/permissions.js` | Phạm vi truy cập và quyền sửa phía giao diện |
 | `assets/js/validation.js` | Thống kê và các kiểm tra K1–K9 |
 | `assets/js/router.js` | Điều hướng trang, chọn khối/lớp/tháng |
+| `assets/js/responsive.js` | Menu điện thoại theo quyền, nhãn cột cho thẻ bản ghi và kích thước vùng nhìn khi mở bàn phím |
 | `assets/js/views/dashboard.js` | Bảng tổng quan GVCN, khối trưởng và BGH |
 | `assets/js/views/students.js` | Danh sách học sinh theo lớp |
 | `assets/js/views/reports.js` | Màn hình kiểm tra báo cáo, nhập/xuất và sao lưu |
@@ -47,6 +49,10 @@ Mở **`index.html`** bằng Live Server hoặc máy chủ HTTP/HTTPS. Giao di�
 Ví dụ: muốn đổi cột hiển thị của M02, sửa `forms/m02.js`. Muốn đổi trường trong hộp thoại M02, sửa mục `m02` trong `forms/schema.js`. Nếu đổi dữ liệu bắt buộc, cập nhật cả `validation.js` và phần tương ứng trong `firebase/functions/model.mjs` để giao diện và máy chủ kiểm tra thống nhất.
 
 ## Công việc tháng cho GVCN
+
+Trên điện thoại và máy tính bảng nhỏ, nút **Menu** hiển thị đầy đủ tên chức năng; nút **Công việc** mở nhanh trang nhập theo học sinh. GVCN một lớp chỉ cần nhìn lớp và chọn tháng, không phải thao tác với khối/vai trò cố định. Các bảng trở thành thẻ có nhãn từng thông tin dưới 900 px; màn hình lớn vẫn dùng bảng. Menu dùng cùng danh sách quyền với thanh bên và tự đóng khi chuyển trang hoặc đăng xuất.
+
+Biểu mẫu trên điện thoại chiếm toàn màn hình, nội dung cuộn riêng còn các nút Lưu/Đóng nằm ở cuối khung. CSS theo vùng nhìn thực tế hỗ trợ khi bàn phím hoặc thanh trình duyệt thay đổi chiều cao. Ô nhập dùng chữ 16 px trên màn hình nhỏ, nút chính cao ít nhất 44 px và có chừa vùng an toàn cho thiết bị có tai thỏ/thanh thao tác. Không thay đổi mô hình dữ liệu hay cách tính báo cáo giữa các thiết bị.
 
 GVCN vào trang **Công việc tháng**, chọn học sinh rồi ghi cuộc gặp, kết nối PHHS, lịch hẹn hoặc kế hoạch hỗ trợ. Mục tiêu và hành động có sẵn được đưa vào hộp thoại để giáo viên kiểm tra trước khi lưu. Ngày thực tế gợi ý hôm nay chỉ khi đang mở đúng tháng hiện tại. Phần phối hợp chỉ mở khi cần; chi tiết M05 chỉ mở khi chọn phiếu thuộc học sinh đó.
 
