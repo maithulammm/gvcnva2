@@ -104,6 +104,7 @@ async function recoverMicrosoftSession(account) {
 }
 
 async function logoutMicrosoft() {
+  const release=beginPageLoading('Đang đăng xuất…');
   const client=auth.client,account=auth.account;
   if($('editor').open)saveEditorDraft();
   if(cloud.ready&&appData) {try {storePendingDrafts();}catch{ /* Keep existing backups. */ }}
@@ -112,7 +113,7 @@ async function logoutMicrosoft() {
     localStorage.removeItem(LOGIN_REAUTH_KEY);
     localStorage.setItem(LOGIN_SIGNED_OUT_KEY,String(Date.now()));
   } catch { /* MSAL will also clear its account/token cache below. */ }
-  client?.setActiveAccount?.(null);
+  try {client?.setActiveAccount?.(null);}catch{ /* logoutRedirect also clears active-account state. */ }
   lockUi();
   loginStatus('Đã xóa ghi nhớ đăng nhập trên máy. Đang đăng xuất Microsoft…');
   $('msLoginBtn').disabled=true;
@@ -122,7 +123,7 @@ async function logoutMicrosoft() {
       ...(account?.idTokenClaims?.login_hint?{logoutHint:account.idTokenClaims.login_hint}:{})});
   } catch {
     loginStatus('Đã đăng xuất khỏi ứng dụng và xóa ghi nhớ đăng nhập. Chưa kết nối được trang đăng xuất Microsoft.');
-  } finally { $('msLoginBtn').disabled=false; }
+  } finally { await waitAfterRequest();$('msLoginBtn').disabled=false;release(); }
 }
 
 function handleMicrosoftLogoutStorage(event) {
@@ -286,6 +287,8 @@ async function makeMsalClient(config) {
 async function initializeMsLogin() {
   // Silent renewal loads this callback in an iframe; only the parent handles it.
   if(window.parent&&window.parent!==window)return;
+  const release=beginPageLoading('Đang kiểm tra phiên đăng nhập…');
+  try {
   lockUi();
   if (!/^https?:$/.test(location.protocol)) {
     loginStatus(
@@ -308,6 +311,7 @@ async function initializeMsLogin() {
     loginStatus("Đang kết nối Microsoft và kiểm tra phiên đăng nhập…");
     auth.client = await makeMsalClient(config);
     const result = await auth.client.handleRedirectPromise();
+    await waitAfterRequest();
     let account = result?.account;
     if (!account) account=cachedMicrosoftAccount(auth.client);
     $("msLoginBtn").disabled = false;
@@ -323,6 +327,7 @@ async function initializeMsLogin() {
     loginStatus(microsoftErrorText(e), true);
     $("msLoginBtn").disabled = false;
   }
+  } finally {release();}
 }
 
 function microsoftErrorText(error) {

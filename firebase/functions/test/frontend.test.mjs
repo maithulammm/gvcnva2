@@ -14,6 +14,42 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('requests wait for the complete JSON body then 2 seconds before the next request and loading dismissal',async()=>{
+  const f=frontend({api:createService(memoryDatabase())});await f.login();
+  const cooldowns=[];f.ctx.setTimeout=(fn,ms)=>{if(ms===2000)cooldowns.push(fn);return 1;};
+  let finishBody,fetches=0;
+  const body=new Promise(resolve=>{finishBody=resolve;});
+  f.ctx.fetch=async()=>({ok:true,status:200,json:++fetches===1?()=>body:async()=>({second:true})});
+  const first=f.run('databaseRequest("/first")'),second=f.run('databaseRequest("/second")');
+  await new Promise(setImmediate);
+  assert.equal(fetches,1);assert.equal(cooldowns.length,0);assert(f.el('requestOverlay').open);
+  finishBody({first:true});await new Promise(setImmediate);
+  assert.equal(cooldowns.length,1);assert.equal(fetches,1);assert(f.el('requestOverlay').open);
+  cooldowns[0]();assert.deepEqual(await first,{first:true});await new Promise(setImmediate);
+  assert.equal(fetches,2);assert.equal(cooldowns.length,2);assert(f.el('requestOverlay').open);
+  cooldowns[1]();assert.deepEqual(await second,{second:true});
+  assert(!f.el('requestOverlay').open);assert.equal(f.run('pageLoading.pending.size'),0);
+});
+
+test('a failed request releases loading and does not prevent the queued request from completing',async()=>{
+  const f=frontend({api:createService(memoryDatabase())});await f.login();let requests=0;
+  f.ctx.fetch=async()=>++requests===1?{ok:false,status:500,json:async()=>({error:'Server failed'})}:{ok:true,status:200,json:async()=>({ok:true})};
+  const failed=f.run('databaseRequest("/first")'),next=f.run('databaseRequest("/second")');
+  await assert.rejects(failed,/Server failed/);assert.deepEqual(await next,{ok:true});
+  assert.equal(requests,2);assert(!f.el('requestOverlay').open);
+});
+
+test('changing session during the post-request delay discards the response and cancels old queued requests',async()=>{
+  const f=frontend({api:createService(memoryDatabase())});await f.login();
+  const cooldowns=[];let requests=0;
+  f.ctx.setTimeout=(fn,ms)=>{if(ms===2000)cooldowns.push(fn);return 1;};
+  f.ctx.fetch=async()=>{requests++;return {ok:true,status:200,json:async()=>({old:true})};};
+  const first=f.run('databaseRequest("/old")'),queued=f.run('databaseRequest("/queued")');
+  const firstRejected=assert.rejects(first,/Phiên làm việc đã thay đổi/),queuedRejected=assert.rejects(queued,/Phiên làm việc đã thay đổi/);
+  await new Promise(setImmediate);assert.equal(cooldowns.length,1);
+  f.run('lockUi()');cooldowns[0]();await Promise.all([firstRejected,queuedRejected]);
+  assert.equal(requests,1);assert(!f.el('requestOverlay').open);
+});
 const rememberedAccount={username:admin.email,homeAccountId:'remembered-admin',tenantId:'22215a7f-b9e3-4b53-bd27-3a317311e6ca',idTokenClaims:{oid:admin.oid}};
 async function restoreMicrosoft(f,{fresh=false,account=rememberedAccount}={}) {
   f.ctx.cachedAccount=account;
@@ -488,7 +524,7 @@ function frontend({memory=new Map(),api}={}) {
     return nodes.get(id);
   };
   const ctx={console:{log:console.log,warn(){},error(){}},TextEncoder,TextDecoder,Blob,Response,DecompressionStream,Uint8Array,DataView,URL,atob,AbortController,
-    setTimeout(){return 1;},clearTimeout(){},setInterval(){return 1;},clearInterval(){},
+    setTimeout(fn,ms){if(ms===2000)Promise.resolve().then(fn);return 1;},clearTimeout(){},setInterval(){return 1;},clearInterval(){},
     alert:m=>alerts.push(m),confirm:()=>true,prompt:()=> 'Test reason',
     FormData:class {constructor(record){this.record=record;}get(key){return this.record[key]??null;}getAll(key){const value=this.record[key];return value===undefined?[]:Array.isArray(value)?value:[value];}},
     localStorage:{getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)},

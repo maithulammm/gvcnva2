@@ -46,6 +46,7 @@ $("msLoginBtn").addEventListener("click", async () => {
     loginStatus("Chưa có cấu hình đăng nhập hợp lệ.", true);
     return;
   }
+  const release=beginPageLoading('Đang chuyển đến Microsoft…');
   try {
     $("msLoginBtn").disabled = true;
     await auth.client.loginRedirect({
@@ -55,10 +56,13 @@ $("msLoginBtn").addEventListener("click", async () => {
   } catch (e) {
     loginStatus(microsoftErrorText(e), true);
     $("msLoginBtn").disabled = false;
+  } finally {
+    await waitAfterRequest();release();
   }
 });
 
 $("msLogoutBtn").addEventListener("click", logoutMicrosoft);
 window.addEventListener?.("storage", handleMicrosoftLogoutStorage);
+$("requestOverlay").addEventListener("cancel",e=>e.preventDefault());
 
 initializeMsLogin();

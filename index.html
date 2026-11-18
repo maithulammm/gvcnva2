@@ -109,6 +109,11 @@
         </div>
       </form>
     </dialog>
+    <dialog id="requestOverlay" class="request-overlay" aria-labelledby="requestLoadingText" aria-busy="true">
+      <div class="request-spinner" aria-hidden="true"></div>
+      <p id="requestLoadingText" role="status" aria-live="polite">Đang tải dữ liệu…</p>
+      <small>Vui lòng chờ hoàn tất.</small>
+    </dialog>
     <div class="toast" id="toast"></div>
     <input type="file" id="xlsxInput" hidden accept=".xlsx,.xlsm,.xls" />
     <input type="file" id="directoryInput" hidden accept=".json" />
@@ -120,6 +125,7 @@
     <script defer src="assets/js/config.js"></script>
     <script defer src="assets/js/state.js"></script>
     <script defer src="assets/js/helpers.js"></script>
+    <script defer src="assets/js/loading.js"></script>
     <script defer src="assets/js/data.js"></script>
     <script defer src="assets/js/permissions.js"></script>
     <script defer src="assets/js/validation.js"></script>

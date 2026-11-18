@@ -92,7 +92,17 @@ function resetCloud() {
   cloud.checks = {};
 }
 
-async function databaseRequest(path, method = "GET", body) {
+function databaseRequest(path, method = "GET", body) {
+  const epoch=cloud.epoch,release=beginPageLoading(method==='GET'?'Đang tải dữ liệu…':'Đang lưu dữ liệu…');
+  const request=databaseQueue.then(()=>{
+    if(epoch!==cloud.epoch)throw Error('Phiên làm việc đã thay đổi.');
+    return performDatabaseRequest(path,method,body);
+  }).finally(release);
+  databaseQueue=request.catch(()=>{});
+  return request;
+}
+
+async function performDatabaseRequest(path, method = "GET", body) {
   const epoch = cloud.epoch;
   if (!auth.client || !auth.account)
     throw Error("Cần đăng nhập Microsoft trước khi kết nối dữ liệu.");
@@ -111,7 +121,9 @@ async function databaseRequest(path, method = "GET", body) {
       signal: controller.signal,
       cache: "no-store",
     });
-    const data = await response.json().catch(() => ({}));
+    let data;
+    try { data=await response.json(); }
+    catch { throw Error('Máy chủ trả về dữ liệu chưa hợp lệ. Vui lòng thử lại.'); }
     if (epoch !== cloud.epoch) throw Error("Phiên làm việc đã thay đổi.");
     if (!response.ok)
       throw Object.assign(
@@ -134,6 +146,8 @@ async function databaseRequest(path, method = "GET", body) {
     throw error;
   } finally {
     clearTimeout(timeout);
+    await waitAfterRequest();
+    if(epoch!==cloud.epoch)throw Error('Phiên làm việc đã thay đổi.');
   }
 }
 

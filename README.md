@@ -11,6 +11,7 @@ Mở **`index.html`** bằng Live Server hoặc máy chủ HTTP/HTTPS. Giao di�
 | `assets/js/config.js` | Năm học, 32 lớp, tháng, nhãn trang, tài khoản cục bộ và địa chỉ API |
 | `assets/js/state.js` | Trạng thái dùng chung: `auth`, `ui`, `appData`, `cloud` |
 | `assets/js/helpers.js` | Hiển thị trạng thái, thông báo, định dạng và nút giao diện |
+| `assets/js/loading.js` | Màn hình chờ, đếm thao tác đang chạy và thời gian chờ sau request |
 | `assets/js/data.js` | Cấu trúc dữ liệu lớp/tháng, lưu trình duyệt và kiểm tra liên kết học sinh |
 | `assets/js/permissions.js` | Phạm vi truy cập và quyền sửa phía giao diện |
 | `assets/js/validation.js` | Thống kê và các kiểm tra K1–K9 |
@@ -80,6 +81,8 @@ Khi chuyển ứng dụng sang máy khác hoặc máy chủ, chép `index.html` 
 MSAL giữ tài khoản/token trong `localStorage` để khôi phục phiên khi tải lại hoặc mở lại trình duyệt. Ứng dụng ghi nhớ tài khoản tối đa 30 ngày kể từ lần xác thực Microsoft mới, chỉ lưu mã tài khoản, email và thời hạn trong `VA_GVCN_REMEMBER_LOGIN_V1`; marker này không cấp quyền truy cập và không thay thế kiểm tra token/vai trò trên API. Mỗi lần mở vẫn lấy token bằng MSAL và tải lại phân công từ máy chủ. Token trống/hết hạn được yêu cầu làm mới; nếu cần tương tác, khi khôi phục có thể chuyển qua Microsoft một lần, có chặn lặp. Chính sách Entra, MFA hoặc đổi mật khẩu có thể yêu cầu xác thực lại trước 30 ngày.
 
 Nút **Đăng xuất** xóa marker ghi nhớ và gọi MSAL `logoutRedirect` không chỉ định tài khoản để xóa toàn bộ account/token của ứng dụng; chỉ báo đăng xuất ngăn khôi phục cache cũ kể cả khi không kết nối được máy chủ Microsoft. Các tab khác cũng khóa giao diện khi nhận sự kiện đăng xuất. Không gọi `localStorage.clear()`: dữ liệu lớp, bản chờ đồng bộ, bản nháp và cấu hình Microsoft được giữ nguyên. Không tự chạy đăng nhập trong iframe dùng cho gia hạn token.
+
+Đăng nhập, đăng xuất và request API có màn hình chờ dạng modal với nền làm mờ, khóa bấm lặp kể cả khi đang mở biểu mẫu. Request API được xếp hàng: `await` hoàn tất phản hồi và đọc JSON, sau đó chờ `REQUEST_SETTLE_MS = 2000` bằng `setTimeout` trước khi trả kết quả và chạy request kế tiếp. Khoảng chờ bổ sung không thay thế việc đợi request thật. Lỗi cũng kết thúc trạng thái chờ; đổi phiên trong lúc chờ sẽ bỏ phản hồi và các request xếp hàng của phiên cũ. Khi có nhiều thao tác cùng chờ, lớp phủ chỉ đóng khi tất cả hoàn tất.
 
 Đăng ký Redirect URI mới trong Entra → Authentication → Single-page application (SPA), theo đúng địa chỉ đang sử dụng, ví dụ:
 
