@@ -92,8 +92,8 @@ function resetCloud() {
   cloud.checks = {};
 }
 
-function databaseRequest(path, method = "GET", body) {
-  const epoch=cloud.epoch,release=beginPageLoading(method==='GET'?'Đang tải dữ liệu…':'Đang lưu dữ liệu…');
+function databaseRequest(path, method = "GET", body, {silent=false} = {}) {
+  const epoch=cloud.epoch,release=silent?()=>{}:beginPageLoading(method==='GET'?'Đang tải dữ liệu…':'Đang lưu dữ liệu…');
   const request=databaseQueue.then(()=>{
     if(epoch!==cloud.epoch)throw Error('Phiên làm việc đã thay đổi.');
     return performDatabaseRequest(path,method,body);
@@ -258,7 +258,7 @@ async function flushCloud() {
         const result = await databaseRequest("/classes/" + id, "PUT", {
           classData: snapshot,
           revision: cloud.revisions[id] || 0,
-        });
+        }, {silent:true});
         if (epoch !== cloud.epoch) return;
         cloud.revisions[id] = result.revision;
         cloud.baselines[id] = classFingerprint(result.data);
@@ -319,7 +319,7 @@ async function refreshCloud(quiet = false) {
       if (cloud.worker) await cloud.worker;
     }
     cloud.busy = true;
-    const data = await databaseRequest("/bootstrap");
+    const data = await databaseRequest("/bootstrap", "GET", undefined, {silent:quiet});
     useBootstrap(data);
     cloud.unassignedDrafts = {};
     storePendingDrafts();

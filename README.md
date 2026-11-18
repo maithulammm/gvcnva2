@@ -90,6 +90,8 @@ Nút **Đăng xuất** xóa marker ghi nhớ và gọi MSAL `logoutRedirect` kh�
 
 Đăng nhập, đăng xuất và request API có màn hình chờ dạng modal với nền làm mờ, khóa bấm lặp kể cả khi đang mở biểu mẫu. Request API được xếp hàng: `await` hoàn tất phản hồi và đọc JSON, sau đó chờ `REQUEST_SETTLE_MS = 2000` bằng `setTimeout` trước khi trả kết quả và chạy request kế tiếp. Khoảng chờ bổ sung không thay thế việc đợi request thật. Lỗi cũng kết thúc trạng thái chờ; đổi phiên trong lúc chờ sẽ bỏ phản hồi và các request xếp hàng của phiên cũ. Khi có nhiều thao tác cùng chờ, lớp phủ chỉ đóng khi tất cả hoàn tất.
 
+Lưu tự động và tải cập nhật định kỳ dùng request `silent`, không hiện màn hình chờ hoặc làm mờ nền; hàng đợi, thời gian chờ và xử lý lỗi đồng bộ vẫn giữ nguyên. Các thao tác chủ động như đăng nhập hoặc tải dữ liệu thủ công vẫn có trạng thái chờ.
+
 Đăng ký Redirect URI mới trong Entra → Authentication → Single-page application (SPA), theo đúng địa chỉ đang sử dụng, ví dụ:
 
 ```text

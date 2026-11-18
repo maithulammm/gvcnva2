@@ -14,6 +14,16 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('automatic saving and polling synchronize without showing the blocking loading screen',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`globalThis.loadingCalls=0;globalThis.originalLoading=beginPageLoading;
+    beginPageLoading=(...args)=>{loadingCalls++;return originalLoading(...args);};
+    cls().students.push({id:'S1',name:'Saved quietly',code:''});save()`);
+  await f.run('flushCloud()');
+  assert.equal((await api.bootstrap(admin)).classes['6A1'].students[0].name,'Saved quietly');
+  await f.run('refreshCloud(true)');
+  assert.equal(f.run('loadingCalls'),0);assert(!f.el('requestOverlay').open);
+});
 test('mobile menu preserves role scope, closes on navigation and clears after logout',async()=>{
   const f=frontend();await f.login();f.ctx.window.innerWidth=390;
   f.run(`auth.assignment={role:'gvcn',roles:['gvcn'],classId:'8C3'};ui.classId='8C3';render();openMobileNavigation()`);
