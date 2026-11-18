@@ -27,18 +27,18 @@ async function importBackup(e) {
   e.target.value = "";
   if (!files.length) return;
   if (cloud.ready) {
-    alert(
+    appAlert(
       "Khi dùng Firebase, hãy chuyển dữ liệu cũ tại trang Dữ liệu Firebase. Hệ thống chỉ nhập vào lớp còn trống để bảo vệ dữ liệu hiện có.",
     );
     return;
   }
   if (!hasAppRole("admin") && !hasAppRole("gvcn")) {
-    alert("Vai trò không được nhập bản sao lưu.");
+    appAlert("Vai trò không được nhập bản sao lưu.");
     return;
   }
   let total = 0;
   if (
-    !confirm(
+    !await appConfirm(
       `Ghép ${files.length} tệp sao lưu JSON vào dữ liệu cục bộ? Các lớp trùng mã sẽ được thay bằng dữ liệu trong file nhập.`,
     )
   )
@@ -59,7 +59,7 @@ async function importBackup(e) {
         total++;
       }
     } catch (err) {
-      alert(`Không nhập được ${f.name}: ${err.message}`);
+      appAlert(`Không nhập được ${f.name}: ${err.message}`);
     }
   }
   save();
@@ -98,13 +98,13 @@ async function migrateLegacyData() {
   try {
     original = JSON.parse(localStorage.getItem(DATA_KEY));
   } catch {
-    alert(
+    appAlert(
       "Bản dữ liệu cục bộ không đọc được. Hãy xuất bản sao để kiểm tra.",
     );
     return;
   }
   if (original?.schema !== 2 || !original.classes) {
-    alert("Không có dữ liệu cục bộ schema 2 để chuyển.");
+    appAlert("Không có dữ liệu cục bộ schema 2 để chuyển.");
     return;
   }
   const ids = CLASSES.filter((id) => {
@@ -121,7 +121,7 @@ async function migrateLegacyData() {
     return;
   }
   if (
-    !confirm(
+    !await appConfirm(
       `Chuyển dữ liệu cục bộ của ${ids.length} lớp lên Firebase? Chỉ nhập vào lớp trống; dữ liệu cục bộ ban đầu được giữ nguyên.`,
     )
   )
@@ -161,7 +161,7 @@ async function migrateLegacyData() {
       `Đã chuyển ${count} lớp; bỏ qua ${skipped} lớp đang có dữ liệu.`,
     );
   } catch (error) {
-    alert(`Đã chuyển ${count} lớp trước khi dừng: ${error.message}`);
+    appAlert(`Đã chuyển ${count} lớp trước khi dừng: ${error.message}`);
   } finally {
     cloud.busy = false;
     updateStorageNotice();

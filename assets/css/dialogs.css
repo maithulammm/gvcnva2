@@ -1,0 +1,11 @@
+.app-dialog { width:min(460px,calc(100% - 28px));max-height:calc(var(--visual-height,100dvh) - 32px);margin:auto;padding:0;border:0;border-radius:16px;background:#fff;color:var(--ink);box-shadow:0 24px 90px #133c4966;overflow-y:auto; }
+.app-dialog::backdrop { background:#143c4a88;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px); }
+.app-dialog-header { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid #e1e8e7; }
+.app-dialog-header h2 { font-size:20px;margin:0; }
+.app-dialog-body { padding:20px; }
+#appDialogMessage { white-space:pre-line;overflow-wrap:anywhere;margin:0;line-height:1.65; }
+#appDialogInputWrap { display:grid;gap:8px;margin-top:16px; }
+#appDialogInput { width:100%;min-height:100px;padding:12px;border:1px solid #bfd2d8;border-radius:10px;font:inherit;font-size:16px;resize:vertical; }
+.app-dialog-actions { display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid #e1e8e7; }
+.app-dialog button { min-height:44px; }
+body:has(#appDialog[open]) { overflow:hidden; }

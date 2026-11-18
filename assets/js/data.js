@@ -62,7 +62,7 @@ function save() {
     );
     if (cloud.ready) scheduleCloudSave();
   } catch (e) {
-    alert(
+    appAlert(
       "Không lưu được dữ liệu trình duyệt (có thể đã đầy bộ nhớ). Hãy xuất bản sao lưu JSON.",
     );
     return false;

@@ -135,6 +135,7 @@ function handleMicrosoftLogoutStorage(event) {
 }
 
 function lockUi() {
+  cancelAppDialogs();
   closeMobileNavigation();
   $('mobileNavLinks').replaceChildren();
   ui.preview = null;

@@ -5,9 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content" />
     <title>Việt Anh School • Quản lý GVCN · Microsoft 365</title>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261118-toolbar2" />
-    <link rel="stylesheet" href="assets/css/responsive.css?v=20261118-toolbar2" />
-    <link rel="stylesheet" href="assets/css/header.css?v=20261118-toolbar2" />
+    <link rel="stylesheet" href="assets/css/app.css?v=20261118-popups" />
+    <link rel="stylesheet" href="assets/css/responsive.css?v=20261118-popups" />
+    <link rel="stylesheet" href="assets/css/header.css?v=20261118-popups" />
+    <link rel="stylesheet" href="assets/css/dialogs.css?v=20261118-popups" />
   </head>
   <body>
     <!-- Microsoft login gate: before authentication NO application view is rendered. -->
@@ -124,6 +125,13 @@
       <p id="requestLoadingText" role="status" aria-live="polite">Đang tải dữ liệu…</p>
       <small>Vui lòng chờ hoàn tất.</small>
     </dialog>
+    <dialog id="appDialog" class="app-dialog" role="alertdialog" aria-modal="true" aria-labelledby="appDialogTitle" aria-describedby="appDialogMessage">
+      <div class="app-dialog-header"><h2 id="appDialogTitle">Xác nhận thao tác</h2><button type="button" class="close" aria-label="Đóng hộp xác nhận" onclick="finishAppDialog(false)">×</button></div>
+      <form id="appDialogForm">
+        <div class="app-dialog-body"><p id="appDialogMessage"></p><label id="appDialogInputWrap" hidden>Nội dung<textarea id="appDialogInput" rows="3"></textarea></label></div>
+        <div class="app-dialog-actions"><button type="button" class="btn" id="appDialogCancel" onclick="finishAppDialog(false)">Hủy</button><button type="submit" class="btn primary" id="appDialogAccept">Xác nhận</button></div>
+      </form>
+    </dialog>
     <div class="toast" id="toast"></div>
     <input type="file" id="xlsxInput" hidden accept=".xlsx,.xlsm,.xls" />
     <input type="file" id="directoryInput" hidden accept=".json" />
@@ -132,41 +140,42 @@
       defer
       src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"
     ></script>
-    <script defer src="assets/js/config.js"></script>
-    <script defer src="assets/js/state.js"></script>
-    <script defer src="assets/js/helpers.js"></script>
-    <script defer src="assets/js/loading.js"></script>
-    <script defer src="assets/js/data.js"></script>
-    <script defer src="assets/js/permissions.js"></script>
-    <script defer src="assets/js/validation.js"></script>
-    <script defer src="assets/js/router.js"></script>
-    <script defer src="assets/js/responsive.js"></script>
-    <script defer src="assets/js/views/dashboard.js"></script>
-    <script defer src="assets/js/views/students.js"></script>
-    <script defer src="assets/js/views/reports.js"></script>
-    <script defer src="assets/js/views/work.js"></script>
-    <script defer src="assets/js/forms/m01.js"></script>
-    <script defer src="assets/js/forms/schedule.js"></script>
-    <script defer src="assets/js/forms/m02.js"></script>
-    <script defer src="assets/js/forms/m03.js"></script>
-    <script defer src="assets/js/forms/m04.js"></script>
-    <script defer src="assets/js/forms/m05.js"></script>
-    <script defer src="assets/js/forms/schema.js"></script>
-    <script defer src="assets/js/forms/meeting.js"></script>
-    <script defer src="assets/js/forms/history.js"></script>
-    <script defer src="assets/js/choices.js"></script>
-    <script defer src="assets/js/forms/editor.js"></script>
-    <script defer src="assets/js/forms/drafts.js"></script>
-    <script defer src="assets/js/approval.js"></script>
-    <script defer src="assets/js/excel/template.js"></script>
-    <script defer src="assets/js/excel/codec.js"></script>
-    <script defer src="assets/js/excel/export.js"></script>
-    <script defer src="assets/js/excel/import.js"></script>
-    <script defer src="assets/js/backup.js"></script>
-    <script defer src="assets/js/demo.js"></script>
-    <script defer src="assets/js/firebase.js"></script>
-    <script defer src="assets/js/admin.js"></script>
-    <script defer src="assets/js/auth.js?v=20261118-no-redirect"></script>
-    <script defer src="assets/js/main.js"></script>
+    <script defer src="assets/js/config.js?v=20261118-popups"></script>
+    <script defer src="assets/js/state.js?v=20261118-popups"></script>
+    <script defer src="assets/js/helpers.js?v=20261118-popups"></script>
+    <script defer src="assets/js/loading.js?v=20261118-popups"></script>
+    <script defer src="assets/js/dialogs.js?v=20261118-popups"></script>
+    <script defer src="assets/js/data.js?v=20261118-popups"></script>
+    <script defer src="assets/js/permissions.js?v=20261118-popups"></script>
+    <script defer src="assets/js/validation.js?v=20261118-popups"></script>
+    <script defer src="assets/js/router.js?v=20261118-popups"></script>
+    <script defer src="assets/js/responsive.js?v=20261118-popups"></script>
+    <script defer src="assets/js/views/dashboard.js?v=20261118-popups"></script>
+    <script defer src="assets/js/views/students.js?v=20261118-popups"></script>
+    <script defer src="assets/js/views/reports.js?v=20261118-popups"></script>
+    <script defer src="assets/js/views/work.js?v=20261118-popups"></script>
+    <script defer src="assets/js/forms/m01.js?v=20261118-popups"></script>
+    <script defer src="assets/js/forms/schedule.js?v=20261118-popups"></script>
+    <script defer src="assets/js/forms/m02.js?v=20261118-popups"></script>
+    <script defer src="assets/js/forms/m03.js?v=20261118-popups"></script>
+    <script defer src="assets/js/forms/m04.js?v=20261118-popups"></script>
+    <script defer src="assets/js/forms/m05.js?v=20261118-popups"></script>
+    <script defer src="assets/js/forms/schema.js?v=20261118-popups"></script>
+    <script defer src="assets/js/forms/meeting.js?v=20261118-popups"></script>
+    <script defer src="assets/js/forms/history.js?v=20261118-popups"></script>
+    <script defer src="assets/js/choices.js?v=20261118-popups"></script>
+    <script defer src="assets/js/forms/editor.js?v=20261118-popups"></script>
+    <script defer src="assets/js/forms/drafts.js?v=20261118-popups"></script>
+    <script defer src="assets/js/approval.js?v=20261118-popups"></script>
+    <script defer src="assets/js/excel/template.js?v=20261118-popups"></script>
+    <script defer src="assets/js/excel/codec.js?v=20261118-popups"></script>
+    <script defer src="assets/js/excel/export.js?v=20261118-popups"></script>
+    <script defer src="assets/js/excel/import.js?v=20261118-popups"></script>
+    <script defer src="assets/js/backup.js?v=20261118-popups"></script>
+    <script defer src="assets/js/demo.js?v=20261118-popups"></script>
+    <script defer src="assets/js/firebase.js?v=20261118-popups"></script>
+    <script defer src="assets/js/admin.js?v=20261118-popups"></script>
+    <script defer src="assets/js/auth.js?v=20261118-popups"></script>
+    <script defer src="assets/js/main.js?v=20261118-popups"></script>
   </body>
 </html>

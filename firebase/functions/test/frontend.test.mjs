@@ -14,6 +14,27 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('custom dialogs queue messages, cancel prompts and reject confirmations after context changes',async()=>{
+  const f=frontend();await f.login();
+  let result=f.run(`realDialogs.confirm('Delete this record?')`);
+  assert(f.el('appDialog').open);assert.equal(f.el('appDialogMessage').textContent,'Delete this record?');
+  assert.equal(f.el('appDialogCancel').hidden,false);
+  f.run('finishAppDialog(false)');assert.equal(await result,false);
+  result=f.run(`realDialogs.prompt('Reason?')`);
+  f.el('appDialogInput').value='Review needed';f.run('finishAppDialog(true)');
+  assert.equal(await result,'Review needed');
+  result=f.run(`realDialogs.prompt('Cancel reason?')`);
+  f.run('finishAppDialog(false)');assert.equal(await result,null);
+  result=f.run(`realDialogs.confirm('Apply change?')`);
+  f.run(`ui.month='T12/2026';finishAppDialog(true)`);assert.equal(await result,false);
+  const first=f.run(`realDialogs.alert('First')`),second=f.run(`realDialogs.alert('Second')`);
+  assert.equal(f.el('appDialogMessage').textContent,'First');
+  f.run('finishAppDialog(true)');await first;
+  assert.equal(f.el('appDialogMessage').textContent,'Second');
+  f.run('finishAppDialog(true)');await second;
+  result=f.run(`realDialogs.confirm('Pending logout')`);
+  f.run('lockUi()');assert.equal(await result,false);assert(!f.el('appDialog').open);
+});
 test('GitHub Pages keeps its own login callback without redirecting or deleting local data',async()=>{
   const f=frontend(),before=[...f.memory.entries()];let target;
   Object.assign(f.ctx.location,{origin:'https://maithulammm.github.io',pathname:'/gvcnva2/index.html',search:'?code=private',hash:'#id_token=private',replace:url=>{target=url;}});
@@ -370,21 +391,21 @@ test('automatic scheduling preserves existing appointments and warns when two vi
     mdata().schedule.S0={date:'2027-02-02',session:'morning',planTime:'02/02/2027 · Sáng 9:55–10:15',goal:'Existing goal',note:'Keep me'};save()`);
   await f.run('flushCloud()');
   const original=f.run('JSON.stringify(mdata().schedule.S0)');let message='';
-  f.ctx.confirm=text=>{message=text;return false;};f.run('autoScheduleMonth()');
+  f.ctx.confirm=text=>{message=text;return false;};await f.run('autoScheduleMonth()');
   assert(message.includes('chưa đủ 2 lượt'));
   assert.equal(f.run('JSON.stringify(mdata().schedule.S0)'),original);
-  f.ctx.confirm=()=>true;f.run('autoScheduleMonth()');await f.run('flushCloud()');
+  f.ctx.confirm=()=>true;await f.run('autoScheduleMonth()');await f.run('flushCloud()');
   const existing=f.run(`studentAppointments(cls(),ui.month,'S0').find(a=>a.id==='legacy-S0')`);
   assert.equal(existing.goal,'Existing goal');assert.equal(existing.note,'Keep me');
   assert.equal(f.run('monthlyAppointments().length'),40);
   assert.equal(f.run('summarize(cls(),ui.month).meetings'),0);
-  const before=f.run('JSON.stringify(mdata())');f.run('autoScheduleMonth()');
+  const before=f.run('JSON.stringify(mdata())');await f.run('autoScheduleMonth()');
   assert.equal(f.run('JSON.stringify(mdata())'),before);
 });
 
 test('auto appointments appear in M02 without actual counts; confirmation links exactly one real meeting',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
-  f.run(`cls().students=[{id:'S1',name:'Student 1',code:''},{id:'S2',name:'Student 2',code:''}];autoScheduleMonth()`);
+  await f.run(`cls().students=[{id:'S1',name:'Student 1',code:''},{id:'S2',name:'Student 2',code:''}];autoScheduleMonth()`);
   await f.run('flushCloud()');
   assert.equal(f.run('monthlyAppointments().length'),6);
   assert.equal(f.run('summarize(cls(),ui.month).meetings'),0);
@@ -623,7 +644,7 @@ test('Admin previews all roles with scoped navigation and no data or role mutati
   assert.equal(f.run('save()'),false);
   const before=f.run('JSON.stringify(appData)');
   await f.run(`transition('8C3','submitted')`);
-  f.run('demoData()');
+  await f.run('demoData()');
   assert.equal(f.run('JSON.stringify(appData)'),before);
   f.run(`setRolePreview('lead','12C1')`);
   assert(f.run(`getScope().every(id=>gradeText(id)==='12')`));
@@ -711,6 +732,11 @@ function frontend({memory=new Map(),api}={}) {
   vm.createContext(ctx);
   for(const script of scripts)vm.runInContext(script.code,ctx,{filename:script.path});
   const run=code=>vm.runInContext(code,ctx);
+  ctx.realDialogs={alert:ctx.appAlert,confirm:ctx.appConfirm,prompt:ctx.appPrompt};
+  // Feature tests choose responses explicitly; popup behavior is tested separately.
+  ctx.appAlert=message=>{ctx.alert(message);return Promise.resolve(true);};
+  ctx.appConfirm=async message=>ctx.confirm(message);
+  ctx.appPrompt=async message=>ctx.prompt(message);
   async function login() {
     // Local feature tests explicitly opt out of the production Firebase default.
     if (!api) run('readCloudConfig=()=>({enabled:false})');
@@ -746,8 +772,8 @@ test('Admin student form add/edit/delete and linked student cannot be removed',a
   f.run(`openModal('student','${id}')`);
   await f.run(`submitForm({preventDefault(){},currentTarget:{name:'Tên cập nhật',code:'HS01'}});`);
   assert.equal(f.run('cls().students[0].name'),'Tên cập nhật');
-  f.run(`removeRecord('student','${id}')`);assert.equal(f.run('cls().students.length'),0);
-  f.run(`cls().students.push({id:'S2',name:'Có hồ sơ',code:'HS02'});mdata().previous.push({id:'R1',studentId:'S2'});removeRecord('student','S2')`);
+  await f.run(`removeRecord('student','${id}')`);assert.equal(f.run('cls().students.length'),0);
+  await f.run(`cls().students.push({id:'S2',name:'Có hồ sơ',code:'HS02'});mdata().previous.push({id:'R1',studentId:'S2'});removeRecord('student','S2')`);
   assert.equal(f.run('cls().students.length'),1);assert.equal(f.alerts.length,1);
 });
 

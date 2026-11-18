@@ -21,8 +21,8 @@ for(const [,attributes,inline] of tags) {
   sources.push(src);
   new vm.Script(fs.readFileSync(new URL(src,root),'utf8'),{filename:src});
 }
-assert.equal(sources.at(0),'assets/js/config.js');
-assert.equal(sources.at(-1),'assets/js/main.js');
+assert.equal(sources.at(0).split('?')[0],'assets/js/config.js');
+assert.equal(sources.at(-1).split('?')[0],'assets/js/main.js');
 for(const href of [...html.matchAll(/<link\b[^>]*href="([^"]+)"/gi)].map(m=>m[1])) {
   if(!/^https?:/.test(href)) assert(fs.statSync(new URL(href,root)).isFile(),'Missing asset '+href);
 }

@@ -166,7 +166,7 @@ async function submitForm(e) {
   e.preventDefault();
   if (!ui.editing) return;
   if (!editorContextCurrent()) {
-    alert("Lớp, tháng hoặc dữ liệu đã thay đổi. Hãy đóng và mở lại biểu mẫu; bản nháp trên máy được giữ lại.");
+    appAlert("Lớp, tháng hoặc dữ liệu đã thay đổi. Hãy đóng và mở lại biểu mẫu; bản nháp trên máy được giữ lại.");
     return;
   }
   let { type, id } = ui.editing;
@@ -199,7 +199,7 @@ async function submitForm(e) {
   });
   if(type==='m02') {
     try { record=serializeMeetingInputs(fd,record); }
-    catch(error) { alert(error.message);return; }
+    catch(error) { appAlert(error.message);return; }
   }
   if (type === "userRoles") {
     if (!record.roles.includes("lead")) record.grades = [];
@@ -211,7 +211,7 @@ async function submitForm(e) {
       render();
       toast("Đã cập nhật vai trò trên Firebase.");
     } catch (error) {
-      alert(error.message);
+      appAlert(error.message);
     } finally {
       $("modalSave").disabled = false;
     }
@@ -230,7 +230,7 @@ async function submitForm(e) {
           : "Đã lưu GVCN và phân công trên trình duyệt.",
       );
     } catch (error) {
-      alert(error.message);
+      appAlert(error.message);
     } finally {
       $("modalSave").disabled = false;
     }
@@ -252,7 +252,7 @@ async function submitForm(e) {
           x.id !== id,
       )
     ) {
-      alert(
+      appAlert(
         "Tên hoặc mã học sinh trùng. Hai học sinh cùng tên cần mã học sinh riêng để phân biệt.",
       );
       return;
@@ -261,17 +261,17 @@ async function submitForm(e) {
     else c.students.push({ ...record, id: newID() });
   } else if (type === "m01") {
     try { m.schedule[id] = buildScheduleRecord(c,ui.month,id,record); }
-    catch(error) { alert(error.message); return; }
+    catch(error) { appAlert(error.message); return; }
   } else if (type === "m05detail") {
     let meeting = lookup(type, id);
     Object.assign(meeting, record);
   } else if (type === "profile") {
     if (!id && c.profiles.length >= 40) {
-      alert("File Excel mẫu chỉ có tối đa 40 hồ sơ M05/lớp.");
+      appAlert("File Excel mẫu chỉ có tối đa 40 hồ sơ M05/lớp.");
       return;
     }
     if (c.profiles.some((x) => x.code === record.code && x.id !== id)) {
-      alert("Mã phiếu M05 đã tồn tại.");
+      appAlert("Mã phiếu M05 đã tồn tại.");
       return;
     }
     if (id) Object.assign(lookup(type, id), record);
@@ -283,7 +283,7 @@ async function submitForm(e) {
       const source=mdata(c,sourceMonth,false).plans.find(p=>p.id===sourcePlanId);
       if (!source || source.studentId!==record.studentId || source.result==="Đạt" ||
           m.plans.some(p=>p.sourceMonth===sourceMonth&&p.sourcePlanId===sourcePlanId)) {
-        alert("Kế hoạch gốc đã thay đổi hoặc đã được chuyển tiếp. Hãy kiểm tra lại.");
+        appAlert("Kế hoạch gốc đã thay đổi hoặc đã được chuyển tiếp. Hãy kiểm tra lại.");
         return;
       }
       Object.assign(record,{sourceMonth,sourcePlanId});
@@ -293,18 +293,18 @@ async function submitForm(e) {
     if (linkedAppointment) {
       const appointment=studentAppointments(c,ui.month,record.studentId).find(a=>a.id===linkedAppointment);
       if (!appointment || m.meetings.some(r=>r.id!==id&&r.appointmentId===appointment.id)) {
-        alert('Lịch hẹn đã thay đổi hoặc đã ghi nhận cuộc gặp. Hãy mở lại danh sách.');return;
+        appAlert('Lịch hẹn đã thay đổi hoặc đã ghi nhận cuộc gặp. Hãy mở lại danh sách.');return;
       }
       record.appointmentId=appointment.id;
     }
     if (type === "m02" && record.profileId) {
       let profile = c.profiles.find((x) => x.id === record.profileId);
       if (!profile || profile.studentId !== record.studentId) {
-        alert("Phiếu M05 phải thuộc đúng học sinh của lượt gặp.");
+        appAlert("Phiếu M05 phải thuộc đúng học sinh của lượt gặp.");
         return;
       }
       if (!record.profileProgress || !record.profileNext) {
-        alert(
+        appAlert(
           "Đã liên kết M05: cần nhập Tiến bộ/khó khăn và Mốc kiểm tra tiếp theo.",
         );
         return;
@@ -329,7 +329,7 @@ async function submitForm(e) {
   toast(cloud.ready ? "Đã lưu, đang đồng bộ dữ liệu…" : "Đã lưu thông tin.");
 }
 
-function removeRecord(type, id) {
+async function removeRecord(type, id) {
   if (cloud.busy) return;
   if (!editable() && type !== "student") return;
   if (!canEditSetup() && type === "student") return;
@@ -339,14 +339,14 @@ function removeRecord(type, id) {
   if (!r) return;
   let name = r.studentId ? studentName(c, r.studentId) : r.name || r.code;
   if (
-    !confirm(
+    !await appConfirm(
       `Xóa mục "${name}"? Thao tác này không thể hoàn tác nếu chưa có bản sao lưu.`,
     )
   )
     return;
   if (type === "student") {
     if (hasStudentReferences(c, id)) {
-      alert(
+      appAlert(
         "Học sinh đã có dữ liệu liên quan. Hãy giữ hồ sơ và cập nhật danh sách theo quy trình quản trị, tránh mất dữ liệu.",
       );
       return;
@@ -359,7 +359,7 @@ function removeRecord(type, id) {
         (mm.meetings || []).some((x) => x.profileId === id),
       )
     ) {
-      alert("Hãy bỏ liên kết M05 ở từng lượt M02 trước khi xóa phiếu.");
+      appAlert("Hãy bỏ liên kết M05 ở từng lượt M02 trước khi xóa phiếu.");
       return;
     }
     c.profiles = c.profiles.filter((x) => x.id !== id);

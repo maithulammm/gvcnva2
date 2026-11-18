@@ -140,10 +140,10 @@ function buildScheduleRecord(c,month,id,record) {
   return appointmentRollup(old,previous?appointments.map(a=>a.id===appointmentId?appointment:a):[...appointments,appointment]);
 }
 
-function removeAppointment(studentId,appointmentId) {
+async function removeAppointment(studentId,appointmentId) {
   if (!editable()) return;
-  if (mdata().meetings.some(r=>r.appointmentId===appointmentId)) return alert('Lịch đã liên kết cuộc gặp thực tế, không thể xóa.');
-  if (!confirm('Xóa lịch hẹn dự kiến này?')) return;
+  if (mdata().meetings.some(r=>r.appointmentId===appointmentId)) return appAlert('Lịch đã liên kết cuộc gặp thực tế, không thể xóa.');
+  if (!await appConfirm('Xóa lịch hẹn dự kiến này?')) return;
   const c=cls(),m=mdata(),old=m.schedule[studentId];
   if (!old||!studentAppointments(c,ui.month,studentId).some(a=>a.id===appointmentId)) return;
   m.schedule[studentId]=appointmentRollup(old,studentAppointments(c,ui.month,studentId).filter(a=>a.id!==appointmentId));
@@ -169,13 +169,13 @@ function buildAutomaticSchedule(c=cls(),month=ui.month) {
   return {classData:copy,added};
 }
 
-function autoScheduleMonth() {
+async function autoScheduleMonth() {
   if (!editable()) return;
   if (!cls().students.length) return toast('Cần nhập danh sách học sinh trước khi xếp lịch.');
   const c=cls(),result=buildAutomaticSchedule(c);
   if (!result.added) return toast('Không còn khung giờ trống hoặc học sinh đã đủ 3 lịch hẹn.');
   const belowTwo=c.students.filter(s=>studentAppointments(result.classData,ui.month,s.id).length<2).length;
-  if (!confirm(`Xếp thêm ${result.added} lịch theo thứ tự danh sách, ngày và buổi. Giữ nguyên lịch đã có. Tối đa 3 lịch/HS.${belowTwo?`\n${belowTwo} học sinh chưa đủ 2 lượt vì tháng không đủ khung giờ phù hợp.`:''}\nCác lịch chỉ là dự kiến, chưa tính là đã gặp. Áp dụng?`)) return;
+  if (!await appConfirm(`Xếp thêm ${result.added} lịch theo thứ tự danh sách, ngày và buổi. Giữ nguyên lịch đã có. Tối đa 3 lịch/HS.${belowTwo?`\n${belowTwo} học sinh chưa đủ 2 lượt vì tháng không đủ khung giờ phù hợp.`:''}\nCác lịch chỉ là dự kiến, chưa tính là đã gặp. Áp dụng?`)) return;
   const old=c.months[ui.month];c.months[ui.month]=result.classData.months[ui.month];
   if (!save()) {if(old)c.months[ui.month]=old;else delete c.months[ui.month];return;}
   render();toast(`Đã xếp thêm ${result.added} lịch dự kiến. Xem tại Mẫu 2.`);

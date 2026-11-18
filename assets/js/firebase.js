@@ -295,7 +295,7 @@ async function retryCloud() {
     render();
     toast("Đã đồng bộ các thay đổi lên Firebase.");
   } catch (error) {
-    alert(error.message);
+    appAlert(error.message);
   }
 }
 
@@ -311,7 +311,7 @@ async function refreshCloud(quiet = false) {
     ) {
       if (quiet) return;
       if (
-        !confirm(
+        !await appConfirm(
           "Tải lại sẽ bỏ bản đang sửa trên màn hình. Hãy xuất JSON trước nếu cần giữ. Tiếp tục tải dữ liệu máy chủ?",
         )
       )
@@ -333,7 +333,7 @@ async function refreshCloud(quiet = false) {
     } else {
       cloud.error = error.message;
       updateStorageNotice();
-      if (!quiet) alert(error.message);
+      if (!quiet) appAlert(error.message);
     }
   } finally {
     cloud.busy = false;
@@ -373,10 +373,10 @@ function updateStorageNotice() {
       : "";
 }
 
-function enableFirebase() {
+async function enableFirebase() {
   if (!hasAppRole("admin")) return;
   if (
-    !confirm(
+    !await appConfirm(
       "Bật kết nối API Firebase đã triển khai? Dữ liệu cục bộ sẽ được giữ riêng để chuyển lên sau.",
     )
   )

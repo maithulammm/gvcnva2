@@ -98,7 +98,7 @@ async function exportClass() {
   try {
     let c = cls();
     if (!c.students.length) {
-      alert("Lớp chưa có danh sách học sinh.");
+      appAlert("Lớp chưa có danh sách học sinh.");
       return;
     }
     let b = b64bytes(TEMPLATE_B64);
@@ -283,7 +283,7 @@ async function exportClass() {
     toast("Đã xuất Excel 15 sheet theo mẫu gốc.");
   } catch (e) {
     console.error(e);
-    alert("Không xuất được Excel: " + e.message);
+    appAlert("Không xuất được Excel: " + e.message);
   }
 }
 

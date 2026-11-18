@@ -2,7 +2,7 @@
 
 // Explicit offline-only synthetic example data.
 
-function demoData() {
+async function demoData() {
   if (isRolePreview()) return;
   if (cloud.ready) {
     toast("Dữ liệu minh họa chỉ dùng trong chế độ cục bộ.");
@@ -11,7 +11,7 @@ function demoData() {
   const c = cls("6A1");
   if (
     c.students.length &&
-    !confirm("Lớp 6A1 đã có dữ liệu. Thay bằng dữ liệu demo giả lập?")
+    !await appConfirm("Lớp 6A1 đã có dữ liệu. Thay bằng dữ liệu demo giả lập?")
   )
     return;
   appData.classes["6A1"] = {

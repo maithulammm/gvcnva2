@@ -8,7 +8,7 @@ async function importRoster(e) {
   input.value = "";
   if (!blob) return;
   if (!canEditSetup()) {
-    alert("Không đủ quyền nhập danh sách.");
+    appAlert("Không đủ quyền nhập danh sách.");
     return;
   }
   const targetClass = cls();
@@ -16,7 +16,7 @@ async function importRoster(e) {
   const targetRoster = stableString(targetClass.students);
   if (
     cls().students.length &&
-    !confirm(
+    !await appConfirm(
       "Nhập lại danh sách có thể làm lệch liên kết hồ sơ cũ. Chỉ nên nhập khi chưa có dữ liệu hoặc đã sao lưu. Tiếp tục?",
     )
   )
@@ -123,7 +123,7 @@ async function importRoster(e) {
     toast(`Đã nhập ${roster.length} học sinh từ sheet ${chosen.sh}.`);
   } catch (err) {
     console.error(err);
-    alert("Không thể nhập danh sách: " + err.message);
+    appAlert("Không thể nhập danh sách: " + err.message);
   }
 }
 

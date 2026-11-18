@@ -47,7 +47,7 @@ async function saveUserRole(record) {
   const gained = record.roles.filter((role) => !previousRoles.includes(role));
   if (
     gained.some((role) => ["admin", "bgh", "lead"].includes(role)) &&
-    !confirm(
+    !await appConfirm(
       `Cấp vai trò ${gained.map((role) => ROLE_NAMES[role]).join(", ")} cho ${record.email}? Vai trò này mở quyền truy cập theo phạm vi được nêu.`,
     )
   )
@@ -68,7 +68,7 @@ async function importDirectoryFile(e) {
   input.value = "";
   if (!file) return;
   if (!canEditSetup() || !cloud.ready) {
-    alert("Chỉ Admin đang kết nối Firebase mới được nhập phân công.");
+    appAlert("Chỉ Admin đang kết nối Firebase mới được nhập phân công.");
     return;
   }
   try {
@@ -81,7 +81,7 @@ async function importDirectoryFile(e) {
     )
       throw Error("Tệp phân công không đúng định dạng năm học 2026–2027.");
     if (
-      !confirm(
+      !await appConfirm(
         `Nhập ${data.teachers.length} phân công GVCN và ${data.users.length} tài khoản vai trò lên Firebase? Lớp đã có GVCN khác hoặc tài khoản có quyền ngoài tệp sẽ bị từ chối, không ghi đè.`,
       )
     )
@@ -100,7 +100,7 @@ async function importDirectoryFile(e) {
       `Đã đồng bộ ${data.teachers.length} GVCN và ${data.users.length} tài khoản vai trò.`,
     );
   } catch (error) {
-    alert("Không thể nhập phân công: " + error.message);
+    appAlert("Không thể nhập phân công: " + error.message);
   } finally {
     cloud.busy = false;
     updateStorageNotice();
@@ -185,7 +185,7 @@ async function deleteTeacherAccount(id) {
   const t = appData.teachers?.[id];
   if (!t) return;
   if (
-    !confirm(
+    !await appConfirm(
       `Xóa GVCN ${t.name} và thu hồi phân công lớp ${t.classId}? Hồ sơ lớp và học sinh được giữ lại.`,
     )
   )
@@ -217,6 +217,6 @@ async function deleteTeacherAccount(id) {
     render();
     toast("Đã xóa GVCN và giữ nguyên hồ sơ lớp.");
   } catch (error) {
-    alert(error.message);
+    appAlert(error.message);
   }
 }

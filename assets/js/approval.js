@@ -42,30 +42,31 @@ async function transition(classId, target) {
   if (target === "submitted") {
     let v = validations(c, ui.month);
     if (!v.hasData) {
-      alert("Chưa có dữ liệu tháng để gửi báo cáo.");
+      appAlert("Chưa có dữ liệu tháng để gửi báo cáo.");
       return;
     }
     if (v.errors.length) {
-      alert(
+      appAlert(
         `Còn ${v.errors.length} lỗi bắt buộc. Vui lòng hoàn thiện trước khi gửi.`,
       );
       return;
     }
     if (
       v.warnings.length &&
-      !confirm(`Có ${v.warnings.length} chú ý. Tiếp tục gửi báo cáo?`)
+      !await appConfirm(`Có ${v.warnings.length} chú ý. Tiếp tục gửi báo cáo?`)
     )
       return;
   }
-  let note =
-    target === "returned"
-      ? prompt(
-          "Ghi lý do yêu cầu bổ sung (không ghi thông tin riêng tư HS):",
-        ) || "Yêu cầu bổ sung dữ liệu"
-      : "";
+  let note = "";
+  if(target==='returned') {
+    const answer=await appPrompt('Ghi lý do yêu cầu bổ sung (không ghi thông tin riêng tư HS):');
+    if(answer===null)return;
+    note=answer.trim();
+    if(!note){appAlert('Cần nhập lý do trả bổ sung.');return;}
+  }
   if (
     target !== "returned" &&
-    !confirm(`Xác nhận chuyển trạng thái: ${stageName(target)}?`)
+    !await appConfirm(`Xác nhận chuyển trạng thái: ${stageName(target)}?`)
   )
     return;
   let actor = auth.email;
@@ -89,15 +90,15 @@ async function cloudTransition(id, target) {
   if (cloud.busy) return;
   let note = "";
   if (target === "returned") {
-    const answer = prompt("Lý do yêu cầu bổ sung:");
+    const answer = await appPrompt("Lý do yêu cầu bổ sung:");
     if (answer === null) return;
     note = answer.trim();
     if (!note) {
-      alert("Cần nhập lý do trả bổ sung.");
+      appAlert("Cần nhập lý do trả bổ sung.");
       return;
     }
   } else if (
-    !confirm("Xác nhận chuyển trạng thái: " + stageName(target) + "?")
+    !await appConfirm("Xác nhận chuyển trạng thái: " + stageName(target) + "?")
   )
     return;
   try {
@@ -118,6 +119,6 @@ async function cloudTransition(id, target) {
     render();
     toast("Đã cập nhật trạng thái trên Firebase.");
   } catch (error) {
-    alert(error.message);
+    appAlert(error.message);
   }
 }

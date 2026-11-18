@@ -63,8 +63,8 @@ function clearEditorDraft() {
   }
 }
 
-function discardEditorDraft() {
-  if (!ui.editing || !confirm("Bỏ bản nháp chưa lưu của biểu mẫu này?")) return;
+async function discardEditorDraft() {
+  if (!ui.editing || !await appConfirm("Bỏ bản nháp chưa lưu của biểu mẫu này?")) return;
   const {type,id,seed}=ui.editing;
   clearEditorDraft();
   openModal(type,id,seed);
