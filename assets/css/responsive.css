@@ -4,6 +4,7 @@
 .main, #view, .card, .cols2 > *, .fieldgrid > * { min-width: 0; }
 .logo small { display: block; }
 .field input, .field textarea, .field select { font-weight:400; }
+.work-appointments { white-space:pre-line; }
 .field input[type="checkbox"] { width:20px; height:20px; min-height:20px; padding:0; flex:0 0 20px; }
 .field label:has(input[type="checkbox"]) { min-height:44px; }
 .auth-id, .pill, .schedule-student { overflow-wrap: anywhere; }
