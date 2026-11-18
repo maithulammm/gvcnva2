@@ -56,7 +56,7 @@
       </aside>
       <main class="main">
         <div class="topline">
-          <div>
+          <div class="top-heading">
             <h1 id="pageTitle" tabindex="-1">Tổng quan công tác chủ nhiệm</h1>
             <p class="subtitle" id="pageSubtitle">
               Theo dõi đồng bộ 5 biểu mẫu trên 32 lớp
@@ -75,13 +75,13 @@
             >
             <label class="role-selector">Vai trò <span id="roleLabel" class="pill">—</span></label
             ><label class="grade-selector">Khối / phạm vi<select id="gradeSel" data-choice-mode="dropdown"></select></label
-            ><label class="class-selector">Lớp<select id="classSel"></select></label
+            ><label class="class-selector">Lớp<select id="classSel" data-choice-mode="dropdown"></select></label
             ><label class="month-selector">Tháng báo cáo<select id="monthSel" data-choice-mode="dropdown"></select></label>
           </div>
-        </div>
-        <div id="rolePreview" class="actions"></div>
-        <div class="notice" id="offlineNotice">
-          Đang kiểm tra trạng thái lưu dữ liệu…
+          <div id="rolePreview" class="actions"></div>
+          <div class="notice" id="offlineNotice">
+            Đang kiểm tra trạng thái lưu dữ liệu…
+          </div>
         </div>
         <div id="syncActions" class="actions"></div>
         <div id="view"></div>

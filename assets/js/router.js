@@ -45,7 +45,7 @@ function renderRolePreview() {
   const classId = ui.preview?.classId || ui.classId;
   host.innerHTML = `<label>Admin · Xem thử vai trò <select data-choice-mode="dropdown" onchange="setRolePreview(this.value)">
     <option value="">Quyền thực tế</option>${["gvcn","lead","bgh","admin"].map(r=>`<option value="${r}" ${role===r?"selected":""}>${esc(ROLE_NAMES[r])}</option>`).join("")}</select></label>
-    ${role ? `<label>Lớp / khối mô phỏng <select onchange="setRolePreview('${role}',this.value)">${CLASSES.map(id=>`<option value="${id}" ${id===classId?"selected":""}>${id} · Khối ${gradeText(id)}</option>`).join("")}</select></label>
+    ${role ? `<label>Lớp / khối mô phỏng <select data-choice-mode="dropdown" onchange="setRolePreview('${role}',this.value)">${CLASSES.map(id=>`<option value="${id}" ${id===classId?"selected":""}>${id} · Khối ${gradeText(id)}</option>`).join("")}</select></label>
     <span role="status">Đang xem thử ${esc(ROLE_NAMES[role])} · Chỉ xem, không lưu thay đổi.</span>${btn("Thoát xem thử", "setRolePreview('')", "small")}` : ""}`;
 }
 
@@ -102,6 +102,7 @@ function renderSelectors() {
     .map((role) => ROLE_NAMES[role] || role)
     .join(" · ");
   $("identityLabel").textContent = auth.email;
+  $("roleLabel").title = $("roleLabel").textContent;
   $("monthSel").innerHTML = MONTHS.map(
     (m) => `<option value="${m}">${m}</option>`,
   ).join("");
@@ -127,6 +128,7 @@ function render() {
     (hasAppRole('admin')?`<details class="admin-nav" ${adminPages.includes(ui.page)||ui.adminMenuOpen?'open':''} ontoggle="ui.adminMenuOpen=this.open"><summary title="Quản trị viên"><span class="ico" aria-hidden="true">⚙</span><span class="nav-text">Quản trị viên</span></summary><div class="admin-nav-links">${permitted.filter(([k])=>adminPages.includes(k)).map(navButton).join('')}</div></details>`:'');
   const head = HEADINGS[ui.page];
   $("pageTitle").textContent = head[0];
+  $("pageTitle").title = head[0];
   $("pageSubtitle").textContent = head[1];
   $("pageSubtitle").hidden = !head[1];
   $("view").innerHTML = {
