@@ -58,7 +58,7 @@ Lịch mới nằm trong `schedule[studentId].appointments`, mỗi lượt có `
 
 Một cuộc gặp được lưu duy nhất trong `meetings`: M01 lấy trạng thái từ bản ghi này và M05 hiển thị qua `profileId`, không tạo bản sao. Kết nối PHHS luôn phải ghi riêng sau khi thực hiện. Không thay đổi công thức thống kê, điều kiện kiểm tra hoặc quy trình duyệt báo cáo.
 
-M02 tách ngày giờ (`actualDateTime`) và địa điểm (`actualLocation`); khi ghi nhận một lịch dự kiến sẽ điền sẵn giờ hẹn và `Phòng [mã lớp]`, đều sửa được. Trường quan tâm và tham gia có placeholder cùng gợi ý bấm chọn, vẫn cho phép gõ nội dung riêng. Ba nút tiến bộ hiển thị “Chưa ghi nhận / Có tiến bộ / Chưa tiến bộ”, ánh xạ về giá trị cũ “Chưa đủ căn cứ / Có / Không” để giữ cách tính báo cáo.
+M02 chọn ngày bằng lịch và nhập giờ 24 giờ `HH:mm` (00:00–23:59), không dùng bộ chọn SA/CH phụ thuộc thiết lập máy. Ngày và giờ được ghép thành `actualDateTime`; địa điểm nằm trong `actualLocation`. Khi ghi nhận một lịch dự kiến sẽ điền sẵn giờ hẹn và `Phòng [mã lớp]`, đều sửa được. Trường quan tâm và tham gia có placeholder cùng gợi ý bấm chọn, vẫn cho phép gõ nội dung riêng. Ba nút tiến bộ hiển thị “Chưa ghi nhận / Có tiến bộ / Chưa tiến bộ”, ánh xạ về giá trị cũ “Chưa đủ căn cứ / Có / Không” để giữ cách tính báo cáo.
 
 M02 có ba dòng mục tiêu với thời hạn riêng bằng số và đơn vị ngày/tuần, mặc định 1 tuần. Chỉ mục tiêu 1 bắt buộc; dòng trống không được đưa vào báo cáo. `goals` giữ cấu trúc từng mục tiêu; `goal` và `actual` vẫn tổng hợp thành văn bản để Excel, M05 và báo cáo cũ tiếp tục sử dụng. Khi mở sửa dữ liệu cũ mà không đổi các ô thời gian hoặc mục tiêu, văn bản cũ được giữ nguyên, không tự bổ sung thời hạn vào hồ sơ đã có.
 

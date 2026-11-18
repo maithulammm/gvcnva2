@@ -14,6 +14,28 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('M02 shows a locale-independent 24-hour clock and rejects AM/PM or out-of-range hours',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student',code:''}];openWorkEntry('m02','S1')`);
+  assert.match(f.el('modalBody').innerHTML,/type="text" name="actualTime"/);
+  assert(!f.el('modalBody').innerHTML.includes('type="datetime-local"'));
+  f.ctx.input={...completeMeeting,profileId:'',actualDateTime:'2026-11-18T09:55',actualDate:'2026-11-18',actualTime:'15:00',actualLocation:'Phòng 6A1'};
+  f.run('saveEditorDraft(input);openWorkEntry("m02","S1")');
+  assert.match(f.el('modalBody').innerHTML,/name="actualTime" value="15:00"/);
+  for(const value of ['24:00','15:60','03:00 PM']) {
+    f.ctx.input.actualTime=value;
+    await f.run('submitForm({preventDefault(){},currentTarget:input})');
+    assert.equal(f.run('mdata().meetings.length'),0);
+  }
+  f.ctx.input.actualTime='15:00';await f.run('submitForm({preventDefault(){},currentTarget:input})');
+  assert.equal(f.run('mdata().meetings[0].actualDateTime'),'2026-11-18T15:00');
+  assert.equal(f.run('mdata().meetings[0].actual'),'18/11/2026 15:00 · Phòng 6A1');
+  for(const value of ['00:00','23:59']) {
+    f.run(`openWorkEntry('m02','S1')`);f.ctx.input.actualTime=value;
+    await f.run('submitForm({preventDefault(){},currentTarget:input})');
+    assert.equal(f.run('mdata().meetings.at(-1).actualDateTime'),'2026-11-18T'+value);
+  }
+});
 test('requests wait for the complete JSON body then 2 seconds before the next request and loading dismissal',async()=>{
   const f=frontend({api:createService(memoryDatabase())});await f.login();
   const cooldowns=[];f.ctx.setTimeout=(fn,ms)=>{if(ms===2000)cooldowns.push(fn);return 1;};

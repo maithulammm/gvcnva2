@@ -228,6 +228,11 @@ small,
   display: grid;
   gap: 6px;
 }
+.meeting-date-clock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(90px, .65fr);
+  gap: 8px;
+}
 .meeting-goals {
   display: grid;
   gap: 14px;

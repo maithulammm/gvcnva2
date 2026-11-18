@@ -7,7 +7,7 @@ const MEETING_SUGGESTIONS = {
     values:["Chưa đủ điều kiện so sánh","Chủ động trao đổi","Cần gợi mở","Tham gia tích cực hơn","Chưa ghi nhận thay đổi"]},
 };
 const PROGRESS_CHOICES = [["Chưa đủ căn cứ","Chưa ghi nhận"],["Có","Có tiến bộ"],["Không","Chưa tiến bộ"]];
-const MEETING_EXTRA_FIELDS = ["actualDateTime","actualLocation",...Array.from({length:3},(_,i)=>["goal"+(i+1),"goalAmount"+(i+1),"goalUnit"+(i+1)]).flat()];
+const MEETING_EXTRA_FIELDS = ["actualDateTime","actualDate","actualTime","actualLocation",...Array.from({length:3},(_,i)=>["goal"+(i+1),"goalAmount"+(i+1),"goalUnit"+(i+1)]).flat()];
 
 function parseMeetingActual(actual) {
   const text=String(actual||""),iso=text.match(/\b(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/),local=text.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/);
@@ -25,6 +25,8 @@ function meetingEditorValues(record) {
     const now=new Date();values.actualDateTime=record.actual+'T'+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   }
   values.actualLocation=record.actualLocation??(parsed.location||`Phòng ${cls().id}`);
+  values.actualDate=record.actualDate??(values.actualDateTime.split('T')[0]||'');
+  values.actualTime=record.actualTime??(values.actualDateTime.split('T')[1]||'');
   for(let i=1;i<=3;i++) {
     const goal=record.goals?.find(g=>(g.position||record.goals.indexOf(g)+1)===i);
     values['goal'+i]=record['goal'+i]??goal?.text??(i===1?record.goal||'':'');
@@ -36,9 +38,12 @@ function meetingEditorValues(record) {
 
 function meetingTimeControls(record) {
   const v=meetingEditorValues(record),legacy=ui.editing.id&&!v.actualDateTime&&record.actual;
-  return `<div class="meeting-time"><label>Ngày và giờ<input type="datetime-local" name="actualDateTime" value="${esc(v.actualDateTime)}" ${legacy?'':'required'}></label>
+  return `<div class="meeting-time"><div class="meeting-date-clock">
+    <label>Ngày gặp<input type="date" name="actualDate" value="${esc(v.actualDate)}" ${legacy?'':'required'}></label>
+    <label>Giờ (24 giờ)<input type="text" name="actualTime" value="${esc(v.actualTime)}" placeholder="HH:mm" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" maxlength="5" title="Nhập giờ 24 giờ, ví dụ 09:55 hoặc 15:00" ${legacy?'':'required'}></label></div>
     <label>Địa điểm<input type="text" name="actualLocation" value="${esc(v.actualLocation)}" required maxlength="200"></label></div>
     ${legacy?`<p class="help">Thời gian đã lưu: ${esc(record.actual)}. Để trống ngày giờ để giữ nguyên.</p>`:''}
+    <input type="hidden" name="actualDateTime" value="${esc(v.actualDateTime)}">
     <input type="hidden" name="actual" value="${esc(record.actual||'')}">`;
 }
 
@@ -75,7 +80,13 @@ function toggleMeetingSuggestion(key,index) {
 function serializeMeetingInputs(fd,record) {
   // Legacy integrations and old drafts can still supply the original fields.
   if(fd.get('actualDateTime')!==null) {
-    const dateTime=String(fd.get('actualDateTime')||'').trim(),location=String(fd.get('actualLocation')||'').trim();
+    let dateTime=String(fd.get('actualDateTime')||'').trim();
+    const location=String(fd.get('actualLocation')||'').trim();
+    if(fd.get('actualDate')!==null) {
+      const date=String(fd.get('actualDate')||'').trim(),time=String(fd.get('actualTime')||'').trim();
+      if((date||time)&&(!date||!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)))throw Error('Nhập đủ ngày và giờ 24 giờ, ví dụ 09:55 hoặc 15:00.');
+      dateTime=date&&time?date+'T'+time:'';
+    }
     const old=ui.editing.id?lookup('m02',ui.editing.id):null,initial=ui.editing.meetingInitial;
     const unchanged=old&&!old.actualDateTime&&dateTime===initial.actualDateTime&&location===initial.actualLocation;
     if(!location)throw Error('Cần nhập địa điểm gặp.');
