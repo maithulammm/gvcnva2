@@ -3,15 +3,7 @@
 // Microsoft-authenticated Firebase API adapter and pending drafts.
 
 function readCloudConfig() {
-  try {
-    return {
-      enabled:
-        JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY))?.enabled ===
-        true,
-    };
-  } catch {
-    return { enabled: false };
-  }
+  return { enabled: FIREBASE_ENABLED };
 }
 
 function cloudCacheKey() {

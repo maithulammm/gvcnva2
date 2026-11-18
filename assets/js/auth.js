@@ -17,12 +17,7 @@ function currentRedirectUri() {
 }
 
 function readAuthConfig() {
-  try {
-    let x = JSON.parse(localStorage.getItem(MICROSOFT_CONFIG_KEY));
-    return x && x.clientId && x.tenantId ? x : null;
-  } catch (e) {
-    return null;
-  }
+  return { ...MICROSOFT_CONFIG };
 }
 
 function isGuid(s) {
@@ -118,7 +113,7 @@ async function authenticatedStart(account) {
       lockUi();
       loginStatus(
         error.message +
-          " Nếu API chưa triển khai, tắt kết nối Firebase trong phần cấu hình dữ liệu.",
+          " Vui lòng liên hệ Admin để kiểm tra kết nối dữ liệu và phân công tài khoản.",
         true,
       );
       return;
@@ -192,7 +187,6 @@ async function makeMsalClient(config) {
 
 async function initializeMsLogin() {
   lockUi();
-  $("authDatabaseEnabled").checked = readCloudConfig().enabled;
   if (!/^https?:$/.test(location.protocol)) {
     loginStatus(
       "Không thể đăng nhập Microsoft khi mở trực tiếp file HTML (file://). Hãy chạy trên http://localhost:5500 để thử hoặc HTTPS khi triển khai.",
@@ -203,11 +197,9 @@ async function initializeMsLogin() {
   }
   const config = readAuthConfig();
   auth.config = config;
-  $("authTenant").value = config?.tenantId || "";
-  $("authClient").value = config?.clientId || "";
-  if (!config) {
+  if (!isGuid(config?.tenantId) || !isGuid(config?.clientId)) {
     loginStatus(
-      "Chưa có Client ID và Tenant ID. Mở mục “Cấu hình đăng nhập”, nhập mã từ Microsoft Entra và đăng ký đúng Redirect URI.",
+      "Cấu hình đăng nhập của hệ thống chưa hợp lệ. Vui lòng liên hệ quản trị viên.",
     );
     $("msLoginBtn").disabled = true;
     return;

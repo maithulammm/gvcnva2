@@ -60,7 +60,7 @@ http://127.0.0.1:5500/index.html
 http://localhost:5500/index.html
 ```
 
-Giữ Tenant ID và Client ID hiện tại. Nút **Sao chép Redirect URI** trên màn hình đăng nhập cung cấp chính xác URI cần đăng ký. Khi chỉnh bố cục, sửa trực tiếp **`index.html`**.
+Tenant ID và Client ID được giữ cố định trong `MICROSOFT_CONFIG` tại `assets/js/config.js`; `FIREBASE_ENABLED = true` bật dữ liệu dùng chung cho mọi máy. Màn hình chỉ có nút đăng nhập Microsoft, không cần nhập cấu hình trên trình duyệt mới. Redirect URI là origin hiện tại cộng đường dẫn thư mục và `index.html`, phải được đăng ký trong Microsoft Entra. Khi chỉnh bố cục, sửa trực tiếp **`index.html`**.
 
 Tiếp tục dùng cùng tên máy và cổng Live Server đã dùng trước đây để truy cập đúng dữ liệu/cấu hình trình duyệt. Các khóa lưu `VA_GVCN_MSAL_PROTOTYPE_DATA_V1`, `VA_GVCN_MICROSOFT_AUTH_CONFIG_V1`, khóa Firebase và cấu trúc dữ liệu `schema: 2` được giữ nguyên. Việc tách file không chạy chuyển đổi hoặc ghi dữ liệu trên database thật.
 
@@ -121,7 +121,7 @@ Trong Entra → App registrations → Authentication → Single-page application
 https://gvcnva2.netlify.app/index.html
 ```
 
-Giữ các URI localhost đang dùng. Cấu hình `pretty_urls = false` trong Netlify giữ nguyên đuôi `.html` cho callback. Trên `gvcnva2.netlify.app`, nhập Tenant ID/Client ID đang dùng ở phần cấu hình Microsoft vì mỗi tên miền có vùng lưu trình duyệt riêng. Dữ liệu cục bộ trên localhost vẫn ở localhost; xuất JSON nếu cần chuyển dữ liệu.
+Giữ các URI localhost đang dùng. Cấu hình `pretty_urls = false` trong Netlify giữ nguyên đuôi `.html` cho callback. Trên `gvcnva2.netlify.app`, mọi máy dùng cùng cấu hình Microsoft/Firebase từ mã nguồn; cấu hình đăng nhập cũ trong localStorage được giữ lại nhưng không ghi đè cấu hình triển khai. Dữ liệu cục bộ trên localhost vẫn ở localhost; xuất JSON nếu cần chuyển dữ liệu.
 
 API cho production được phục vụ cùng domain `https://gvcnva2.netlify.app`; Netlify tự triển khai function khi push lên `main`. Firebase Realtime Database vẫn ở project `gvcn-3bdf9`; không mở rules cho truy cập trực tiếp từ trình duyệt. Xem [hướng dẫn Firebase](firebase/README.md) để cấu hình biến môi trường bí mật trong Netlify.
 

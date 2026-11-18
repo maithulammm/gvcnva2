@@ -38,64 +38,6 @@
             >Đăng nhập với Microsoft
           </button>
         </div>
-        <details class="auth-config" id="authConfigDetails">
-          <summary>Cấu hình đăng nhập (dành cho người triển khai)</summary>
-          <label for="authTenant">Directory (Tenant) ID của trường</label>
-          <input
-            id="authTenant"
-            inputmode="text"
-            autocomplete="off"
-            spellcheck="false"
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          />
-          <label for="authClient">Application (Client) ID</label>
-          <input
-            id="authClient"
-            inputmode="text"
-            autocomplete="off"
-            spellcheck="false"
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-          />
-          <label for="authRedirect"
-            >Redirect URI (đăng ký giống hệt trong Entra)</label
-          >
-          <input id="authRedirect" readonly />
-          <p class="auth-note">
-            Nếu gặp lỗi AADSTS50011: đăng ký chính xác URI trên trong Entra →
-            Authentication → Single-page application (SPA). Địa chỉ dùng
-            localhost và 127.0.0.1 cần cấu hình riêng.
-          </p>
-          <button type="button" id="copyRedirectUri" class="btn">
-            Sao chép Redirect URI
-          </button>
-          <button type="button" id="saveAuthConfig" class="btn primary">
-            Lưu cấu hình Microsoft
-          </button>
-        </details>
-        <details class="auth-config">
-          <summary>Kết nối dữ liệu Firebase</summary>
-          <label
-            ><input
-              id="authDatabaseEnabled"
-              type="checkbox"
-              style="width: auto; min-height: 0"
-            />
-            Sử dụng dữ liệu dùng chung trên Firebase</label
-          >
-          <p class="auth-note">
-            Database: gvcn-3bdf9. Chỉ bật sau khi đã triển khai API. Cấu hình
-            Microsoft hiện tại được giữ nguyên.
-          </p>
-          <button type="button" id="saveDatabaseConfig" class="btn">
-            Lưu kết nối dữ liệu
-          </button>
-        </details>
-        <p class="auth-note">
-          Admin ban đầu: <b>lammt@vietanhschool.edu.vn</b>. Không nhập mật khẩu
-          vào ứng dụng; mật khẩu chỉ được cung cấp trên trang đăng nhập chính
-          thức của Microsoft. Admin quản lý GVCN và học sinh. Chế độ cục bộ lưu
-          trên trình duyệt; chế độ Firebase cần API đã triển khai.
-        </p>
       </div>
     </section>
     <div class="app">

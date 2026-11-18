@@ -60,6 +60,13 @@ const USER_ALLOWLIST = Object.freeze({
 
 const MICROSOFT_CONFIG_KEY = "VA_GVCN_MICROSOFT_AUTH_CONFIG_V1";
 
+// Public deployment configuration shared by every browser and device.
+const MICROSOFT_CONFIG = Object.freeze({
+  tenantId: "22215a7f-b9e3-4b53-bd27-3a317311e6ca",
+  clientId: "94c476b3-4723-4161-9dea-d64ff8bf505c",
+});
+const FIREBASE_ENABLED = true;
+
 const ROLE_NAMES = {
   gvcn: "Giáo viên chủ nhiệm",
   lead: "Khối trưởng",

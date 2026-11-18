@@ -39,37 +39,6 @@ $("directoryInput").addEventListener("change", importDirectoryFile);
 
 $("backupInput").addEventListener("change", importBackup);
 
-// Firebase adapter: keep the Microsoft sign-in flow and the legacy DATA_KEY intact.
-// Only the verified Microsoft session is sent to our API; no database secrets in HTML.
-
-$("authDatabaseEnabled").checked = readCloudConfig().enabled;
-
-$("saveDatabaseConfig").addEventListener("click", async () => {
-  localStorage.setItem(
-    CLOUD_CONFIG_KEY,
-    JSON.stringify({ enabled: $("authDatabaseEnabled").checked }),
-  );
-  await initializeMsLogin();
-});
-
-$("saveAuthConfig").addEventListener("click", async () => {
-  const tenantId = $("authTenant").value.trim(),
-    clientId = $("authClient").value.trim();
-  if (!isGuid(tenantId) || !isGuid(clientId)) {
-    loginStatus(
-      "Tenant ID và Application (Client) ID phải là chuỗi GUID hợp lệ của ứng dụng Microsoft Entra.",
-      true,
-    );
-    return;
-  }
-  localStorage.setItem(
-    MICROSOFT_CONFIG_KEY,
-    JSON.stringify({ tenantId, clientId }),
-  );
-  auth.client = null;
-  await initializeMsLogin();
-});
-
 $("msLoginBtn").addEventListener("click", async () => {
   if (!auth.client) {
     loginStatus("Chưa có cấu hình đăng nhập hợp lệ.", true);
@@ -104,23 +73,6 @@ $("msLogoutBtn").addEventListener("click", async () => {
       "Đã khóa giao diện; không thể hoàn tất đăng xuất Microsoft: " +
         String(e.message || e),
       true,
-    );
-  }
-});
-
-$("authRedirect").value = currentRedirectUri();
-
-$("copyRedirectUri").addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(currentRedirectUri());
-    loginStatus(
-      "Đã sao chép Redirect URI. Dán vào cấu hình Authentication → SPA của Entra.",
-    );
-  } catch {
-    $("authRedirect").focus();
-    $("authRedirect").select();
-    loginStatus(
-      "Hãy sao chép URI đang được chọn rồi thêm vào cấu hình Entra.",
     );
   }
 });

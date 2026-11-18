@@ -12,6 +12,24 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('new devices use source login and Firebase configuration without setup controls',async()=>{
+  for (const memory of [new Map(),new Map([
+    ['VA_GVCN_MICROSOFT_AUTH_CONFIG_V1','{"tenantId":"old","clientId":"old"}'],
+    ['VA_GVCN_FIREBASE_CONNECTION_V1','{"enabled":false}'],
+  ])]) {
+    const before=[...memory.entries()],f=frontend({memory});
+    f.run(`makeMsalClient=async config=>({handleRedirectPromise:async()=>null,getAllAccounts:()=>[]})`);
+    await f.run('initializeMsLogin()');
+    assert.equal(f.run('auth.config.tenantId'),'22215a7f-b9e3-4b53-bd27-3a317311e6ca');
+    assert.equal(f.run('auth.config.clientId'),'94c476b3-4723-4161-9dea-d64ff8bf505c');
+    assert.equal(f.run('readCloudConfig().enabled'),true);
+    assert.equal(f.el('msLoginBtn').disabled,false);
+    assert.deepEqual([...memory.entries()],before);
+  }
+  const gate=entryHtml.slice(entryHtml.indexOf('<section id="authGate"'),entryHtml.indexOf('<div class="app">'));
+  assert.equal((gate.match(/<button\b/g)||[]).length,1);
+  assert(!/<input\b|<details\b/.test(gate));
+});
 test('Admin previews all roles with scoped navigation and no data or role mutations',async()=>{
   const f=frontend();await f.login();
   const assignment=f.run('JSON.stringify(auth.assignment)');
@@ -114,6 +132,8 @@ function frontend({memory=new Map(),api}={}) {
   for(const script of scripts)vm.runInContext(script.code,ctx,{filename:script.path});
   const run=code=>vm.runInContext(code,ctx);
   async function login() {
+    // Local feature tests explicitly opt out of the production Firebase default.
+    if (!api) run('readCloudConfig=()=>({enabled:false})');
     run(`auth.config={tenantId:'22222222-2222-2222-2222-222222222222'};
       auth.client={acquireTokenSilent:async()=>({idToken:'SYNTHETIC-TEST-TOKEN'})};`);
     await run(`authenticatedStart({username:'lammt@vietanhschool.edu.vn',tenantId:auth.config.tenantId,idTokenClaims:{oid:'${admin.oid}'}});`);
