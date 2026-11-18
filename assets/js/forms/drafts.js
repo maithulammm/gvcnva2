@@ -18,7 +18,7 @@ function editorContextCurrent() {
 function editorDraftKey() {
   const e=ui.editing;
   if (!e || !DRAFT_TYPES.includes(e.type)) return null;
-  return `VA_GVCN_FORM_DRAFT_V1_${encodeURIComponent(auth.email)}_${e.classId}_${e.month.replace('/','_')}_${e.type}_${e.id||e.seed?.studentId||'new'}_${e.seed?.sourcePlanId||''}`;
+  return `VA_GVCN_FORM_DRAFT_V1_${encodeURIComponent(auth.email)}_${e.classId}_${e.month.replace('/','_')}_${e.type}_${e.id||e.seed?.studentId||'new'}_${e.seed?.sourcePlanId||e.seed?.appointmentId||''}`;
 }
 
 function restoreEditorDraft() {

@@ -14,7 +14,7 @@ function previousMonthPlans(c = cls(), month = ui.month) {
 function openWorkEntry(type, studentId) {
   if (!["m02", "m03", "plans", "m01"].includes(type) || !editable()) return;
   if (!cls().students.some(s => s.id === studentId)) return;
-  if (type === "m01") return openModal(type, studentId);
+  if (type === "m01") return openStudentAppointment(studentId);
   const plan = mdata().plans.find(p => p.studentId === studentId && p.result !== "Đạt");
   const seed = {studentId};
   if (type === "m02") {

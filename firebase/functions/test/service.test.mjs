@@ -12,6 +12,46 @@ async function fixture() {
 }
 const teacherInput={name:'Giáo viên A',email:teacher.email,classId:'8C3',active:true};
 
+test('API enforces weekdays, grade-12 Saturday morning, three appointments and unique actual links',async()=>{
+  const {api}=await fixture();
+  const make=(id,date,session='morning')=>({id,date,session,topics:[],note:'',goal:'',
+    planTime:`${date.slice(8)}/${date.slice(5,7)}/${date.slice(0,4)} · ${session==='morning'?'Sáng 9:55–10:15':'Chiều 15:00–15:20'}`});
+  const set=(c,items)=>{c.months['T11/2026']={...emptyMonth(),schedule:{S1:{appointments:items,planTime:items.map(a=>a.planTime).join('\n')}}};};
+  for(const classId of ['6A1','12C1']) {
+    let c=blankClass(classId);c.students=[{id:'S1',name:'Student',code:''},{id:'S2',name:'Other',code:''}];
+    set(c,[make('SAT','2026-11-21')]);
+    if(classId==='6A1') {await assert.rejects(api.putClass(admin,classId,{revision:0,classData:c}),e=>e.status===400);continue;}
+    let saved=await api.putClass(admin,classId,{revision:0,classData:c});c=saved.data;
+    for(const record of [make('SAT','2026-11-21','afternoon'),make('SUN','2026-11-22')]) {
+      const bad=structuredClone(c);set(bad,[record]);
+      await assert.rejects(api.putClass(admin,classId,{revision:saved.revision,classData:bad}),e=>e.status===400);
+    }
+    set(c,[make('SAT','2026-11-21'),make('MON','2026-11-23'),make('TUE','2026-11-24')]);
+    saved=await api.putClass(admin,classId,{revision:saved.revision,classData:c});c=saved.data;
+    const bad=structuredClone(c);set(bad,[...c.months['T11/2026'].schedule.S1.appointments,make('WED','2026-11-25')]);
+    await assert.rejects(api.putClass(admin,classId,{revision:saved.revision,classData:bad}),e=>e.status===400);
+    const sameDay=structuredClone(c);set(sameDay,[make('A','2026-11-23'),make('B','2026-11-23','afternoon')]);
+    await assert.rejects(api.putClass(admin,classId,{revision:saved.revision,classData:sameDay}),e=>e.status===409);
+    c.months['T11/2026'].meetings=[{id:'R1',studentId:'S1',appointmentId:'SAT'}];
+    saved=await api.putClass(admin,classId,{revision:saved.revision,classData:c});c=saved.data;
+    const duplicate=structuredClone(c);duplicate.months['T11/2026'].meetings.push({id:'R2',studentId:'S1',appointmentId:'SAT'});
+    await assert.rejects(api.putClass(admin,classId,{revision:saved.revision,classData:duplicate}),e=>e.status===409);
+    const removed=structuredClone(c);delete removed.months['T11/2026'].schedule.S1;
+    await assert.rejects(api.putClass(admin,classId,{revision:saved.revision,classData:removed}),e=>e.status===400);
+  }
+});
+
+test('unchanged older weekend schedules remain readable and do not block unrelated saves',async()=>{
+  const c=blankClass('6A1');c.students=[{id:'S1',name:'Student',code:''}];
+  c.months['T11/2026']={...emptyMonth(),schedule:{S1:{date:'2026-11-21',session:'morning',topics:['Vở ghi'],planTime:'21/11/2026 · Sáng 9:55–10:15'}}};
+  const api=createService(memoryDatabase({bootstrapAdminOid:admin.oid,users:{[emailKey(admin.email)]:{...admin,role:'admin'}},classes:{'6A1':{data:encodeClass(c),revision:1}}}));
+  c.months['T11/2026'].notes.teacher='Unrelated update';
+  const saved=await api.putClass(admin,'6A1',{revision:1,classData:c});
+  assert.equal(saved.data.months['T11/2026'].schedule.S1.date,'2026-11-21');
+  saved.data.months['T11/2026'].schedule.S1.note='Changed weekend appointment';
+  await assert.rejects(api.putClass(admin,'6A1',{revision:saved.revision,classData:saved.data}),e=>e.status===400);
+});
+
 test('M01 enforces two distinct-student sessions per day without counting actual meetings',async()=>{
   const {api}=await fixture();let boot=await api.saveTeacher(admin,teacherInput),c=boot.classes['8C3'];
   c.students=['S1','S2','S3'].map(id=>({id,name:id,code:id}));

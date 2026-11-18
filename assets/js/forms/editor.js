@@ -68,6 +68,13 @@ function openModal(type, id = "", seed = {}) {
   ui.editing = { type, id, seed, classId:c.id, month:ui.month,
     epoch:cloud.epoch, owner:auth.email, classObject:c,
     baseline:stableString(lookup(type,id)||{}) };
+  if (type === 'm01') {
+    const appointments=studentAppointments(c,ui.month,id);
+    const selected=seed.addAppointment?undefined:appointments.find(a=>a.id===(seed.appointmentId||appointments[0]?.id));
+    if (!selected&&appointments.length>=3) {ui.editing=null;toast('Học sinh đã đủ 3 lịch hẹn.');return;}
+    ui.editing.seed={...seed,appointmentId:selected?.id||'',addAppointment:!selected};
+    rec=selected?{...selected}:{};
+  }
   if (!id && type === "m02") Object.assign(rec, {
     actual:workToday(), progressEvidence:"Chưa đủ căn cứ", needsCoop:"Không", cooperation:"Chưa cần", ...rec,
   });
@@ -264,6 +271,14 @@ async function submitForm(e) {
       Object.assign(record,{sourceMonth,sourcePlanId});
     }
     if (type === "m02" && record.needsCoop === "Không") record.cooperation = "Chưa cần";
+    const linkedAppointment=type==='m02'?(ui.editing.seed?.appointmentId||(id?lookup(type,id)?.appointmentId:'')):'';
+    if (linkedAppointment) {
+      const appointment=studentAppointments(c,ui.month,record.studentId).find(a=>a.id===linkedAppointment);
+      if (!appointment || m.meetings.some(r=>r.id!==id&&r.appointmentId===appointment.id)) {
+        alert('Lịch hẹn đã thay đổi hoặc đã ghi nhận cuộc gặp. Hãy mở lại danh sách.');return;
+      }
+      record.appointmentId=appointment.id;
+    }
     if (type === "m02" && record.profileId) {
       let profile = c.profiles.find((x) => x.id === record.profileId);
       if (!profile || profile.studentId !== record.studentId) {

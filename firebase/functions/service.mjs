@@ -108,7 +108,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
           requireValue(hasRole(u,'admin'),'Chỉ Admin được chuyển dữ liệu cũ lên Firebase.',403);
           requireValue(!old.data.students.length&&!old.data.profiles.length&&!Object.keys(old.data.months).length,'Chỉ nhập dữ liệu cũ vào lớp còn trống; không ghi đè lớp đang có dữ liệu.',409);
         } else authorizeClassEdit(u,old.data,c);
-        validateClass(c);
+        validateClass(c,old.data);
         put(school,id,c,old.revision,identity);
       });
       return publicClass(s,id);

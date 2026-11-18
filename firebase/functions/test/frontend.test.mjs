@@ -14,6 +14,84 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('automatic scheduling follows roster order, weekdays and grade-12 Saturday mornings',async()=>{
+  const f=frontend();await f.login();
+  f.run(`ui.month='T02/2027';cls().students=Array.from({length:20},(_,i)=>({id:'S'+i,name:'Student '+i,code:''}));`);
+  const before=f.run('JSON.stringify(cls())');
+  f.run('globalThis.autoResult=buildAutomaticSchedule()');
+  assert.equal(f.run('JSON.stringify(cls())'),before);
+  assert.equal(f.run('autoResult.added'),40);
+  const ordered=JSON.parse(f.run('JSON.stringify(monthlyAppointments(autoResult.classData,ui.month))'));
+  assert.deepEqual(ordered.slice(0,3).map(a=>[a.studentId,a.date,a.session]),[['S0','2027-02-01','morning'],['S1','2027-02-01','afternoon'],['S2','2027-02-02','morning']]);
+  assert(f.run(`autoResult.classData.students.every(s=>studentAppointments(autoResult.classData,ui.month,s.id).length===2)`));
+  assert.equal(f.run('buildAutomaticSchedule(autoResult.classData,ui.month).added'),0);
+  f.run(`ui.classId='12C1';ui.grade='12';cls().students=Array.from({length:20},(_,i)=>({id:'S'+i,name:'Student '+i,code:''}));globalThis.auto12=buildAutomaticSchedule()`);
+  assert.equal(f.run('auto12.added'),44);
+  const saturday=JSON.parse(f.run(`JSON.stringify(monthlyAppointments(auto12.classData,ui.month).filter(a=>new Date(a.date+'T12:00:00').getDay()===6))`));
+  assert.equal(saturday.length,4);assert(saturday.every(a=>a.session==='morning'));
+  assert(f.run(`monthlyAppointments(auto12.classData,ui.month).every(a=>new Date(a.date+'T12:00:00').getDay()!==0)`));
+  f.run(`cls().students=cls().students.slice(0,8);globalThis.small=buildAutomaticSchedule()`);
+  assert.equal(f.run('small.added'),24);
+  assert(f.run(`small.classData.students.every(s=>studentAppointments(small.classData,ui.month,s.id).length===3)`));
+});
+
+test('manual multiple appointments preserve each visit and reject a fourth or a second same-day visit',async()=>{
+  const f=frontend();await f.login();f.run(`cls().students=[{id:'S1',name:'Student',code:''}]`);
+  for(const date of ['2026-11-18','2026-11-19','2026-11-20']) {
+    f.run(`openStudentAppointment('S1')`);
+    f.ctx.appointment={date,session:'morning',topics:['Vở ghi'],note:date};
+    await f.run('submitForm({preventDefault(){},currentTarget:appointment})');
+  }
+  assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1').length`),3);
+  f.run(`openStudentAppointment('S1')`);assert.equal(f.run('ui.editing'),null);
+  const first=f.run(`studentAppointments(cls(),ui.month,'S1')[0].id`);
+  f.ctx.firstAppointmentId=first;f.run(`openStudentAppointment('S1',firstAppointmentId)`);
+  f.ctx.appointment={date:'2026-11-19',session:'afternoon',topics:[],note:'Conflict'};
+  await f.run('submitForm({preventDefault(){},currentTarget:appointment})');
+  assert(f.alerts.some(x=>x.includes('hai học sinh khác nhau')));
+  assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1')[0].date`),'2026-11-18');
+});
+
+test('automatic scheduling preserves existing appointments and warns when two visits per student cannot fit',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`ui.month='T02/2027';cls().students=Array.from({length:35},(_,i)=>({id:'S'+i,name:'Student '+i,code:''}));
+    mdata().schedule.S0={date:'2027-02-02',session:'morning',planTime:'02/02/2027 · Sáng 9:55–10:15',goal:'Existing goal',note:'Keep me'};save()`);
+  await f.run('flushCloud()');
+  const original=f.run('JSON.stringify(mdata().schedule.S0)');let message='';
+  f.ctx.confirm=text=>{message=text;return false;};f.run('autoScheduleMonth()');
+  assert(message.includes('chưa đủ 2 lượt'));
+  assert.equal(f.run('JSON.stringify(mdata().schedule.S0)'),original);
+  f.ctx.confirm=()=>true;f.run('autoScheduleMonth()');await f.run('flushCloud()');
+  const existing=f.run(`studentAppointments(cls(),ui.month,'S0').find(a=>a.id==='legacy-S0')`);
+  assert.equal(existing.goal,'Existing goal');assert.equal(existing.note,'Keep me');
+  assert.equal(f.run('monthlyAppointments().length'),40);
+  assert.equal(f.run('summarize(cls(),ui.month).meetings'),0);
+  const before=f.run('JSON.stringify(mdata())');f.run('autoScheduleMonth()');
+  assert.equal(f.run('JSON.stringify(mdata())'),before);
+});
+
+test('auto appointments appear in M02 without actual counts; confirmation links exactly one real meeting',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student 1',code:''},{id:'S2',name:'Student 2',code:''}];autoScheduleMonth()`);
+  await f.run('flushCloud()');
+  assert.equal(f.run('monthlyAppointments().length'),6);
+  assert.equal(f.run('summarize(cls(),ui.month).meetings'),0);
+  f.run(`navTo('m02')`);assert(f.el('view').innerHTML.includes('Lịch gặp dự kiến từ Mẫu 1'));
+  const appointmentId=f.run(`studentAppointments(cls(),ui.month,'S1')[0].id`);
+  f.ctx.appointmentId=appointmentId;
+  f.run(`openScheduledMeeting('S1',appointmentId)`);
+  f.ctx.completed={...completeMeeting,profileId:'',actual:'2026-11-02 · Lớp'};
+  await f.run('submitForm({preventDefault(){},currentTarget:completed})');
+  await f.run('flushCloud()');
+  const c=(await api.bootstrap(admin)).classes['6A1'];
+  assert.equal(c.months['T11/2026'].meetings.length,1);
+  assert.equal(c.months['T11/2026'].meetings[0].appointmentId,appointmentId);
+  assert.equal(summary(c,'T11/2026').met,1);assert.equal(summary(c,'T11/2026').connections,0);
+  f.run(`openScheduledMeeting('S1',appointmentId)`);
+  await f.run('submitForm({preventDefault(){},currentTarget:completed})');
+  assert.equal(f.run('mdata().meetings.length'),1);
+  assert.equal((f.run('renderPendingMeetings(cls(),mdata())').match(/Ghi nhận đã gặp/g)||[]).length,5);
+});
 test('M01 uses the real monthly calendar and click choices, preserving legacy data and draft topics',async()=>{
   const f=frontend();await f.login();
   f.run(`cls().students=[{id:'S1',name:'Student',code:''},{id:'S2',name:'Other',code:''}];
