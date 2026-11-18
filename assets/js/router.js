@@ -148,4 +148,5 @@ function render() {
   renderResponsiveNavigation(permitted);
   adaptResponsiveTables();
   updateStorageNotice();
+  refreshButtonChoices();
 }

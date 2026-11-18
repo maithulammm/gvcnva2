@@ -5,6 +5,19 @@
 .logo small { display: block; }
 .field input, .field textarea, .field select { font-weight:400; }
 .work-appointments { white-space:pre-line; }
+.choice-source { position:absolute!important;width:1px!important;height:1px!important;min-height:0!important;padding:0!important;margin:-1px!important;clip-path:inset(50%);overflow:hidden;white-space:nowrap;pointer-events:none; }
+.button-choices { display:block;min-width:0;width:100%;margin-top:6px; }
+.choice-buttons { display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow-y:auto;padding:2px;overscroll-behavior:contain; }
+.choice-buttons button { min-height:44px;max-width:100%;padding:8px 12px;border:1px solid #c5dadd;border-radius:10px;background:#fff;color:#244e5e;font:inherit;font-size:14px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;cursor:pointer; }
+.choice-buttons button[aria-pressed="true"] { background:#205e73;color:#fff;border-color:#205e73;font-weight:700; }
+.choice-buttons button:focus-visible { outline:3px solid #dc9a2d;outline-offset:2px; }
+.choice-buttons button:disabled { cursor:default;opacity:.7; }
+.button-choices .choice-search { width:100%;min-height:44px;font-size:16px;margin-bottom:8px; }
+.choice-invalid { outline:2px solid #b84628;border-radius:10px; }
+.choice-error { color:#a73720;font-size:13px;margin:6px; }
+.selectors > label { min-width:0;flex:1 1 180px; }
+.selectors .month-selector { flex-basis:100%; }
+.selectors .choice-buttons { max-height:150px; }
 .field input[type="checkbox"] { width:20px; height:20px; min-height:20px; padding:0; flex:0 0 20px; }
 .field label:has(input[type="checkbox"]) { min-height:44px; }
 .auth-id, .pill, .schedule-student { overflow-wrap: anywhere; }

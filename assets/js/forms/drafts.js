@@ -86,4 +86,5 @@ function updateMeetingFields() {
     control.required=visible;
   }
   updatePreviousMeetingPanel();
+  refreshButtonChoices(form);
 }

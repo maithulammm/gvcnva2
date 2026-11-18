@@ -158,6 +158,7 @@ function openModal(type, id = "", seed = {}) {
     h += `<div class="footnote wide">Muốn cập nhật diễn biến Mẫu 05: chọn phiếu phù hợp và bổ sung hai trường M05, sau đó xem tiến trình theo phiếu cá nhân.</div>`;
   $("modalBody").innerHTML = `<div class="fieldgrid">${h}</div>`;
   updateMeetingFields();
+  refreshButtonChoices($("entryForm"));
   $("editor").showModal();
 }
 
