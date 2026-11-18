@@ -1,5 +1,11 @@
 # Quản lý GVCN Việt Anh · 2026–2027
 
+**Triển khai hiện tại: Cloudflare Workers** tại
+`https://gvcnva2.lammt.workers.dev/index.html`. Xem [thiết lập Cloudflare](cloudflare/README.md)
+để cấu hình build GitHub, Secret Firebase và Redirect URI Microsoft.
+Các hướng dẫn Netlify bên dưới được giữ làm tài liệu triển khai cũ; mã frontend
+hiện gọi trực tiếp API Cloudflare, không dùng Netlify làm trung gian.
+
 Mở **`index.html`** bằng Live Server hoặc máy chủ HTTP/HTTPS. Giao diện dùng HTML, CSS và JavaScript thuần; không cần cài thư viện hoặc chạy bước build cho frontend.
 
 ## Sửa chức năng ở đâu?

@@ -1,5 +1,5 @@
-const base='https://gvcnva2.netlify.app/api';
-const origin='https://gvcnva2.netlify.app';
+const base='https://gvcnva2.lammt.workers.dev/api';
+const origin='https://gvcnva2.lammt.workers.dev';
 const probes=[
   {name:'API health',url:base+'/health',options:{method:'GET',headers:{Origin:origin}}},
   {name:'Browser preflight',url:base+'/bootstrap',options:{method:'OPTIONS',headers:{Origin:origin,'Access-Control-Request-Method':'GET','Access-Control-Request-Headers':'authorization'}}},
@@ -13,10 +13,10 @@ const results=await Promise.all(probes.map(async probe=>{
 }));
 for(const result of results) console.log(JSON.stringify(result));
 if(results.some(r=>r.status===404)) {
-  console.error('API endpoint returns 404: verify the Netlify Function deployment and /api route.');
+  console.error('API endpoint returns 404: verify the Cloudflare Worker deployment and /api route.');
   process.exitCode=1;
 } else if(results.some(r=>r.error||!r.cors)) {
-  console.error('Check connectivity and GVCN_ALLOWED_ORIGINS in Netlify environment variables.');
+  console.error('Check connectivity and GVCN_ALLOWED_ORIGINS in Cloudflare Worker settings.');
   process.exitCode=1;
 } else if(results[0].status!==200||results[1].status!==204||results[2].status!==401) {
   console.error('API did not return the expected health/preflight/authentication responses.');

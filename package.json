@@ -3,7 +3,9 @@
   "private": true,
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "node scripts/check-frontend.mjs && npm --prefix firebase/functions run check",
+    "deploy:cloudflare": "wrangler deploy",
+    "dev:cloudflare": "npm run build && wrangler dev",
+    "check": "node scripts/check-frontend.mjs && node --check cloudflare/worker.mjs && node --check cloudflare/firebase-rest.mjs && npm --prefix firebase/functions run check",
     "test": "node scripts/check-frontend.mjs && npm --prefix firebase/functions test",
     "api:check": "node scripts/check-firebase.mjs",
     "api:status": "node scripts/probe-firebase.mjs"
@@ -13,6 +15,7 @@
     "jose": "^6.0.0"
   },
   "devDependencies": {
-    "@xmldom/xmldom": "^0.9.12"
+    "@xmldom/xmldom": "^0.9.12",
+    "wrangler": "^4.164.0"
   }
 }

@@ -18,9 +18,9 @@ test('GitHub mirror moves to the configured production site without forwarding t
   const f=frontend(),before=[...f.memory.entries()];let target;
   Object.assign(f.ctx.location,{origin:'https://maithulammm.github.io',pathname:'/gvcnva2/index.html',search:'?code=private',hash:'#id_token=private',replace:url=>{target=url;}});
   assert.equal(f.run('redirectGitHubMirror()'),true);
-  assert.equal(target,'https://gvcnva2.netlify.app/index.html');
+  assert.equal(target,'https://gvcnva2.lammt.workers.dev/index.html');
   assert.deepEqual([...f.memory.entries()],before);
-  for(const [origin,pathname] of [['https://gvcnva2.netlify.app','/index.html'],['http://127.0.0.1:5500','/index.html'],['https://maithulammm.github.io','/another-project/index.html']]) {
+  for(const [origin,pathname] of [['https://gvcnva2.lammt.workers.dev','/index.html'],['http://127.0.0.1:5500','/index.html'],['https://maithulammm.github.io','/another-project/index.html']]) {
     Object.assign(f.ctx.location,{origin,pathname});target=undefined;
     assert.equal(f.run('redirectGitHubMirror()'),false);assert.equal(target,undefined);
   }

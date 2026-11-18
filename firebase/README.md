@@ -1,5 +1,10 @@
 # Firebase cho hệ thống GVCN Việt Anh 2026–2027
 
+**Cập nhật triển khai:** API hiện chuyển sang **Cloudflare Workers** tại
+`https://gvcnva2.lammt.workers.dev/api/*`. Làm theo [hướng dẫn Cloudflare](../cloudflare/README.md)
+để thiết lập Secret Firebase và Microsoft Entra. Các phần Netlify bên dưới là
+tài liệu triển khai cũ, không phải endpoint frontend đang dùng.
+
 Trang duy nhất là `index.html`; CSS và JavaScript được tách trong `assets/`. Đăng nhập Microsoft cũng trả về `index.html`. API production chạy trên Netlify Functions, còn dữ liệu nằm trong Firebase Realtime Database. Xem [bản đồ mã nguồn](../README.md).
 
 ## Đã chuẩn bị

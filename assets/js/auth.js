@@ -338,7 +338,7 @@ function redirectGitHubMirror() {
   if(origin!=='https://maithulammm.github.io'||!/^\/gvcnva2\/(?:index\.html)?$/.test(pathname))return false;
   // Keep authentication and API calls on the configured production origin.
   // Never forward OAuth fragments, query parameters or device-local data.
-  window.location.replace('https://gvcnva2.netlify.app/index.html');
+  window.location.replace('https://gvcnva2.lammt.workers.dev/index.html');
   return true;
 }
 

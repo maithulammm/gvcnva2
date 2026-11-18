@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gvcnva2",
+  "main": "cloudflare/worker.mjs",
+  "compatibility_date": "2026-11-18",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "html_handling": "none",
+    "not_found_handling": "none",
+    "run_worker_first": ["/", "/api", "/api/*"]
+  },
+  "vars": {
+    "MICROSOFT_TENANT_ID": "22215a7f-b9e3-4b53-bd27-3a317311e6ca",
+    "MICROSOFT_CLIENT_ID": "94c476b3-4723-4161-9dea-d64ff8bf505c",
+    "GVCN_ALLOWED_ORIGINS": "https://gvcnva2.lammt.workers.dev",
+    "GVCN_ADMIN_EMAIL": "lammt@vietanhschool.edu.vn"
+  }
+}

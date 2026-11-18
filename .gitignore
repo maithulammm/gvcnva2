@@ -1,6 +1,9 @@
 node_modules/
 dist/
 .netlify/
+.wrangler/
+.dev.vars
+.dev.vars.*
 .npm-cache/
 .firebase/
 firebase-debug.log*

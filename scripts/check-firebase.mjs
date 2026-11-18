@@ -11,5 +11,5 @@ for(const key of ['MICROSOFT_TENANT_ID','MICROSOFT_CLIENT_ID']) if(!guid.test(va
 if(!/^[a-z0-9._%+-]+@vietanhschool\.edu\.vn$/i.test(values.GVCN_ADMIN_EMAIL||'')) throw Error('Configure the school Admin email.');
 const origins=(values.GVCN_ALLOWED_ORIGINS||'').split(',').map(v=>v.trim()).filter(Boolean);
 for(const origin of origins) if(new URL(origin).origin!==origin) throw Error('Allowed origins must omit paths and trailing slashes.');
-if(!origins.includes('https://gvcnva2.netlify.app')) throw Error('Add https://gvcnva2.netlify.app to GVCN_ALLOWED_ORIGINS.');
-console.log('API config valid: Microsoft IDs, Admin email and gvcnva2.netlify.app origin.');
+if(!origins.includes('https://gvcnva2.lammt.workers.dev')) throw Error('Add https://gvcnva2.lammt.workers.dev to GVCN_ALLOWED_ORIGINS.');
+console.log('API config valid: Microsoft IDs, Admin email and Cloudflare production origin.');

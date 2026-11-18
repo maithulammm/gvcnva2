@@ -35,6 +35,12 @@ assert.equal(createHash('sha256').update(Buffer.from(base64,'base64')).digest('h
   'a71b530f093d5abb98f0ff49b358f2195094b7a9ef1eac30a07fabddd5c776f7','The embedded original workbook changed.');
 assert(fs.readFileSync(new URL('netlify/functions/gvcnApi.mjs',root),'utf8').includes("path:'/api/*'"),
   'Netlify must route the protected API through /api.');
-assert(fs.readFileSync(new URL('assets/js/config.js',root),'utf8').includes('"https://gvcnva2.netlify.app/api"'),
-  'The frontend must use the gvcnva2 Netlify API.');
+assert(fs.readFileSync(new URL('assets/js/config.js',root),'utf8').includes('"https://gvcnva2.lammt.workers.dev/api"'),
+  'The frontend must use the configured Cloudflare API.');
+const worker=JSON.parse(fs.readFileSync(new URL('wrangler.jsonc',root),'utf8'));
+assert.equal(worker.name,'gvcnva2');
+assert.equal(worker.main,'cloudflare/worker.mjs');
+assert.equal(worker.assets.directory,'./dist');
+assert.equal(worker.assets.html_handling,'none','Keep the Microsoft index.html callback intact.');
+assert(worker.assets.run_worker_first.includes('/api/*'),'Cloudflare must route the protected API to the Worker.');
 console.log(`Frontend: ${sources.length} scripts parsed, CSS and index.html valid, original workbook unchanged.`);
