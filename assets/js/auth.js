@@ -40,6 +40,7 @@ function safeAccountEmail(account) {
 }
 
 function lockUi() {
+  ui.preview = null;
   resetCloud();
   $("editor").close();
   ui.editing = null;

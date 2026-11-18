@@ -37,7 +37,7 @@ function renderCheck() {
           (hasAppRole("bgh") && m.approval.state === "reviewed");
         const canSubmit =
           hasAppRole("gvcn") &&
-          auth.assignment?.classId === id &&
+          viewAssignment()?.classId === id &&
           ["draft", "returned"].includes(m.approval.state);
         const submit = canSubmit
           ? btn("Gửi rà soát", `transition('${id}','submitted')`, "small primary")
@@ -87,7 +87,7 @@ function renderCheck() {
     )
     .join(
       "",
-    )}</div></div><section class="card"><h2>Cảnh báo và thiếu thông tin</h2><div class="stack marg-top">${[...v.errors, ...v.warnings].map((x) => `<div class="readonly"><b>${esc(x.key)}</b> · ${esc(x.message)}</div>`).join("") || '<div class="readonly">Không phát hiện lỗi trong phạm vi kiểm tra.</div>'}</div><div class="section-head"><h2>Quy trình xác nhận</h2></div><div class="timeline">${(m.approval?.history || []).map((x) => `<div class="tl"><b>${esc(stageName(x.state))}</b><div>${esc(x.actor)} · ${esc(x.at)}</div><small>${esc(x.note || "")}</small></div>`).join("") || '<p class="help">Chưa có lượt xác nhận.</p>'}</div><div class="marg-top">${hasAppRole("gvcn") && auth.assignment?.classId === c.id && (state === "draft" || state === "returned") ? btn("Gửi khối trưởng rà soát", `transition('${c.id}','submitted')`, "primary") : ""}</div><p class="help">Khi đã gửi, dữ liệu được khóa để mô phỏng quy trình. Nếu cần chỉnh sửa, khối trưởng/BGH trả lại. Bản online sẽ có kiểm soát quyền thực sự.</p></section></div>`;
+    )}</div></div><section class="card"><h2>Cảnh báo và thiếu thông tin</h2><div class="stack marg-top">${[...v.errors, ...v.warnings].map((x) => `<div class="readonly"><b>${esc(x.key)}</b> · ${esc(x.message)}</div>`).join("") || '<div class="readonly">Không phát hiện lỗi trong phạm vi kiểm tra.</div>'}</div><div class="section-head"><h2>Quy trình xác nhận</h2></div><div class="timeline">${(m.approval?.history || []).map((x) => `<div class="tl"><b>${esc(stageName(x.state))}</b><div>${esc(x.actor)} · ${esc(x.at)}</div><small>${esc(x.note || "")}</small></div>`).join("") || '<p class="help">Chưa có lượt xác nhận.</p>'}</div><div class="marg-top">${hasAppRole("gvcn") && viewAssignment()?.classId === c.id && (state === "draft" || state === "returned") ? btn("Gửi khối trưởng rà soát", `transition('${c.id}','submitted')`, "primary") : ""}</div><p class="help">Khi đã gửi, dữ liệu được khóa để mô phỏng quy trình. Nếu cần chỉnh sửa, khối trưởng/BGH trả lại. Bản online sẽ có kiểm soát quyền thực sự.</p></section></div>`;
 }
 
 function renderExport() {

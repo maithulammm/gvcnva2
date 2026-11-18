@@ -53,6 +53,7 @@ function load() {
 }
 
 function save() {
+  if (isRolePreview()) return false;
   if (!auth.account) throw Error("Chưa đăng nhập Microsoft.");
   try {
     localStorage.setItem(

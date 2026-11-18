@@ -3,6 +3,7 @@
 // Report submission, review, approval and return.
 
 async function transition(classId, target) {
+  if (isRolePreview()) return;
   if (cloud.ready) {
     await cloudTransition(classId, target);
     return;
@@ -12,7 +13,7 @@ async function transition(classId, target) {
     prev = m.approval?.state || "draft";
   if (
     target === "submitted" &&
-    (!hasAppRole("gvcn") || auth.assignment?.classId !== classId)
+    (!hasAppRole("gvcn") || viewAssignment()?.classId !== classId)
   )
     return;
   if (
@@ -84,6 +85,7 @@ async function transition(classId, target) {
 }
 
 async function cloudTransition(id, target) {
+  if (isRolePreview()) return;
   if (cloud.busy) return;
   let note = "";
   if (target === "returned") {

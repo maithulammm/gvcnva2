@@ -20,8 +20,34 @@ function navTo(page) {
   render();
 }
 
+function setRolePreview(role, classId = ui.preview?.classId || ui.classId) {
+  if (!assignmentRoles(auth.assignment).includes("admin")) return;
+  if (!["", "admin", "gvcn", "lead", "bgh"].includes(role) || !CLASSES.includes(classId)) return;
+  $("editor").close();
+  ui.editing = null;
+  ui.preview = role ? {role, roles:[role], classId, grades:[gradeText(classId)]} : null;
+  ui.role = viewAssignment().role;
+  ui.classId = classId;
+  ui.grade = ["admin", "bgh"].includes(ui.role) ? "all" : gradeText(classId);
+  ui.profileId = "";
+  ui.page = "dashboard";
+  render();
+}
+
+function renderRolePreview() {
+  const host = $("rolePreview");
+  host.innerHTML = "";
+  if (!assignmentRoles(auth.assignment).includes("admin")) return;
+  const role = isRolePreview() ? ui.preview.role : "";
+  const classId = ui.preview?.classId || ui.classId;
+  host.innerHTML = `<label>Admin · Xem thử vai trò <select onchange="setRolePreview(this.value)">
+    <option value="">Quyền thực tế</option>${["gvcn","lead","bgh","admin"].map(r=>`<option value="${r}" ${role===r?"selected":""}>${esc(ROLE_NAMES[r])}</option>`).join("")}</select></label>
+    ${role ? `<label>Lớp / khối mô phỏng <select onchange="setRolePreview('${role}',this.value)">${CLASSES.map(id=>`<option value="${id}" ${id===classId?"selected":""}>${id} · Khối ${gradeText(id)}</option>`).join("")}</select></label>
+    <span role="status">Đang xem thử ${esc(ROLE_NAMES[role])} · Chỉ xem, không lưu thay đổi.</span>${btn("Thoát xem thử", "setRolePreview('')", "small")}` : ""}`;
+}
+
 function renderSelectors() {
-  const assignment = auth.assignment;
+  const assignment = viewAssignment();
   if (!assignment || !auth.account) return;
   const grade = $("gradeSel"),
     classPicker = $("classSel"),
@@ -81,6 +107,8 @@ function renderSelectors() {
 
 function render() {
   if (!auth.account || !appData) return;
+  ui.role = viewAssignment()?.role;
+  renderRolePreview();
   renderSelectors();
   let allowed = canViewPersonal() || ui.role === "lead";
   let permitted = VIEW_LIST.filter(([k]) =>

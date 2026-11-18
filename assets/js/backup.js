@@ -22,6 +22,7 @@ function jsonBackup() {
 }
 
 async function importBackup(e) {
+  if (isRolePreview()) { e.target.value = ""; return; }
   let files = [...(e.target.files || [])];
   e.target.value = "";
   if (!files.length) return;

@@ -22,6 +22,7 @@ let ui = {
   search: "",
   profileId: "",
   editing: null,
+  preview: null,
 };
 
 let toastTimer = null;

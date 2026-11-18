@@ -2,7 +2,15 @@
 
 // Client-side scope and edit controls; server authorization remains authoritative.
 
-function assignmentRoles(assignment = auth.assignment) {
+function isRolePreview() {
+  return !!ui.preview && assignmentRoles(auth.assignment).includes("admin");
+}
+
+function viewAssignment() {
+  return isRolePreview() ? ui.preview : auth.assignment;
+}
+
+function assignmentRoles(assignment = viewAssignment()) {
   return assignment
     ? [...new Set(
         Array.isArray(assignment.roles) && assignment.roles.length
@@ -24,7 +32,7 @@ function isAggregateBgh() {
   );
 }
 
-function assignedGrades(assignment = auth.assignment) {
+function assignedGrades(assignment = viewAssignment()) {
   const grades = assignment?.grades;
   return Array.isArray(grades) && grades.length
     ? grades.map(String)
@@ -33,7 +41,7 @@ function assignedGrades(assignment = auth.assignment) {
       : [];
 }
 
-function classesForAssignment(assignment = auth.assignment) {
+function classesForAssignment(assignment = viewAssignment()) {
   if (!assignment) return [];
   const roles = assignmentRoles(assignment);
   if (roles.includes("admin") || roles.includes("bgh")) return [...CLASSES];
@@ -51,17 +59,17 @@ function getScope() {
 }
 
 function editable() {
-  if (!auth.account || cloud.busy) return false;
+  if (!auth.account || cloud.busy || isRolePreview()) return false;
   return (
     hasAppRole("admin") ||
     (hasAppRole("gvcn") &&
-      auth.assignment?.classId === ui.classId &&
+      viewAssignment()?.classId === ui.classId &&
       ["draft", "returned"].includes(mdata().approval.state || "draft"))
   );
 }
 
 function canEditSetup() {
-  return !!auth.account && hasAppRole("admin") && !cloud.busy;
+  return !!auth.account && hasAppRole("admin") && !cloud.busy && !isRolePreview();
 }
 
 function canViewPersonal() {
@@ -70,7 +78,7 @@ function canViewPersonal() {
 
 function scopedClasses() {
   if (!hasAppRole("admin") && !hasAppRole("bgh") && !hasAppRole("lead"))
-    return auth.assignment?.classId ? [auth.assignment.classId] : [];
+    return viewAssignment()?.classId ? [viewAssignment().classId] : [];
   if (ui.grade === "all") return getScope();
   return getScope().filter((id) => gradeText(id) === String(ui.grade));
 }

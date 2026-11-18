@@ -12,6 +12,44 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('Admin previews all roles with scoped navigation and no data or role mutations',async()=>{
+  const f=frontend();await f.login();
+  const assignment=f.run('JSON.stringify(auth.assignment)');
+  const stored=[...f.memory.entries()];
+  f.run(`setRolePreview('gvcn','8C3')`);
+  assert.equal(f.run('ui.role'),'gvcn');
+  assert.deepEqual(JSON.parse(f.run('JSON.stringify(getScope())')),['8C3']);
+  assert(f.el('nav').innerHTML.includes("navTo('m01')"));
+  assert(!f.el('nav').innerHTML.includes("navTo('users')"));
+  assert.equal(f.run('editable()'),false);assert.equal(f.run('canEditSetup()'),false);
+  assert.equal(f.run('save()'),false);
+  const before=f.run('JSON.stringify(appData)');
+  await f.run(`transition('8C3','submitted')`);
+  f.run('demoData()');
+  assert.equal(f.run('JSON.stringify(appData)'),before);
+  f.run(`setRolePreview('lead','12C1')`);
+  assert(f.run(`getScope().every(id=>gradeText(id)==='12')`));
+  assert(f.el('nav').innerHTML.includes("navTo('m01')"));
+  f.run(`setRolePreview('bgh')`);
+  assert.equal(f.run('getScope().length'),32);
+  assert(!f.el('nav').innerHTML.includes("navTo('students')"));
+  f.run(`setRolePreview('admin')`);
+  assert(f.el('nav').innerHTML.includes("navTo('users')"));
+  assert.equal(f.run('canEditSetup()'),false);
+  f.run(`setRolePreview('')`);
+  assert.equal(f.run('isRolePreview()'),false);
+  assert.equal(f.run('canEditSetup()'),true);
+  assert.equal(f.run('JSON.stringify(auth.assignment)'),assignment);
+  assert.deepEqual([...f.memory.entries()],stored);
+});
+
+test('non-Admin cannot enter preview even by invoking the switch directly',async()=>{
+  const f=frontend();await f.login();
+  f.run(`auth.assignment={role:'gvcn',classId:'8C3'};ui.preview=null;setRolePreview('admin','6A1');render()`);
+  assert.equal(f.run('isRolePreview()'),false);
+  assert.equal(f.run('hasAppRole("admin")'),false);
+  assert.equal(f.el('rolePreview').innerHTML,'');
+});
 test('Excel roster matches codes before names and rejects ambiguous duplicate names',()=>{
   const {run}=frontend();
   const result=JSON.parse(run(`JSON.stringify(reconcileRoster(

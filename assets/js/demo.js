@@ -3,6 +3,7 @@
 // Explicit offline-only synthetic example data.
 
 function demoData() {
+  if (isRolePreview()) return;
   if (cloud.ready) {
     toast("Dữ liệu minh họa chỉ dùng trong chế độ cục bộ.");
     return;
