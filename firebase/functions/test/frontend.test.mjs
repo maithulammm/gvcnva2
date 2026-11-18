@@ -14,6 +14,54 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('meeting totals count repeated appointments, legacy plans and actual records independently',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'One'},{id:'S2',name:'Two'},{id:'S3',name:'Three'}];
+    mdata().schedule={S1:{appointments:[{id:'A1'},{id:'A2'},{id:'A3'}]},S2:{planTime:'Legacy date'},S3:{appointments:[],planTime:'Old text'}};
+    mdata().meetings=[{id:'R1',studentId:'S1'},{id:'R2',studentId:'S1'}];`);
+  const c=JSON.parse(f.run('JSON.stringify(cls())')),s=summary(c,'T11/2026');
+  assert.equal(s.plannedMeetings,4);assert.equal(s.meetings,2);assert.equal(s.met,1);
+  assert.equal(f.run('summarize(cls(),ui.month).plannedMeetings'),4);
+  assert.match(f.run('renderDashboard()'),/2\/4/);
+  f.run(`cloud.ready=true;cloud.summaries[ui.classId]={[ui.month]:${JSON.stringify(s)}}`);
+  assert.match(f.run('renderDashboard()'),/2\/4/);
+  assert.equal(f.run('summarize(cls(),ui.month).met'),1);
+});
+
+test('daily work and filters use actual links and own device drafts without changing reports',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'One'},{id:'S2',name:'Two'}];
+    mdata().schedule={S1:{appointments:[{id:'A1',date:'2026-11-17',session:'morning'},{id:'A2',date:'2026-11-18',session:'morning'}]},S2:{appointments:[{id:'A3',date:'2026-11-18',session:'afternoon'}]}};
+    mdata().meetings=[{id:'R1',studentId:'S1',appointmentId:'A2'}];
+    workToday=()=> '2026-11-18';navTo('work');`);
+  const before=f.run('JSON.stringify(summarize(cls(),ui.month))');
+  assert.match(f.run('renderMonthlyWork()'),/Hôm nay/);
+  assert.match(f.run('renderTodayWork(cls(),true)'),/Đã ghi nhận/);
+  assert.deepEqual(Array.from(f.run(`workStudentFlags(cls(),ui.month,'S1')`)),['unconnected','today','overdue']);
+  assert.deepEqual(Array.from(f.run(`workStudentFlags(cls(),ui.month,'S2')`)),['unmet','unconnected','today']);
+  f.run(`openModal('m03','',{studentId:'S2'});saveEditorDraft({studentId:'S2',message:'Draft parent contact'});`);
+  assert.equal(f.run('monthlyWorkDrafts().length'),1);
+  const key=f.run('monthlyWorkDrafts()[0].key');
+  f.memory.set(key.replace(encodeURIComponent(admin.email),'other%40vietanhschool.edu.vn'),f.memory.get(key));
+  assert.equal(f.run('monthlyWorkDrafts().length'),1);
+  f.run(`openMonthlyDraft(0)`);
+  assert.equal(f.run('ui.editing.seed.studentId'),'S2');
+  assert.match(f.el('modalBody').innerHTML,/Draft parent contact/);
+  assert.equal(f.run('JSON.stringify(summarize(cls(),ui.month))'),before);
+  f.run(`ui.month='T12/2026'`);assert.equal(f.run('monthlyWorkDrafts().length'),0);
+});
+
+test('previous meeting reference excludes current and future entries and never copies observations',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'One'}];
+    mdata(cls(),'T10/2026').meetings=[{id:'OLD',studentId:'S1',actualDateTime:'2026-10-20T09:55',goal:'Old goal',action:'Review homework',participation:'Previous observation'}];
+    mdata().meetings=[{id:'CURRENT',studentId:'S1',actualDateTime:'2026-11-18T09:55',goal:'Current goal'},{id:'FUTURE',studentId:'S1',actualDateTime:'2026-11-20T15:00'}];`);
+  assert.equal(f.run(`previousMeetingFor(cls(),'S1',ui.month,'CURRENT','2026-11-18T09:55').record.id`),'OLD');
+  f.run(`openModal('m02','CURRENT')`);
+  assert.match(f.el('modalBody').innerHTML,/Review homework/);
+  assert(!f.el('modalBody').innerHTML.includes('>Previous observation</textarea>'));
+  assert.equal(f.run('mdata().meetings.length'),2);
+});
 test('forms omit evidence/student-code columns and allow complete linked reports without evidence codes',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
   f.run(`cls().students=[{id:'S1',name:'Student',code:'OLD-CODE'}];cls().profiles=[{id:'P1',studentId:'S1',code:'P01',startMonth:ui.month,strength:'A',concern:'B',goal:'C'}];save()`);
@@ -605,7 +653,7 @@ function frontend({memory=new Map(),api}={}) {
     setTimeout(fn,ms){if(ms===2000)Promise.resolve().then(fn);return 1;},clearTimeout(){},setInterval(){return 1;},clearInterval(){},
     alert:m=>alerts.push(m),confirm:()=>true,prompt:()=> 'Test reason',
     FormData:class {constructor(record){this.record=record;}get(key){return this.record[key]??null;}getAll(key){const value=this.record[key];return value===undefined?[]:Array.isArray(value)?value:[value];}},
-    localStorage:{getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)},
+    localStorage:{get length(){return memory.size;},key:i=>[...memory.keys()][i]??null,getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)},
     document:{getElementById:el,hidden:false,body:{classList:{add:c=>bodyClasses.add(c),remove:c=>bodyClasses.delete(c)}}},
     location:{origin:'http://127.0.0.1:5500',pathname:'/index.html',protocol:'http:'}};
   ctx.window={location:ctx.location};

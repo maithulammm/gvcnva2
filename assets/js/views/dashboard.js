@@ -9,6 +9,7 @@ function renderDashboard() {
     count: results.reduce((a, x) => a + x.count, 0),
     met: results.reduce((a, x) => a + x.met, 0),
     meetings: results.reduce((a, x) => a + x.meetings, 0),
+    plannedMeetings: results.reduce((a, x) => a + (x.plannedMeetings||0), 0),
     connections: results.reduce((a, x) => a + x.connections, 0),
     supportPlans: results.reduce((a, x) => a + x.supportPlans, 0),
   };
@@ -28,7 +29,7 @@ function renderDashboard() {
         ? percent(((100 * all.met) / all.count).toFixed(1))
         : "Chưa có sĩ số",
     ],
-    ["Lượt gặp thực tế", nfmt(all.meetings), "Tách khỏi số HS đã gặp"],
+    ["Lượt gặp", `${nfmt(all.meetings)}/${nfmt(all.plannedMeetings)}`, "Thực tế / dự kiến"],
     [
       "Lượt kết nối PHHS",
       nfmt(all.connections),
@@ -59,10 +60,10 @@ function renderDashboard() {
     )} ${unconn.length > 6 ? "…" : ""}</div></section></div>`;
     return h;
   }
-  h += `<div class="section-head"><h2>Bảng theo dõi ${ui.grade === "all" ? "toàn trường" : "khối " + ui.grade}</h2><div class="actions">${btn("Xuất Excel tổng hợp", "exportSchool()", "primary")}<span class="pill">${reporting}/${scope.length} lớp đã có dữ liệu</span></div></div><section class="card no-pad"><div class="table-wrap"><table><thead><tr><th>Lớp</th><th>GVCN</th><th>Sĩ số</th><th>Đã gặp / sĩ số</th><th>Tỷ lệ</th><th>Lượt gặp</th><th>Kết nối PHHS</th><th>KH hỗ trợ</th><th>Kiểm tra</th><th>Trạng thái</th></tr></thead><tbody>${results
+  h += `<div class="section-head"><h2>Bảng theo dõi ${ui.grade === "all" ? "toàn trường" : "khối " + ui.grade}</h2><div class="actions">${btn("Xuất Excel tổng hợp", "exportSchool()", "primary")}<span class="pill">${reporting}/${scope.length} lớp đã có dữ liệu</span></div></div><section class="card no-pad"><div class="table-wrap"><table><thead><tr><th>Lớp</th><th>GVCN</th><th>Sĩ số</th><th>Đã gặp / sĩ số</th><th>Tỷ lệ</th><th>Lượt gặp<br><small>Thực tế / dự kiến</small></th><th>Kết nối PHHS</th><th>KH hỗ trợ</th><th>Kiểm tra</th><th>Trạng thái</th></tr></thead><tbody>${results
     .map((s) => {
       let v = validations(cls(s.classId), ui.month);
-      return `<tr><td><b>${s.classId}</b></td><td>${esc(s.teacher || "Chưa gán")}</td><td>${s.count || "—"}</td><td>${s.met}/${s.count}</td><td style="min-width:128px"><div class="bar"><i style="width:${Math.min(s.rate, 100)}%"></i></div><small>${percent(s.rate)}</small></td><td>${s.meetings}</td><td>${s.connections}</td><td>${s.supportPlans}</td><td>${v.hasData ? statusTag(v.errors.length ? "Còn lỗi" : v.warnings.length ? "CHÚ Ý" : "OK") : "Chưa nhập"}</td><td>${statusTag(stageName(s.state))}</td></tr>`;
+      return `<tr><td><b>${s.classId}</b></td><td>${esc(s.teacher || "Chưa gán")}</td><td>${s.count || "—"}</td><td>${s.met}/${s.count}</td><td style="min-width:128px"><div class="bar"><i style="width:${Math.min(s.rate, 100)}%"></i></div><small>${percent(s.rate)}</small></td><td>${s.meetings}/${s.plannedMeetings||0}</td><td>${s.connections}</td><td>${s.supportPlans}</td><td>${v.hasData ? statusTag(v.errors.length ? "Còn lỗi" : v.warnings.length ? "CHÚ Ý" : "OK") : "Chưa nhập"}</td><td>${statusTag(stageName(s.state))}</td></tr>`;
     })
     .join(
       "",

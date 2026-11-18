@@ -96,6 +96,10 @@ function openModal(type, id = "", seed = {}) {
     return;
   }
   let h = "";
+  if(type==='m02') {
+    const initial=meetingEditorValues(rec);
+    h+=`<div id="previousMeetingPanel" class="wide">${previousMeetingPanel(c,rec.studentId,ui.month,id,initial.actualDateTime)}</div>`;
+  }
   if (type === "m05detail") {
     h += `<div class="footnote wide">Lượt gặp: ${esc(rec.actual || "")}</div>`;
   }

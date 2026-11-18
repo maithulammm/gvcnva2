@@ -208,6 +208,7 @@ export function summary(c,month) {
   return {classId:c.id,grade:c.grade,teacher:c.teacher,count:c.students.length,planned:planned.length,met:met.size,
     miss:planned.filter(s=>!met.has(s.id)).length,rate:c.students.length?Math.round(1000*met.size/c.students.length)/10:0,
     priorityMet:c.students.filter(s=>m.schedule[s.id]?.priority&&met.has(s.id)).length,meetings:m.meetings.length,
+    plannedMeetings:c.students.reduce((total,s)=>{const p=m.schedule[s.id]||{};return total+(Array.isArray(p.appointments)?p.appointments.length:p.planTime?1:0);},0),
     improved:unique(m.meetings.filter(r=>r.progressEvidence==='Có')),coordination:unique(m.meetings.filter(r=>r.needsCoop==='Có')),
     connections:m.connections.length,connectedStudents:unique(m.connections),connEvidence:m.connections.filter(r=>r.evidence).length,
     unconnected:Math.max(0,c.students.length-unique(m.connections)),supportPrev:unique(m.previous),supportPlans:unique(m.plans),

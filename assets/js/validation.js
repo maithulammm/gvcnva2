@@ -54,6 +54,10 @@ function summarize(c, month) {
       (s) => m.schedule?.[s.id]?.priority && metSet.has(s.id),
     ).length,
     meetings: meet.length,
+    plannedMeetings: c.students.reduce((total, student) => {
+      const plan=m.schedule[student.id]||{};
+      return total+(Array.isArray(plan.appointments)?plan.appointments.length:plan.planTime?1:0);
+    },0),
     improved: uniq(
       meet
         .filter((x) => x.progressEvidence === "Có")

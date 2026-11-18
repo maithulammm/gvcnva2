@@ -20,6 +20,8 @@ let ui = {
   month: MONTH_DEFAULT,
   page: "dashboard",
   search: "",
+  workFilter: "all",
+  workFilterScope: "",
   profileId: "",
   editing: null,
   preview: null,

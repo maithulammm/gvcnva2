@@ -18,6 +18,8 @@ function editorContextCurrent() {
 function editorDraftKey() {
   const e=ui.editing;
   if (!e || !DRAFT_TYPES.includes(e.type)) return null;
+  const prefix=`VA_GVCN_FORM_DRAFT_V1_${encodeURIComponent(auth.email)}_${e.classId}_${e.month.replace('/','_')}_`;
+  if(typeof e.seed?.draftKey==='string'&&e.seed.draftKey.startsWith(prefix))return e.seed.draftKey;
   return `VA_GVCN_FORM_DRAFT_V1_${encodeURIComponent(auth.email)}_${e.classId}_${e.month.replace('/','_')}_${e.type}_${e.id||e.seed?.studentId||'new'}_${e.seed?.sourcePlanId||e.seed?.appointmentId||''}`;
 }
 
@@ -44,7 +46,10 @@ function saveEditorDraft(form=$("entryForm")) {
       fields[key]=kind==="choices"?JSON.stringify(fd.getAll(key)):String(fd.get(key)||"");
     if(ui.editing.type==='m02') for(const key of MEETING_EXTRA_FIELDS)
       if(fd.get(key)!==null) fields[key]=String(fd.get(key)||'');
-    localStorage.setItem(key,JSON.stringify({schema:1,baseline:ui.editing.baseline,fields}));
+    const e=ui.editing,studentId=fields.studentId||(e.type==='m01'?e.id:lookup(e.type,e.id)?.studentId)||e.seed?.studentId||'';
+    const seed=Object.fromEntries(['studentId','appointmentId','addAppointment','sourceMonth','sourcePlanId'].filter(k=>e.seed?.[k]!==undefined).map(k=>[k,e.seed[k]]));
+    localStorage.setItem(key,JSON.stringify({schema:1,baseline:e.baseline,fields,
+      context:{owner:auth.email,classId:e.classId,month:e.month,type:e.type,id:e.id,studentId,seed}}));
     $("editorDraftStatus").textContent="Đã giữ bản nháp trên máy này · Chưa ghi vào báo cáo.";
   } catch {
     $("editorDraftStatus").textContent="Không giữ được bản nháp. Hãy lưu thông tin trước khi đóng.";
@@ -80,4 +85,5 @@ function updateMeetingFields() {
     control.disabled=!visible;
     control.required=visible;
   }
+  updatePreviousMeetingPanel();
 }

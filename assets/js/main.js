@@ -65,6 +65,7 @@ $("msLogoutBtn").addEventListener("click", logoutMicrosoft);
 window.addEventListener?.("storage", handleMicrosoftLogoutStorage);
 $("requestOverlay").addEventListener("cancel",e=>e.preventDefault());
 $("mobileNav").addEventListener("close",()=>$("mobileMenuButton").setAttribute("aria-expanded","false"));
+$("editor").addEventListener("close",()=>{if(ui.editing&&auth.account&&appData&&ui.page==='work')render();});
 window.addEventListener?.("resize",updateVisualViewport);
 window.visualViewport?.addEventListener("resize",updateVisualViewport);
 updateVisualViewport();
