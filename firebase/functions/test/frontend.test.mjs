@@ -14,6 +14,59 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('M02 prefills planned date and classroom, stores independent goal deadlines and preserves BGH progress semantics',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`ui.classId='8C3';ui.grade='8';cls().students=[{id:'S1',name:'Student',code:''}];
+    mdata().schedule.S1={date:'2026-11-18',session:'morning',topics:['Vở ghi'],goal:'Vở ghi',planTime:'18/11/2026 · Sáng 9:55–10:15'};save()`);
+  await f.run('flushCloud()');f.run(`openScheduledMeeting('S1','legacy-S1')`);
+  assert.match(f.el('modalBody').innerHTML,/name="actualDateTime" value="2026-11-18T09:55"/);
+  assert.match(f.el('modalBody').innerHTML,/name="actualLocation" value="Phòng 8C3"/);
+  assert(!f.el('modalBody').innerHTML.includes('<select name="progressEvidence"'));
+  for(const label of ['Chưa ghi nhận','Có tiến bộ','Chưa tiến bộ','Chưa đủ điều kiện so sánh'])assert(f.el('modalBody').innerHTML.includes(label));
+  f.ctx.newMeeting={...completeMeeting,profileId:'',progressEvidence:'Có',actualDateTime:'2026-11-18T10:00',actualLocation:'Phòng tư vấn',
+    goal1:'Nộp bài đúng hạn',goalAmount1:'2',goalUnit1:'day',goal2:'Chủ động hỏi bài',goalAmount2:'1',goalUnit2:'week',goal3:''};
+  await f.run('submitForm({preventDefault(){},currentTarget:newMeeting})');await f.run('flushCloud()');
+  const boot=await api.bootstrap(admin),c=boot.classes['8C3'],r=c.months['T11/2026'].meetings[0];
+  assert.equal(r.actual,'18/11/2026 10:00 · Phòng tư vấn');
+  assert.deepEqual(r.goals,[{position:1,text:'Nộp bài đúng hạn',amount:2,unit:'day'},{position:2,text:'Chủ động hỏi bài',amount:1,unit:'week'}]);
+  assert.equal(r.goal,'1. Nộp bài đúng hạn (2 ngày)\n2. Chủ động hỏi bài (1 tuần)');
+  assert.equal(summary(c,'T11/2026').improved,1);assert.equal(summary(c,'T11/2026').meetings,1);
+  f.ctx.recordId=r.id;f.run('openModal("m02",recordId)');
+  assert.match(f.el('modalBody').innerHTML,/name="actualDateTime" value="2026-11-18T10:00"/);
+  assert(f.el('modalBody').innerHTML.includes('Nộp bài đúng hạn'));
+  const invalid=structuredClone(c);invalid.months['T11/2026'].meetings[0].goals[0].amount=0;
+  await assert.rejects(api.putClass(admin,'8C3',{revision:boot.revisions['8C3'],classData:invalid}),e=>e.status===400);
+  const invalidTime=structuredClone(c);invalidTime.months['T11/2026'].meetings[0].actualDateTime='2026-11-31T10:00';
+  await assert.rejects(api.putClass(admin,'8C3',{revision:boot.revisions['8C3'],classData:invalidTime}),e=>e.status===400);
+  for(const [value] of f.run('PROGRESS_CHOICES')) {
+    f.run(`mdata().meetings[0].progressEvidence=${JSON.stringify(value)}`);
+    assert.equal(f.run('summarize(cls(),ui.month).improved'),value==='Có'?1:0);
+  }
+});
+
+test('M02 drafts retain split time and three goals; invalid deadlines do not create a meeting',async()=>{
+  const f=frontend();await f.login();f.run(`cls().students=[{id:'S1',name:'Student',code:''}];openWorkEntry('m02','S1')`);
+  f.ctx.input={...completeMeeting,profileId:'',actualDateTime:'2026-11-19T15:00',actualLocation:'Phòng 6A1',
+    goal1:'Goal one',goalAmount1:'1',goalUnit1:'week',goal2:'Goal two',goalAmount2:'3',goalUnit2:'day',goal3:'Goal three',goalAmount3:'2',goalUnit3:'week'};
+  f.run('saveEditorDraft(input);openWorkEntry("m02","S1")');
+  assert.match(f.el('modalBody').innerHTML,/name="actualDateTime" value="2026-11-19T15:00"/);
+  assert(f.el('modalBody').innerHTML.includes('Goal three'));
+  f.ctx.input.goalAmount1='0';await f.run('submitForm({preventDefault(){},currentTarget:input})');
+  assert.equal(f.run('mdata().meetings.length'),0);assert(f.el('editor').open);
+  f.ctx.input.goalAmount1='1';await f.run('submitForm({preventDefault(){},currentTarget:input})');
+  assert.equal(f.run('mdata().meetings[0].goals.length'),3);
+});
+
+test('editing untouched legacy M02 time and goal preserves original text without inventing deadlines',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student',code:''}];mdata().meetings=[{id:'OLD',studentId:'S1',actual:'Thứ 4 tuần 2 · Phòng cũ',goal:'Mục tiêu cũ chưa ghi thời hạn'}];openModal('m02','OLD')`);
+  const values=JSON.parse(f.run('JSON.stringify(meetingEditorValues(lookup("m02","OLD")))'));
+  f.ctx.input={...completeMeeting,profileId:'',actual:'Thứ 4 tuần 2 · Phòng cũ',goal:'Mục tiêu cũ chưa ghi thời hạn',...values};
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');
+  assert.equal(f.run('mdata().meetings[0].actual'),'Thứ 4 tuần 2 · Phòng cũ');
+  assert.equal(f.run('mdata().meetings[0].goal'),'Mục tiêu cũ chưa ghi thời hạn');
+  assert.equal(f.run('mdata().meetings[0].goals'),undefined);
+});
 test('automatic scheduling follows roster order, weekdays and grade-12 Saturday mornings',async()=>{
   const f=frontend();await f.login();
   f.run(`ui.month='T02/2027';cls().students=Array.from({length:20},(_,i)=>({id:'S'+i,name:'Student '+i,code:''}));`);

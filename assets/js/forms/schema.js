@@ -32,11 +32,11 @@ const FIELDS = {
   ],
   m02: [
     ["studentId", "Học sinh", "students", 1],
-    ["actual", "Ngày, giờ và địa điểm gặp thực tế", "text", 1],
+    ["actual", "Thời gian gặp thực tế", "text", 1],
     ["concern", "Điều học sinh quan tâm", "textarea", 1],
     [
       "participation",
-      "Mức tham gia / tiến bộ quan sát được",
+      "Mức tham gia / tiến bộ quan sát được so với lần gặp trước",
       "textarea",
       1,
     ],
@@ -47,7 +47,7 @@ const FIELDS = {
       1,
       ["Chưa đủ căn cứ", "Có", "Không"],
     ],
-    ["goal", "Mục tiêu thống nhất (đo được, có thời hạn)", "textarea", 1],
+    ["goal", "Mục tiêu thống nhất và thời hạn", "textarea", 1],
     ["action", "Hành động / thời hạn rà soát", "textarea", 1],
     [
       "cooperation",

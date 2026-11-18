@@ -125,6 +125,28 @@ export function validateClass(c,previous=null) {
       for(const r of m[key]) {
         requireValue(typeof r.id==='string' && /^[A-Za-z0-9_-]{1,100}$/.test(r.id) && !recordIds.has(r.id),'Mã bản ghi không hợp lệ hoặc bị trùng.');
         recordIds.add(r.id);
+        if(key==='meetings') {
+          if(r.actualLocation!==undefined) requireValue(typeof r.actualLocation==='string'&&r.actualLocation.trim()&&r.actualLocation.length<=200,'Địa điểm gặp không hợp lệ.');
+          if(r.actualDateTime!==undefined) {
+            const match=typeof r.actualDateTime==='string'&&/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(r.actualDateTime);
+            requireValue(match,'Ngày giờ gặp thực tế không hợp lệ.');
+            const [,y,mo,d,h,mi]=match,dt=new Date(Date.UTC(+y,+mo-1,+d,+h,+mi));
+            requireValue(dt.getUTCFullYear()===+y&&dt.getUTCMonth()===+mo-1&&dt.getUTCDate()===+d&&dt.getUTCHours()===+h&&dt.getUTCMinutes()===+mi,'Ngày giờ gặp thực tế không hợp lệ.');
+            requireValue(typeof r.actualLocation==='string'&&r.actualLocation.trim()&&r.actualLocation.length<=200,'Địa điểm gặp không hợp lệ.');
+            requireValue(r.actual===`${d}/${mo}/${y} ${h}:${mi} · ${r.actualLocation}`,'Thời gian hoặc địa điểm gặp chưa khớp dữ liệu.');
+          }
+          if(r.goals!==undefined) {
+            requireValue(Array.isArray(r.goals)&&r.goals.length>=1&&r.goals.length<=3,'Cần có từ 1 đến 3 mục tiêu.');
+            const positions=new Set();
+            for(const goal of r.goals) {
+              requireValue(Number.isInteger(goal.position)&&goal.position>=1&&goal.position<=3&&!positions.has(goal.position),'Vị trí mục tiêu không hợp lệ.');
+              positions.add(goal.position);
+              requireValue(typeof goal.text==='string'&&goal.text.trim()&&Number.isInteger(goal.amount)&&goal.amount>=1&&goal.amount<=999&&['day','week'].includes(goal.unit),'Mục tiêu hoặc thời hạn không hợp lệ.');
+            }
+            requireValue(positions.has(1),'Cần nhập mục tiêu 1.');
+            requireValue(r.goal===r.goals.map(g=>`${g.position}. ${g.text} (${g.amount} ${g.unit==='week'?'tuần':'ngày'})`).join('\n'),'Nội dung mục tiêu chưa khớp dữ liệu.');
+          }
+        }
         requireValue(ids.has(r.studentId),'Bản ghi liên kết học sinh không còn trong danh sách.');
         if(key==='meetings' && r.profileId)
           requireValue(c.profiles.some(p=>p.id===r.profileId && p.studentId===r.studentId),'Liên kết M02–M05 không hợp lệ.');

@@ -79,6 +79,7 @@ function openModal(type, id = "", seed = {}) {
     actual:workToday(), progressEvidence:"Chưa đủ căn cứ", needsCoop:"Không", cooperation:"Chưa cần", ...rec,
   });
   if (!id && type === "m03") rec.date ||= workToday();
+  if (type==='m02') ui.editing.meetingInitial=meetingEditorValues(rec);
   const restored = restoreEditorDraft();
   if (restored) Object.assign(rec, restored);
   $("discardDraftBtn").hidden = !DRAFT_TYPES.includes(type);
@@ -104,7 +105,15 @@ function openModal(type, id = "", seed = {}) {
     let value = rec[key] ?? (kind === "boolean" ? false : "");
     let control = "";
     let req = required ? "required" : "";
-    if (kind === "boolean") {
+    if (type==='m02' && key==='actual') {
+      control=meetingTimeControls(rec);
+    } else if(type==='m02' && key==='goal') {
+      control=meetingGoalControls(rec);
+    } else if(type==='m02' && key==='progressEvidence') {
+      control=meetingProgressControls(value);
+    } else if(type==='m02' && MEETING_SUGGESTIONS[key]) {
+      control=meetingSuggestionControls(key,value);
+    } else if (kind === "boolean") {
       control = `<select name="${key}"><option value="0" ${value ? "" : "selected"}>Không</option><option value="1" ${value ? "selected" : ""}>Có</option></select>`;
     } else if (kind === "roles") {
       const current = Array.isArray(value) ? value : [];
@@ -139,7 +148,7 @@ function openModal(type, id = "", seed = {}) {
       control = `<textarea name="${key}" ${req} placeholder="${esc(label)}">${esc(value)}</textarea>`;
     } else
       control = `<input name="${key}" type="${kind}" value="${esc(value)}" ${req} placeholder="${esc(label)}">`;
-    h += `<div data-field="${key}" class="field ${kind === "textarea" ? "wide" : ""}"><label>${esc(label)}${required ? " *" : ""}</label>${control}</div>`;
+    h += `<div data-field="${key}" class="field ${kind === "textarea" || type==='m02'&&['actual','progressEvidence'].includes(key) ? "wide" : ""}"><label>${esc(label)}${required ? " *" : ""}</label>${control}</div>`;
   }
   if (type === "m02")
     h += `<div class="footnote wide">Muốn cập nhật diễn biến Mẫu 05: chọn phiếu phù hợp và bổ sung hai trường M05, sau đó xem tiến trình theo phiếu cá nhân.</div>`;
@@ -183,6 +192,10 @@ async function submitForm(e) {
           ? v.trim()
           : "";
   });
+  if(type==='m02') {
+    try { record=serializeMeetingInputs(fd,record); }
+    catch(error) { alert(error.message);return; }
+  }
   if (type === "userRoles") {
     if (!record.roles.includes("lead")) record.grades = [];
     $("modalSave").disabled = true;

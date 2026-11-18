@@ -15,6 +15,10 @@ function openWorkEntry(type, studentId) {
   if (!["m02", "m03", "plans", "m01"].includes(type) || !editable()) return;
   if (!cls().students.some(s => s.id === studentId)) return;
   if (type === "m01") return openStudentAppointment(studentId);
+  if (type==='m02') {
+    const appointment=monthlyAppointments().find(a=>a.studentId===studentId&&!mdata().meetings.some(r=>r.appointmentId===a.id));
+    if(appointment)return openScheduledMeeting(studentId,appointment.id);
+  }
   const plan = mdata().plans.find(p => p.studentId === studentId && p.result !== "Đạt");
   const seed = {studentId};
   if (type === "m02") {

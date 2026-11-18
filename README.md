@@ -26,6 +26,7 @@ Mở **`index.html`** bằng Live Server hoặc máy chủ HTTP/HTTPS. Giao di�
 | `assets/js/forms/m04.js` | Mẫu 04: kết quả và kế hoạch hỗ trợ |
 | `assets/js/forms/m05.js` | Mẫu 05: hồ sơ theo dõi cá nhân |
 | `assets/js/forms/schema.js` | Các trường nhập, loại trường, yêu cầu bắt buộc và tên hộp thoại |
+| `assets/js/forms/meeting.js` | M02: thời gian/địa điểm, gợi ý chọn nhanh, nút tiến bộ và ba mục tiêu có thời hạn |
 | `assets/js/forms/editor.js` | Mở hộp thoại, lưu/sửa/xóa bản ghi biểu mẫu và học sinh |
 | `assets/js/forms/drafts.js` | Bản nháp biểu mẫu theo tài khoản/lớp/tháng, trường nhập có điều kiện |
 | `assets/js/approval.js` | Gửi, rà soát, duyệt và trả bổ sung báo cáo |
@@ -55,6 +56,10 @@ Nút **Tự động xếp lịch tháng** bổ sung vào khung giờ trống the
 Lịch mới nằm trong `schedule[studentId].appointments`, mỗi lượt có `id`, `date`, `session`, `topics`, `goal`, `planTime`, `note`. Các trường tổng hợp `planTime`, `goal`, `note` trên hồ sơ lịch học sinh vẫn được duy trì cho Excel và thống kê cũ. Lịch một lượt cũ được đọc tương thích, không tự xóa hoặc chuyển dữ liệu trên máy chủ. Lịch cuối tuần đã lưu trước thay đổi được giữ nguyên nếu không sửa; khi đổi lịch phải chọn theo quy tắc mới. Báo cáo và Excel M02 chỉ tính bản ghi thực tế; danh sách dự kiến không được trộn vào lượt đã gặp.
 
 Một cuộc gặp được lưu duy nhất trong `meetings`: M01 lấy trạng thái từ bản ghi này và M05 hiển thị qua `profileId`, không tạo bản sao. Kết nối PHHS luôn phải ghi riêng sau khi thực hiện. Không thay đổi công thức thống kê, điều kiện kiểm tra hoặc quy trình duyệt báo cáo.
+
+M02 tách ngày giờ (`actualDateTime`) và địa điểm (`actualLocation`); khi ghi nhận một lịch dự kiến sẽ điền sẵn giờ hẹn và `Phòng [mã lớp]`, đều sửa được. Trường quan tâm và tham gia có placeholder cùng gợi ý bấm chọn, vẫn cho phép gõ nội dung riêng. Ba nút tiến bộ hiển thị “Chưa ghi nhận / Có tiến bộ / Chưa tiến bộ”, ánh xạ về giá trị cũ “Chưa đủ căn cứ / Có / Không” để giữ cách tính báo cáo.
+
+M02 có ba dòng mục tiêu với thời hạn riêng bằng số và đơn vị ngày/tuần, mặc định 1 tuần. Chỉ mục tiêu 1 bắt buộc; dòng trống không được đưa vào báo cáo. `goals` giữ cấu trúc từng mục tiêu; `goal` và `actual` vẫn tổng hợp thành văn bản để Excel, M05 và báo cáo cũ tiếp tục sử dụng. Khi mở sửa dữ liệu cũ mà không đổi các ô thời gian hoặc mục tiêu, văn bản cũ được giữ nguyên, không tự bổ sung thời hạn vào hồ sơ đã có.
 
 Kế hoạch tháng trước có kết quả khác “Đạt” được gợi ý tiếp tục. Giáo viên phải xem lại và nhập thời hạn mới; kết quả ban đầu là “Chưa chốt”. `sourceMonth` và `sourcePlanId` ghi nguồn để không gợi ý lại kế hoạch đã chuyển. Không tự tạo kết quả hỗ trợ tháng trước hoặc hoạt động đã hoàn thành.
 

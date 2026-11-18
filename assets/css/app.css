@@ -219,6 +219,71 @@ small,
 .calendar-day small {
   font-size: 9px;
 }
+.meeting-time, .meeting-goal-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.meeting-time label, .meeting-goal-row label {
+  display: grid;
+  gap: 6px;
+}
+.meeting-goals {
+  display: grid;
+  gap: 14px;
+}
+.meeting-goal-row {
+  grid-template-columns: minmax(0, 1fr) minmax(155px, .55fr);
+}
+.goal-duration, .meeting-options, .meeting-suggestions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.goal-duration {
+  margin-top: 6px;
+}
+.field .goal-duration input[type="number"] {
+  width: 62px;
+}
+.meeting-options label {
+  position: relative;
+  cursor: pointer;
+}
+.meeting-options input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  min-height: 0;
+}
+.meeting-options span {
+  display: block;
+  padding: 10px 12px;
+  border: 1px solid #bfd2d8;
+  border-radius: 9px;
+  color: #19566a;
+}
+.meeting-options input:checked + span {
+  background: #195b72;
+  border-color: #195b72;
+  color: #fff;
+}
+.meeting-options input:focus-visible + span {
+  outline: 3px solid #d89b25;
+}
+.meeting-suggestions .schedule-choice {
+  font-size: 12px;
+  padding: 7px 9px;
+}
+.meeting-goal-text {
+  white-space: pre-line;
+}
+@media (max-width: 600px) {
+  .meeting-time, .meeting-goal-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .sync-ok {
   color: #15803d;
   font-size: 22px;
