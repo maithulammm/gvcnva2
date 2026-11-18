@@ -93,14 +93,16 @@
         </button>
       </div>
       <form id="entryForm">
+        <p id="editorDraftStatus" class="help" role="status" aria-live="polite"></p>
         <div class="modal-b" id="modalBody"></div>
         <div class="modal-f">
+          <button type="button" class="btn" id="discardDraftBtn" hidden onclick="discardEditorDraft()">Bỏ bản nháp</button>
           <button
             class="btn"
             type="button"
             onclick="document.getElementById('editor').close()"
           >
-            Hủy</button
+            Đóng</button
           ><button class="btn primary" type="submit" id="modalSave">
             Lưu thông tin
           </button>
@@ -125,6 +127,7 @@
     <script defer src="assets/js/views/dashboard.js"></script>
     <script defer src="assets/js/views/students.js"></script>
     <script defer src="assets/js/views/reports.js"></script>
+    <script defer src="assets/js/views/work.js"></script>
     <script defer src="assets/js/forms/m01.js"></script>
     <script defer src="assets/js/forms/m02.js"></script>
     <script defer src="assets/js/forms/m03.js"></script>
@@ -132,6 +135,7 @@
     <script defer src="assets/js/forms/m05.js"></script>
     <script defer src="assets/js/forms/schema.js"></script>
     <script defer src="assets/js/forms/editor.js"></script>
+    <script defer src="assets/js/forms/drafts.js"></script>
     <script defer src="assets/js/approval.js"></script>
     <script defer src="assets/js/excel/template.js"></script>
     <script defer src="assets/js/excel/codec.js"></script>

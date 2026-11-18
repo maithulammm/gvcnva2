@@ -130,6 +130,20 @@ small,
   width: 21px;
   text-align: center;
 }
+[hidden] {
+  display: none !important;
+}
+.work-search {
+  width: min(100%, 300px);
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid #cbdcdb;
+  border-radius: 9px;
+  font: inherit;
+}
+#editorDraftStatus {
+  margin: 12px 22px 0;
+}
 .sync-ok {
   color: #15803d;
   font-size: 22px;

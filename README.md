@@ -18,6 +18,7 @@ Mở **`index.html`** bằng Live Server hoặc máy chủ HTTP/HTTPS. Giao di�
 | `assets/js/views/dashboard.js` | Bảng tổng quan GVCN, khối trưởng và BGH |
 | `assets/js/views/students.js` | Danh sách học sinh theo lớp |
 | `assets/js/views/reports.js` | Màn hình kiểm tra báo cáo, nhập/xuất và sao lưu |
+| `assets/js/views/work.js` | Công việc tháng: ghi nhận theo học sinh và tiếp tục kế hoạch tháng trước |
 | `assets/js/forms/m01.js` | Mẫu 01: lịch gặp học sinh |
 | `assets/js/forms/m02.js` | Mẫu 02: sổ ghi cuộc gặp thực tế |
 | `assets/js/forms/m03.js` | Mẫu 03: kết nối tích cực với phụ huynh |
@@ -25,6 +26,7 @@ Mở **`index.html`** bằng Live Server hoặc máy chủ HTTP/HTTPS. Giao di�
 | `assets/js/forms/m05.js` | Mẫu 05: hồ sơ theo dõi cá nhân |
 | `assets/js/forms/schema.js` | Các trường nhập, loại trường, yêu cầu bắt buộc và tên hộp thoại |
 | `assets/js/forms/editor.js` | Mở hộp thoại, lưu/sửa/xóa bản ghi biểu mẫu và học sinh |
+| `assets/js/forms/drafts.js` | Bản nháp biểu mẫu theo tài khoản/lớp/tháng, trường nhập có điều kiện |
 | `assets/js/approval.js` | Gửi, rà soát, duyệt và trả bổ sung báo cáo |
 | `assets/js/admin.js` | Quản lý GVCN, phân công lớp và trang cấu hình dữ liệu |
 | `assets/js/firebase.js` | Gọi API, đồng bộ, phát hiện xung đột và giữ bản chờ đồng bộ |
@@ -40,6 +42,16 @@ Mở **`index.html`** bằng Live Server hoặc máy chủ HTTP/HTTPS. Giao di�
 | `firebase/database.rules.json` | Quy tắc truy cập database |
 
 Ví dụ: muốn đổi cột hiển thị của M02, sửa `forms/m02.js`. Muốn đổi trường trong hộp thoại M02, sửa mục `m02` trong `forms/schema.js`. Nếu đổi dữ liệu bắt buộc, cập nhật cả `validation.js` và phần tương ứng trong `firebase/functions/model.mjs` để giao diện và máy chủ kiểm tra thống nhất.
+
+## Công việc tháng cho GVCN
+
+GVCN vào trang **Công việc tháng**, chọn học sinh rồi ghi cuộc gặp, kết nối PHHS, lịch hẹn hoặc kế hoạch hỗ trợ. Mục tiêu và hành động có sẵn được đưa vào hộp thoại để giáo viên kiểm tra trước khi lưu. Ngày thực tế gợi ý hôm nay chỉ khi đang mở đúng tháng hiện tại. Phần phối hợp chỉ mở khi cần; chi tiết M05 chỉ mở khi chọn phiếu thuộc học sinh đó.
+
+Một cuộc gặp được lưu duy nhất trong `meetings`: M01 lấy trạng thái từ bản ghi này và M05 hiển thị qua `profileId`, không tạo bản sao. Kết nối PHHS luôn phải ghi riêng sau khi thực hiện. Không thay đổi công thức thống kê, điều kiện kiểm tra hoặc quy trình duyệt báo cáo.
+
+Kế hoạch tháng trước có kết quả khác “Đạt” được gợi ý tiếp tục. Giáo viên phải xem lại và nhập thời hạn mới; kết quả ban đầu là “Chưa chốt”. `sourceMonth` và `sourcePlanId` ghi nguồn để không gợi ý lại kế hoạch đã chuyển. Không tự tạo kết quả hỗ trợ tháng trước hoặc hoạt động đã hoàn thành.
+
+Nội dung đang nhập được giữ trong localStorage riêng theo tài khoản, lớp, tháng và biểu mẫu. Bản nháp chưa gửi lên Firebase, chưa tính vào báo cáo, có thể mở lại hoặc bỏ bằng nút **Bỏ bản nháp**; chỉ nút **Lưu thông tin** mới tạo/cập nhật bản ghi. Bản nháp này không đồng bộ sang máy khác. Khi dữ liệu hoặc phạm vi làm việc đã thay đổi, biểu mẫu yêu cầu mở lại để tránh ghi nhầm.
 
 ## Cách nạp mã
 

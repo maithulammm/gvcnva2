@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import {DOMParser,XMLSerializer} from '@xmldom/xmldom';
 import {createService} from '../service.mjs';
 import {memoryDatabase} from './helpers.mjs';
+import {summary,validateReport} from '../model.mjs';
 
 const projectRoot=new URL('../../../',import.meta.url);
 const entryHtml=fs.readFileSync(new URL('index.html',projectRoot),'utf8');
@@ -13,6 +14,111 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+const completeMeeting={studentId:'S1',actual:'2026-11-10 · Phòng học',concern:'Học tập',participation:'Chủ động',
+  progressEvidence:'Chưa đủ căn cứ',goal:'Mục tiêu',action:'Rà soát tuần sau',needsCoop:'Không',cooperation:'Chưa cần',
+  evidence:'EV01',profileId:'P1',profileProgress:'Đã xác định khó khăn',profileNext:'2026-11-20'};
+
+test('monthly work and original editor produce identical BGH totals and validation results',async()=>{
+  const results=[];
+  for(const quick of [false,true]) {
+    const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+    f.run(`cls().students=[{id:'S1',name:'Student',code:'HS01'}];
+      cls().profiles=[{id:'P1',studentId:'S1',code:'P01',startMonth:ui.month,strength:'A',concern:'B',goal:'C'}];
+      mdata().schedule.S1={goal:'Mục tiêu',planTime:'2026-11-10'};save()`);
+    await f.run('flushCloud()');
+    const originalSummary=f.run('JSON.stringify(summarize(cls(),ui.month))');
+    f.run(`navTo('work')`);
+    assert(f.el('view').innerHTML.includes('Ghi cuộc gặp'));
+    if(quick) f.run(`openWorkEntry('m02','S1')`);else f.run(`openModal('m02')`);
+    assert.equal(f.run('JSON.stringify(summarize(cls(),ui.month))'),originalSummary);
+    f.ctx.meetingInput=completeMeeting;
+    await f.run('submitForm({preventDefault(){},currentTarget:meetingInput})');
+    await f.run('flushCloud()');
+    const boot=await api.bootstrap(admin),c=boot.classes['6A1'];
+    assert.equal(c.months['T11/2026'].meetings.length,1);
+    assert.equal(c.months['T11/2026'].connections.length,0);
+    assert(f.run('renderM01().includes("Đã gặp")'));
+    assert(f.run('renderM05().includes("1 lượt")'));
+    results.push({totals:summary(c,'T11/2026'),checks:validateReport(c,'T11/2026')});
+    await api.saveUserRoles(admin,{email:'bgh@vietanhschool.edu.vn',name:'BGH',roles:['bgh'],active:true});
+    const bgh=await api.bootstrap({email:'bgh@vietanhschool.edu.vn',oid:'bgh-oid',name:'BGH'});
+    assert.deepEqual(bgh.summaries['6A1']['T11/2026'],results.at(-1).totals);
+    await f.run('submitForm({preventDefault(){},currentTarget:meetingInput})');
+    assert.equal(f.run('mdata().meetings.length'),1);
+  }
+  assert.deepEqual(results[0],results[1]);
+  assert.equal(results[1].totals.profileSessions,1);
+  assert.equal(results[1].totals.meetings,1);
+  assert.equal(results[1].totals.improved,0);
+});
+
+test('continuing a plan requires review, preserves history and never copies completion',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student',code:''}];
+    mdata(cls(),'T10/2026').plans=[{id:'OLD',studentId:'S1',need:'N',goal:'G',action:'A',deadline:'2026-10-20',cooperation:'C',assessment:'E',result:'Đạt một phần'},
+      {id:'DONE',studentId:'S1',need:'N',goal:'Done',action:'A',deadline:'2026-10-20',cooperation:'C',assessment:'E',result:'Đạt'}];save()`);
+  await f.run('flushCloud()');
+  const old=f.run(`JSON.stringify(mdata(cls(),'T10/2026'))`);
+  assert.equal(f.run('previousMonthPlans().length'),1);
+  f.run(`continueWorkPlan('OLD')`);
+  assert.match(f.el('modalBody').innerHTML, /name="deadline"[^>]*value=""/);
+  assert.equal(f.run('mdata().plans.length'),0);
+  await f.run(`submitForm({preventDefault(){},currentTarget:{studentId:'S1',need:'N',goal:'G',action:'A',deadline:'2026-11-20',cooperation:'C',assessment:'E',result:'Chưa chốt'}})`);
+  await f.run('flushCloud()');
+  assert.equal(f.run('previousMonthPlans().length'),0);
+  assert.equal(f.run('summarize(cls(),ui.month).supportDone'),0);
+  assert.equal(f.run('summarize(cls(),ui.month).supportPrev'),0);
+  assert.equal(f.run('summarize(cls(),ui.month).meetings'),0);
+  assert.equal(f.run(`JSON.stringify(mdata(cls(),'T10/2026'))`),old);
+  const plan=f.run('mdata().plans[0]');assert.equal(plan.sourcePlanId,'OLD');
+  f.run(`openModal('plans','',{sourceMonth:'T10/2026',sourcePlanId:'OLD'})`);
+  await f.run(`submitForm({preventDefault(){},currentTarget:{studentId:'S1'}})`);
+  assert.equal(f.run('mdata().plans.length'),1);
+});
+
+test('unsubmitted drafts survive reload without entering reports and cannot cross months or classes',async()=>{
+  const memory=new Map(),f=frontend({memory});await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student',code:''}];save();openWorkEntry('m02','S1')`);
+  f.ctx.draftInput={...completeMeeting,profileId:'',concern:'Unsubmitted concern'};
+  f.run('saveEditorDraft(draftInput)');
+  assert.equal(f.run('mdata().meetings.length'),0);
+  const next=frontend({memory});await next.login();
+  next.run(`openWorkEntry('m02','S1')`);
+  assert(next.el('modalBody').innerHTML.includes('Unsubmitted concern'));
+  assert.equal(next.run('mdata().meetings.length'),0);
+  next.run(`ui.month='T12/2026';openWorkEntry('m02','S1')`);
+  assert(!next.el('modalBody').innerHTML.includes('Unsubmitted concern'));
+  next.run(`ui.month='T11/2026';openWorkEntry('m02','S1');ui.classId='6A2'`);
+  await next.run(`submitForm({preventDefault(){},currentTarget:{studentId:'S1'}})`);
+  assert.equal(next.run(`appData.classes['6A1'].months['T11/2026'].meetings.length`),0);
+  assert(next.alerts.some(message=>message.includes('đã thay đổi')));
+});
+
+test('monthly workspace honors preview and locked-month restrictions',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student',code:''}];setRolePreview('gvcn','6A1');navTo('work');openWorkEntry('m02','S1')`);
+  assert.equal(f.run('ui.editing'),null);
+  assert(!f.el('view').innerHTML.includes('openWorkEntry('));
+  f.run(`setRolePreview('');auth.assignment={role:'gvcn',classId:'6A1'};mdata().approval.state='submitted';navTo('work');openWorkEntry('m02','S1')`);
+  assert.equal(f.run('ui.editing'),null);
+  assert(!f.el('view').innerHTML.includes('openWorkEntry('));
+});
+
+test('failed form persistence keeps the draft and retry does not duplicate a meeting',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student',code:''}];save();openWorkEntry('m02','S1')`);
+  f.ctx.input={...completeMeeting,profileId:''};
+  f.run('saveEditorDraft(input)');
+  const key=f.run('editorDraftKey()'),setItem=f.ctx.localStorage.setItem;
+  f.ctx.localStorage.setItem=()=>{throw Error('Storage full');};
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');
+  assert.equal(f.run('mdata().meetings.length'),0);
+  assert(f.el('editor').open);assert(f.memory.has(key));
+  f.ctx.localStorage.setItem=setItem;
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');
+  assert.equal(f.run('mdata().meetings.length'),1);
+  assert(!f.memory.has(key));
+});
 test('classes above 28 students save to Firebase and export all students across every month',async()=>{
   const api=createService(memoryDatabase());
   const f=frontend({api});await f.login();

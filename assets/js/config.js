@@ -33,6 +33,7 @@ const MONTH_DEFAULT = "T11/2026";
 
 const VIEW_LIST = [
   ["dashboard", "◈", "Tổng quan"],
+  ["work", "☑", "Công việc tháng"],
   ["students", "♙", "Danh sách học sinh"],
   ["teachers", "♟", "Quản lý GVCN"],
   ["users", "♙", "Người dùng & vai trò"],
@@ -75,6 +76,7 @@ const ROLE_NAMES = {
 };
 
 const HEADINGS = {
+  work: ["Công việc tháng", ""],
   teachers: [
     "Quản lý giáo viên chủ nhiệm",
     "Admin thêm, sửa, xóa GVCN và phân công lớp",

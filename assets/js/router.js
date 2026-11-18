@@ -129,6 +129,7 @@ function render() {
   $("pageSubtitle").hidden = !head[1];
   $("view").innerHTML = {
     dashboard: renderDashboard,
+    work: renderMonthlyWork,
     students: renderStudents,
     teachers: renderTeachers,
     users: renderUsers,

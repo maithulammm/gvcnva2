@@ -3,6 +3,8 @@
 // Bind DOM events and start the app after all deferred feature scripts.
 
 $("entryForm").addEventListener("submit", submitForm);
+$("entryForm").addEventListener("input", e => saveEditorDraft(e.currentTarget));
+$("entryForm").addEventListener("change", e => saveEditorDraft(e.currentTarget));
 // Không còn nút tự chọn vai trò: vai trò lấy từ danh sách phân quyền sau đăng nhập Microsoft.
 
 $("gradeSel").addEventListener("change", (e) => {

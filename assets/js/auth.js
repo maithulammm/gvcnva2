@@ -135,7 +135,7 @@ async function authenticatedStart(account) {
     : roles.includes("lead")
       ? (GRADES[ui.grade] || [])[0]
       : "6A1";
-  ui.page = "dashboard";
+  ui.page = roles.includes("gvcn") && !roles.includes("admin") ? "work" : "dashboard";
   ui.profileId = "";
   try {
     if (!cloud.ready) load();

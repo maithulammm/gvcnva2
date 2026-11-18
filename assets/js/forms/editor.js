@@ -27,7 +27,7 @@ function lookup(type, id) {
   );
 }
 
-function openModal(type, id = "") {
+function openModal(type, id = "", seed = {}) {
   if (type === "teacher") {
     openClassTeacher();
     return;
@@ -53,7 +53,7 @@ function openModal(type, id = "") {
   if (type === "teacher" && !hasAppRole("admin") && !hasAppRole("gvcn"))
     return;
   let c = cls(),
-    rec = lookup(type, id) || {},
+    rec = { ...(lookup(type, id) || {}), ...seed },
     opts = FIELDS[type];
   if (type === "teacherAccount" && !id)
     Object.assign(rec, {
@@ -65,7 +65,17 @@ function openModal(type, id = "") {
   if (type === "userRoles" && !id)
     Object.assign(rec, { name: "", email: "", roles: [], grades: [], active: true });
   if (!opts) return;
-  ui.editing = { type, id };
+  ui.editing = { type, id, seed, classId:c.id, month:ui.month,
+    epoch:cloud.epoch, owner:auth.email, classObject:c,
+    baseline:stableString(lookup(type,id)||{}) };
+  if (!id && type === "m02") Object.assign(rec, {
+    actual:workToday(), progressEvidence:"Chưa đủ căn cứ", needsCoop:"Không", cooperation:"Chưa cần", ...rec,
+  });
+  if (!id && type === "m03") rec.date ||= workToday();
+  const restored = restoreEditorDraft();
+  if (restored) Object.assign(rec, restored);
+  $("discardDraftBtn").hidden = !DRAFT_TYPES.includes(type);
+  $("editorDraftStatus").textContent = restored ? "Đã khôi phục bản nháp trên máy này. Chưa ghi vào báo cáo." : "";
   $("modalTitle").textContent =
     MODAL_TITLES[type] + (id ? " · Chỉnh sửa" : "");
   let h = "";
@@ -103,30 +113,35 @@ function openModal(type, id = "") {
     } else if (type === "userRoles" && key === "email" && id) {
       control = `<input name="${key}" type="email" value="${esc(value)}" readonly>`;
     } else if (kind === "students") {
-      control = `<select name="${key}" ${req}><option value="">— Chọn học sinh —</option>${c.students.map((s) => `<option value="${s.id}" ${value === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select>`;
+      control = `<select name="${key}" ${req} onchange="updateMeetingFields()"><option value="">— Chọn học sinh —</option>${c.students.map((s) => `<option value="${s.id}" ${value === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select>`;
     } else if (kind === "classes") {
       control = `<select name="${key}" ${req}>${CLASSES.map((classId) => `<option value="${classId}" ${value === classId ? "selected" : ""}>${classId}</option>`).join("")}</select>`;
     } else if (kind === "profiles") {
-      control = `<select name="${key}"><option value="">— Không liên kết —</option>${c.profiles.map((p) => `<option value="${p.id}" ${value === p.id ? "selected" : ""}>${esc(p.code)} · ${esc(studentName(c, p.studentId))}</option>`).join("")}</select>`;
+      control = `<select name="${key}" onchange="updateMeetingFields()"><option value="">— Không liên kết —</option>${c.profiles.map((p) => `<option value="${p.id}" data-student="${p.studentId}" ${value === p.id ? "selected" : ""}>${esc(p.code)} · ${esc(studentName(c, p.studentId))}</option>`).join("")}</select>`;
     } else if (kind === "months") {
       control = `<select name="${key}">${MONTHS.map((s) => `<option value="${s}" ${(value || ui.month) === s ? "selected" : ""}>${s}</option>`).join("")}</select>`;
     } else if (kind === "select") {
-      control = `<select name="${key}" ${req}><option value="" ${!value ? "selected" : ""}>— Chọn —</option>${options.map((s) => `<option value="${esc(s)}" ${value === s ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>`;
+      control = `<select name="${key}" ${req} ${key==="needsCoop"?'onchange="updateMeetingFields()"':''}><option value="" ${!value ? "selected" : ""}>— Chọn —</option>${options.map((s) => `<option value="${esc(s)}" ${value === s ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>`;
     } else if (kind === "textarea") {
       control = `<textarea name="${key}" ${req} placeholder="${esc(label)}">${esc(value)}</textarea>`;
     } else
       control = `<input name="${key}" type="${kind}" value="${esc(value)}" ${req} placeholder="${esc(label)}">`;
-    h += `<div class="field ${kind === "textarea" ? "wide" : ""}"><label>${esc(label)}${required ? " *" : ""}</label>${control}</div>`;
+    h += `<div data-field="${key}" class="field ${kind === "textarea" ? "wide" : ""}"><label>${esc(label)}${required ? " *" : ""}</label>${control}</div>`;
   }
   if (type === "m02")
     h += `<div class="footnote wide">Muốn cập nhật diễn biến Mẫu 05: chọn phiếu phù hợp và bổ sung hai trường M05, sau đó xem tiến trình theo phiếu cá nhân.</div>`;
   $("modalBody").innerHTML = `<div class="fieldgrid">${h}</div>`;
+  updateMeetingFields();
   $("editor").showModal();
 }
 
 async function submitForm(e) {
   e.preventDefault();
   if (!ui.editing) return;
+  if (!editorContextCurrent()) {
+    alert("Lớp, tháng hoặc dữ liệu đã thay đổi. Hãy đóng và mở lại biểu mẫu; bản nháp trên máy được giữ lại.");
+    return;
+  }
   let { type, id } = ui.editing;
   if (
     cloud.busy ||
@@ -192,6 +207,7 @@ async function submitForm(e) {
   }
   let c = cls(),
     m = mdata();
+  const beforeSave = JSON.parse(JSON.stringify(c));
   if (type === "teacher") {
     c.teacher = record.teacher;
     c.email = record.email;
@@ -230,6 +246,17 @@ async function submitForm(e) {
     else c.profiles.push({ ...record, id: newID() });
     ui.profileId = id || c.profiles.at(-1).id;
   } else {
+    if (type === "plans" && ui.editing.seed?.sourcePlanId) {
+      const {sourceMonth,sourcePlanId}=ui.editing.seed;
+      const source=mdata(c,sourceMonth,false).plans.find(p=>p.id===sourcePlanId);
+      if (!source || source.studentId!==record.studentId || source.result==="Đạt" ||
+          m.plans.some(p=>p.sourceMonth===sourceMonth&&p.sourcePlanId===sourcePlanId)) {
+        alert("Kế hoạch gốc đã thay đổi hoặc đã được chuyển tiếp. Hãy kiểm tra lại.");
+        return;
+      }
+      Object.assign(record,{sourceMonth,sourcePlanId});
+    }
+    if (type === "m02" && record.needsCoop === "Không") record.cooperation = "Chưa cần";
     if (type === "m02" && record.profileId) {
       let profile = c.profiles.find((x) => x.id === record.profileId);
       if (!profile || profile.studentId !== record.studentId) {
@@ -250,9 +277,16 @@ async function submitForm(e) {
         id: newID(),
       });
   }
+  if (!save()) {
+    Object.assign(c,beforeSave);
+    toast("Chưa lưu được dữ liệu. Giữ biểu mẫu mở và xuất bản sao trước khi tải lại.");
+    return;
+  }
+  clearEditorDraft();
   $("editor").close();
   ui.editing = null;
-  markChanged();
+  render();
+  toast(cloud.ready ? "Đã lưu, đang đồng bộ dữ liệu…" : "Đã lưu thông tin.");
 }
 
 function removeRecord(type, id) {
