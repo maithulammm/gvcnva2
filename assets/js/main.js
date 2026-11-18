@@ -58,25 +58,7 @@ $("msLoginBtn").addEventListener("click", async () => {
   }
 });
 
-$("msLogoutBtn").addEventListener("click", async () => {
-  const account = auth.account,
-    client = auth.client;
-  lockUi();
-  loginStatus("Đang đăng xuất khỏi phiên đăng nhập Microsoft…");
-  try {
-    if (client && account)
-      await client.logoutRedirect({
-        account,
-        postLogoutRedirectUri: currentRedirectUri(),
-      });
-    else await initializeMsLogin();
-  } catch (e) {
-    loginStatus(
-      "Đã khóa giao diện; không thể hoàn tất đăng xuất Microsoft: " +
-        String(e.message || e),
-      true,
-    );
-  }
-});
+$("msLogoutBtn").addEventListener("click", logoutMicrosoft);
+window.addEventListener?.("storage", handleMicrosoftLogoutStorage);
 
 initializeMsLogin();

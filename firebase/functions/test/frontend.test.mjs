@@ -14,6 +14,74 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+const rememberedAccount={username:admin.email,homeAccountId:'remembered-admin',tenantId:'22215a7f-b9e3-4b53-bd27-3a317311e6ca',idTokenClaims:{oid:admin.oid}};
+async function restoreMicrosoft(f,{fresh=false,account=rememberedAccount}={}) {
+  f.ctx.cachedAccount=account;
+  f.run(`makeMsalClient=async()=>({handleRedirectPromise:async()=>(${fresh?'{account:cachedAccount}':'null'}),
+    getAllAccounts:()=>[cachedAccount],setActiveAccount(account){this.active=account;},
+    acquireTokenSilent:async()=>({idToken:'SYNTHETIC-RESTORED-TOKEN'})})`);
+  await f.run('initializeMsLogin()');
+}
+
+test('verified Microsoft login is restored after reload for 30 days, but expired memory does not unlock the app',async()=>{
+  const api=createService(memoryDatabase()),memory=new Map(),first=frontend({api,memory});
+  await restoreMicrosoft(first,{fresh:true});assert(first.bodyClasses.has('auth-ready'));
+  const key=first.run('LOGIN_REMEMBER_KEY'),saved=JSON.parse(memory.get(key));
+  assert.deepEqual(Object.keys(saved).sort(),['accountId','email','expiresAt']);
+  assert(saved.expiresAt>Date.now()+29*86400000);
+  const second=frontend({api,memory});await restoreMicrosoft(second);
+  assert(second.bodyClasses.has('auth-ready'));assert.equal(second.run('auth.client.active.homeAccountId'),'remembered-admin');
+  assert.equal(JSON.parse(memory.get(key)).expiresAt,saved.expiresAt);
+  memory.set(key,JSON.stringify({...saved,expiresAt:Date.now()-1}));
+  const expired=frontend({api,memory});await restoreMicrosoft(expired);
+  assert(!expired.bodyClasses.has('auth-ready'));assert.equal(expired.run('auth.account'),null);
+});
+
+test('logout clears remembering through MSAL, preserves work data and prevents cached sign-in on reload',async()=>{
+  const api=createService(memoryDatabase()),memory=new Map(),f=frontend({api,memory});await restoreMicrosoft(f,{fresh:true});
+  memory.set('VA_GVCN_MSAL_PROTOTYPE_DATA_V1','Keep original data');memory.set('VA_GVCN_FORM_DRAFT_V1_TEST','Keep draft');
+  let logoutRequest;
+  f.ctx.logoutCall=async request=>{logoutRequest=request;};
+  f.run('auth.client.logoutRedirect=logoutCall');await f.run('logoutMicrosoft()');
+  assert.equal(logoutRequest.account,undefined);assert.equal(logoutRequest.postLogoutRedirectUri,'http://127.0.0.1:5500/index.html');
+  assert(!memory.has(f.run('LOGIN_REMEMBER_KEY')));assert(memory.has(f.run('LOGIN_SIGNED_OUT_KEY')));
+  assert.equal(memory.get('VA_GVCN_MSAL_PROTOTYPE_DATA_V1'),'Keep original data');
+  assert.equal(memory.get('VA_GVCN_FORM_DRAFT_V1_TEST'),'Keep draft');assert(!f.bodyClasses.has('auth-ready'));
+  const next=frontend({api,memory});await restoreMicrosoft(next);assert(!next.bodyClasses.has('auth-ready'));
+  await restoreMicrosoft(next,{fresh:true});assert(next.bodyClasses.has('auth-ready'));
+  assert(!memory.has(next.run('LOGIN_SIGNED_OUT_KEY')));
+});
+
+test('logout failure and cross-tab logout still lock the UI and prevent remembered restoration',async()=>{
+  const api=createService(memoryDatabase()),memory=new Map(),f=frontend({api,memory});await restoreMicrosoft(f,{fresh:true});
+  f.run(`auth.client.logoutRedirect=async()=>{throw Error('Offline')}`);await f.run('logoutMicrosoft()');
+  assert.equal(f.run('auth.account'),null);assert(memory.has(f.run('LOGIN_SIGNED_OUT_KEY')));
+  const next=frontend({api,memory});await restoreMicrosoft(next);assert(!next.bodyClasses.has('auth-ready'));
+  await restoreMicrosoft(next,{fresh:true});assert(next.bodyClasses.has('auth-ready'));
+  next.run(`handleMicrosoftLogoutStorage({key:LOGIN_SIGNED_OUT_KEY,newValue:'logout'})`);
+  assert.equal(next.run('auth.account'),null);assert(!next.bodyClasses.has('auth-ready'));
+});
+
+test('missing or expired ID tokens are silently renewed and empty bearer tokens never reach the API',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  for(const first of [{idToken:''},{idToken:'expired',idTokenClaims:{exp:1}}]) {
+    const requests=[];f.ctx.tokenCall=async request=>{requests.push(request);return requests.length===1?first:{idToken:'renewed'};};
+    f.run('auth.client.acquireTokenSilent=tokenCall');assert.equal(await f.run('acquireMicrosoftIdToken()'),'renewed');
+    assert.equal(requests.length,2);assert.equal(requests[1].forceRefresh,true);
+  }
+  let fetches=0;f.ctx.fetch=async()=>{fetches++;throw Error('Should not fetch');};
+  f.run(`auth.client.acquireTokenSilent=async()=>({idToken:''})`);
+  await assert.rejects(f.run('databaseRequest("/bootstrap")'),e=>e.status===401);assert.equal(fetches,0);
+});
+
+test('automatic reauthentication is limited to one redirect and does not bypass explicit logout',async()=>{
+  const f=frontend();await f.login();let redirects=0;
+  f.ctx.redirectCall=async()=>{redirects++;};f.run('auth.client.acquireTokenRedirect=redirectCall');
+  assert.equal(await f.run('recoverMicrosoftSession(auth.account)'),true);
+  assert.equal(await f.run('recoverMicrosoftSession(auth.account)'),false);assert.equal(redirects,1);
+  f.memory.delete(f.run('LOGIN_REAUTH_KEY'));f.memory.set(f.run('LOGIN_SIGNED_OUT_KEY'),'signed-out');
+  assert.equal(await f.run('recoverMicrosoftSession(auth.account)'),false);assert.equal(redirects,1);
+});
 test('M02 prefills planned date and classroom, stores independent goal deadlines and preserves BGH progress semantics',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
   f.run(`ui.classId='8C3';ui.grade='8';cls().students=[{id:'S1',name:'Student',code:''}];
@@ -572,7 +640,7 @@ test('invalid local data is retained and Microsoft URI generation respects curre
   assert.equal(f.run('currentRedirectUri()'),'http://127.0.0.1:5500/index.html');
   assert(f.run(`microsoftErrorText(new Error('AADSTS50011')).includes(currentRedirectUri())`));
   assert(source.includes('https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js'));
-  assert(source.includes('cacheLocation: "sessionStorage"'));
+  assert(source.includes('cacheLocation: "localStorage"'));
 });
 
 test('index and directory entry use the index Entra redirect and preserve stored config',()=>{

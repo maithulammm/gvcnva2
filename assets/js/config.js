@@ -60,6 +60,10 @@ const USER_ALLOWLIST = Object.freeze({
 });
 
 const MICROSOFT_CONFIG_KEY = "VA_GVCN_MICROSOFT_AUTH_CONFIG_V1";
+const LOGIN_REMEMBER_KEY = "VA_GVCN_REMEMBER_LOGIN_V1";
+const LOGIN_SIGNED_OUT_KEY = "VA_GVCN_SIGNED_OUT_V1";
+const LOGIN_REAUTH_KEY = "VA_GVCN_REAUTH_V1";
+const LOGIN_REMEMBER_DAYS = 30;
 
 // Public deployment configuration shared by every browser and device.
 const MICROSOFT_CONFIG = Object.freeze({

@@ -77,6 +77,10 @@ Khi chuyển ứng dụng sang máy khác hoặc máy chủ, chép `index.html` 
 
 `index.html` là trang HTML duy nhất, đồng thời tiếp nhận kết quả đăng nhập Microsoft. Khi mở `index.html` hoặc đường dẫn thư mục `/`, hàm `currentRedirectUri()` sử dụng `index.html` trong cùng thư mục.
 
+MSAL giữ tài khoản/token trong `localStorage` để khôi phục phiên khi tải lại hoặc mở lại trình duyệt. Ứng dụng ghi nhớ tài khoản tối đa 30 ngày kể từ lần xác thực Microsoft mới, chỉ lưu mã tài khoản, email và thời hạn trong `VA_GVCN_REMEMBER_LOGIN_V1`; marker này không cấp quyền truy cập và không thay thế kiểm tra token/vai trò trên API. Mỗi lần mở vẫn lấy token bằng MSAL và tải lại phân công từ máy chủ. Token trống/hết hạn được yêu cầu làm mới; nếu cần tương tác, khi khôi phục có thể chuyển qua Microsoft một lần, có chặn lặp. Chính sách Entra, MFA hoặc đổi mật khẩu có thể yêu cầu xác thực lại trước 30 ngày.
+
+Nút **Đăng xuất** xóa marker ghi nhớ và gọi MSAL `logoutRedirect` không chỉ định tài khoản để xóa toàn bộ account/token của ứng dụng; chỉ báo đăng xuất ngăn khôi phục cache cũ kể cả khi không kết nối được máy chủ Microsoft. Các tab khác cũng khóa giao diện khi nhận sự kiện đăng xuất. Không gọi `localStorage.clear()`: dữ liệu lớp, bản chờ đồng bộ, bản nháp và cấu hình Microsoft được giữ nguyên. Không tự chạy đăng nhập trong iframe dùng cho gia hạn token.
+
 Đăng ký Redirect URI mới trong Entra → Authentication → Single-page application (SPA), theo đúng địa chỉ đang sử dụng, ví dụ:
 
 ```text

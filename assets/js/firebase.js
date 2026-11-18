@@ -96,17 +96,7 @@ async function databaseRequest(path, method = "GET", body) {
   const epoch = cloud.epoch;
   if (!auth.client || !auth.account)
     throw Error("Cần đăng nhập Microsoft trước khi kết nối dữ liệu.");
-  let token;
-  try {
-    token = await auth.client.acquireTokenSilent({
-      account: auth.account,
-      scopes: ["openid", "profile", "email"],
-    });
-  } catch {
-    throw Error(
-      "Phiên Microsoft cần được xác thực lại. Hãy đăng xuất rồi đăng nhập lại.",
-    );
-  }
+  const token=await acquireMicrosoftIdToken();
   if (epoch !== cloud.epoch) throw Error("Phiên làm việc đã thay đổi.");
   const controller = new AbortController(),
     timeout = setTimeout(() => controller.abort(), 45000);
@@ -114,7 +104,7 @@ async function databaseRequest(path, method = "GET", body) {
     const response = await fetch(FIREBASE_API_URL + path, {
       method,
       headers: {
-        Authorization: "Bearer " + token.idToken,
+        Authorization: "Bearer " + token,
         ...(body ? { "Content-Type": "application/json" } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
