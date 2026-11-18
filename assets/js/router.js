@@ -14,7 +14,7 @@ function markChanged() {
 
 function navTo(page) {
   closeMobileNavigation();
-  ui.page = page;
+  ui.page = page==='work'?'m02':page;
   ui.search = "";
   if (page === "m05" && !ui.profileId)
     ui.profileId = cls().profiles[0]?.id || "";
@@ -116,11 +116,11 @@ function render() {
   renderSelectors();
   let allowed = canViewPersonal() || ui.role === "lead";
   let permitted = VIEW_LIST.filter(([k]) =>
-    ["students", "teachers", "database", "users"].includes(k)
+    ["students", "teachers", "database", "users", "export"].includes(k)
       ? hasAppRole("admin")
-      : allowed || ["dashboard", "check", "export"].includes(k),
+      : allowed || ["dashboard", "check"].includes(k),
   );
-  const adminPages=['students','teachers','users','database'];
+  const adminPages=['students','teachers','users','database','export'];
   if (!permitted.some((x) => x[0] === ui.page)) ui.page = "dashboard";
   const navButton=([k,i,s])=>
     `<button class="${ui.page===k?'active':''}" aria-label="${esc(s)}" title="${esc(s)}" ${ui.page===k?'aria-current="page"':''} onclick="navTo('${k}')"><span class="ico" aria-hidden="true">${i}</span><span class="nav-text">${esc(s)}</span></button>`;
@@ -133,7 +133,6 @@ function render() {
   $("pageSubtitle").hidden = !head[1];
   $("view").innerHTML = {
     dashboard: renderDashboard,
-    work: renderMonthlyWork,
     students: renderStudents,
     teachers: renderTeachers,
     users: renderUsers,

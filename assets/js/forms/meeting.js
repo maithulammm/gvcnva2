@@ -49,10 +49,10 @@ function meetingTimeControls(record) {
 
 function meetingGoalControls(record) {
   const v=meetingEditorValues(record);
-  return `<div class="meeting-goals">${[1,2,3].map(i=>`<div class="meeting-goal-row"><label>Mục tiêu ${i}${i===1?' *':''}<textarea name="goal${i}" rows="2" placeholder="${i===1?'Ví dụ: Hoàn thành bài tập đúng hạn':'Có thể để trống'}" ${i===1?'required':''}>${esc(v['goal'+i])}</textarea></label>
+  const goalRow=i=>`<div class="meeting-goal-row"><label>Mục tiêu ${i}${i===1?' *':''}<textarea name="goal${i}" rows="2" placeholder="${i===1?'Ví dụ: Hoàn thành bài tập đúng hạn':'Có thể để trống'}" ${i===1?'required':''}>${esc(v['goal'+i])}</textarea></label>
     <div><span>Thời hạn</span><div class="goal-duration"><input type="number" name="goalAmount${i}" aria-label="Số ngày hoặc tuần của mục tiêu ${i}" min="1" max="999" step="1" value="${esc(v['goalAmount'+i])}" ${i===1?'required':''}>
-    <div class="meeting-options" role="group" aria-label="Đơn vị thời hạn mục tiêu ${i}">${[['day','ngày'],['week','tuần']].map(([value,label])=>`<label><input type="radio" name="goalUnit${i}" value="${value}" ${v['goalUnit'+i]===value?'checked':''}><span>${label}</span></label>`).join('')}</div></div></div></div>`).join('')}</div>
-    <input type="hidden" name="goal" value="${esc(record.goal||'')}">`;
+    <div class="meeting-options" role="group" aria-label="Đơn vị thời hạn mục tiêu ${i}">${[['day','ngày'],['week','tuần']].map(([value,label])=>`<label><input type="radio" name="goalUnit${i}" value="${value}" ${v['goalUnit'+i]===value?'checked':''}><span>${label}</span></label>`).join('')}</div></div></div></div>`;
+  return `<div class="meeting-goals">${goalRow(1)}<details id="meetingMoreGoals" class="meeting-extra" ${v.goal2||v.goal3?'open':''}><summary>Thêm mục tiêu 2, 3</summary>${goalRow(2)}${goalRow(3)}</details></div><input type="hidden" name="goal" value="${esc(record.goal||'')}">`;
 }
 
 function meetingProgressControls(value) {

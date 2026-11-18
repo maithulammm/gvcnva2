@@ -14,7 +14,7 @@ function closeMobileNavigation() {
 
 function renderResponsiveNavigation(permitted) {
   $('mobileNavLinks').innerHTML=$('nav').innerHTML;
-  $('mobileWorkButton').hidden=!permitted.some(([key])=>key==='work');
+  $('mobileWorkButton').hidden=!permitted.some(([key])=>key==='m02');
   const single=hasAppRole('gvcn')&&!hasAppRole('admin')&&!hasAppRole('lead')&&!hasAppRole('bgh');
   document.body.classList[single?'add':'remove']('single-class-view');
 }

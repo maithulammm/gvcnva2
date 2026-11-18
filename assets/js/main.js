@@ -3,6 +3,10 @@
 // Bind DOM events and start the app after all deferred feature scripts.
 
 $("entryForm").addEventListener("submit", submitForm);
+$("entryForm").addEventListener("invalid",event=>{
+  let panel=event.target.closest?.('details');
+  while(panel){panel.open=true;panel=panel.parentElement?.closest('details');}
+},true);
 $("appDialogForm").addEventListener("submit",event=>{event.preventDefault();finishAppDialog(true);});
 $("appDialog").addEventListener("cancel",event=>{event.preventDefault();finishAppDialog(false);});
 $("entryForm").addEventListener("input", e => saveEditorDraft(e.currentTarget));
@@ -67,7 +71,7 @@ $("msLogoutBtn").addEventListener("click", logoutMicrosoft);
 window.addEventListener?.("storage", handleMicrosoftLogoutStorage);
 $("requestOverlay").addEventListener("cancel",e=>e.preventDefault());
 $("mobileNav").addEventListener("close",()=>$("mobileMenuButton").setAttribute("aria-expanded","false"));
-$("editor").addEventListener("close",()=>{if(ui.editing&&auth.account&&appData&&ui.page==='work')render();});
+$("editor").addEventListener("close",()=>{if(ui.editing&&auth.account&&appData&&ui.page==='m02')render();});
 window.addEventListener?.("resize",updateVisualViewport);
 window.visualViewport?.addEventListener("resize",updateVisualViewport);
 updateVisualViewport();

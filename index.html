@@ -5,10 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content" />
     <title>Quản lý GVCN VA2</title>
-    <link rel="stylesheet" href="assets/css/app.css?v=20261118-login-clean" />
-    <link rel="stylesheet" href="assets/css/responsive.css?v=20261118-login-clean" />
-    <link rel="stylesheet" href="assets/css/header.css?v=20261118-popups" />
-    <link rel="stylesheet" href="assets/css/dialogs.css?v=20261118-popups" />
+    <link rel="stylesheet" href="assets/css/app.css?v=20261118-quick-meeting" />
+    <link rel="stylesheet" href="assets/css/responsive.css?v=20261118-quick-meeting" />
+    <link rel="stylesheet" href="assets/css/header.css?v=20261118-quick-meeting" />
+    <link rel="stylesheet" href="assets/css/dialogs.css?v=20261118-quick-meeting" />
   </head>
   <body>
     <!-- Microsoft login gate: before authentication NO application view is rendered. -->
@@ -43,7 +43,7 @@
       <header class="mobile-bar">
         <button type="button" class="btn" id="mobileMenuButton" aria-haspopup="dialog" aria-controls="mobileNav" aria-expanded="false" onclick="openMobileNavigation()">☰ Menu</button>
         <span class="mobile-school-brand"><img src="assets/logo/logova2.png" alt="Logo Trường Việt Anh 2" /><strong>Việt Anh 2</strong></span>
-        <button type="button" class="btn" id="mobileWorkButton" hidden onclick="navTo('work')">Công việc</button>
+        <button type="button" class="btn" id="mobileWorkButton" hidden onclick="navTo('m02')">Sổ gặp</button>
       </header>
       <aside class="sidebar">
         <div class="logo">
@@ -110,7 +110,7 @@
             onclick="document.getElementById('editor').close()"
           >
             Đóng</button
-          ><button class="btn primary" type="submit" id="modalSave">
+          ><button class="btn" type="submit" id="modalSaveNext" hidden>Lưu & ghi HS tiếp theo</button><button class="btn primary" type="submit" id="modalSave">
             Lưu thông tin
           </button>
         </div>
@@ -136,42 +136,43 @@
       defer
       src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"
     ></script>
-    <script defer src="assets/js/config.js?v=20261118-popups"></script>
-    <script defer src="assets/js/state.js?v=20261118-popups"></script>
-    <script defer src="assets/js/helpers.js?v=20261118-popups"></script>
-    <script defer src="assets/js/loading.js?v=20261118-popups"></script>
-    <script defer src="assets/js/dialogs.js?v=20261118-popups"></script>
-    <script defer src="assets/js/data.js?v=20261118-popups"></script>
-    <script defer src="assets/js/permissions.js?v=20261118-popups"></script>
-    <script defer src="assets/js/validation.js?v=20261118-popups"></script>
-    <script defer src="assets/js/router.js?v=20261118-popups"></script>
-    <script defer src="assets/js/responsive.js?v=20261118-popups"></script>
-    <script defer src="assets/js/views/dashboard.js?v=20261118-popups"></script>
-    <script defer src="assets/js/views/students.js?v=20261118-popups"></script>
-    <script defer src="assets/js/views/reports.js?v=20261118-popups"></script>
-    <script defer src="assets/js/views/work.js?v=20261118-popups"></script>
-    <script defer src="assets/js/forms/m01.js?v=20261118-popups"></script>
-    <script defer src="assets/js/forms/schedule.js?v=20261118-popups"></script>
-    <script defer src="assets/js/forms/m02.js?v=20261118-popups"></script>
-    <script defer src="assets/js/forms/m03.js?v=20261118-popups"></script>
-    <script defer src="assets/js/forms/m04.js?v=20261118-popups"></script>
-    <script defer src="assets/js/forms/m05.js?v=20261118-popups"></script>
-    <script defer src="assets/js/forms/schema.js?v=20261118-popups"></script>
-    <script defer src="assets/js/forms/meeting.js?v=20261118-popups"></script>
-    <script defer src="assets/js/forms/history.js?v=20261118-popups"></script>
-    <script defer src="assets/js/choices.js?v=20261118-popups"></script>
-    <script defer src="assets/js/forms/editor.js?v=20261118-popups"></script>
-    <script defer src="assets/js/forms/drafts.js?v=20261118-popups"></script>
-    <script defer src="assets/js/approval.js?v=20261118-popups"></script>
-    <script defer src="assets/js/excel/template.js?v=20261118-popups"></script>
-    <script defer src="assets/js/excel/codec.js?v=20261118-popups"></script>
-    <script defer src="assets/js/excel/export.js?v=20261118-popups"></script>
-    <script defer src="assets/js/excel/import.js?v=20261118-popups"></script>
-    <script defer src="assets/js/backup.js?v=20261118-popups"></script>
-    <script defer src="assets/js/demo.js?v=20261118-popups"></script>
-    <script defer src="assets/js/firebase.js?v=20261118-popups"></script>
-    <script defer src="assets/js/admin.js?v=20261118-popups"></script>
-    <script defer src="assets/js/auth.js?v=20261118-login-clean"></script>
-    <script defer src="assets/js/main.js?v=20261118-popups"></script>
+    <script defer src="assets/js/config.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/state.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/helpers.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/loading.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/dialogs.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/data.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/permissions.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/validation.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/router.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/responsive.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/views/dashboard.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/views/students.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/views/reports.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/views/work.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/forms/m01.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/forms/schedule.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/forms/m02.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/forms/m03.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/forms/m04.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/forms/m05.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/forms/schema.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/forms/meeting.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/forms/history.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/forms/quick-meeting.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/choices.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/forms/editor.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/forms/drafts.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/approval.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/excel/template.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/excel/codec.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/excel/export.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/excel/import.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/backup.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/demo.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/firebase.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/admin.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/auth.js?v=20261118-quick-meeting"></script>
+    <script defer src="assets/js/main.js?v=20261118-quick-meeting"></script>
   </body>
 </html>

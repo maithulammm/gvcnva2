@@ -266,7 +266,8 @@ async function flushCloud() {
           classFingerprint(appData.classes[id]) ===
           classFingerprint(snapshot)
         )
-          appData.classes[id] = result.data;
+          // Keep the class reference used by an open, unsaved next-student form.
+          Object.assign(appData.classes[id],result.data);
         cloud.pending.delete(id);
         scanPendingClasses();
         storePendingDrafts();

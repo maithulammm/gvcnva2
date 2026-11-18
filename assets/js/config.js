@@ -33,7 +33,6 @@ const MONTH_DEFAULT = "T11/2026";
 
 const VIEW_LIST = [
   ["dashboard", "◈", "Tổng quan"],
-  ["work", "☑", "Công việc tháng"],
   ["students", "♙", "Danh sách học sinh"],
   ["teachers", "♟", "Quản lý GVCN"],
   ["users", "♙", "Người dùng & vai trò"],

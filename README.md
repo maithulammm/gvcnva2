@@ -8,6 +8,15 @@ hiện gọi trực tiếp API Cloudflare, không dùng Netlify làm trung gian.
 
 Mở **`index.html`** bằng Live Server hoặc máy chủ HTTP/HTTPS. Giao diện dùng HTML, CSS và JavaScript thuần; không cần cài thư viện hoặc chạy bước build cho frontend.
 
+Mẫu 2 hiện có **Ghi nhanh / Đầy đủ**: phần phối hợp, liên kết Mẫu 5 và mục tiêu
+2–3 có thể mở khi cần. Mẫu nội dung chỉ điền gợi ý chủ đề, mục tiêu và hành động;
+không tự điền nhận xét, mức tiến bộ, ngày gặp hoặc tạo cuộc gặp thực tế. GVCN có
+thể lưu tối đa 20 mẫu riêng trên thiết bị, tách theo tài khoản Microsoft.
+Nút **Lưu & ghi HS tiếp theo** chỉ mở lịch hẹn chưa ghi/học sinh chưa gặp tiếp
+theo sau khi lưu cục bộ thành công; mỗi học sinh vẫn cần được ghi nhận thực tế.
+Trang Công việc tháng đã được bỏ khỏi menu; lối gọi cũ `navTo('work')` đưa về Mẫu 2.
+Trang Nhập / xuất dữ liệu nằm trong nhóm Quản trị viên và chỉ Admin nhìn thấy.
+
 ## Sửa chức năng ở đâu?
 
 | File / thư mục | Nội dung |

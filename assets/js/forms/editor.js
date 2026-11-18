@@ -65,6 +65,7 @@ function openModal(type, id = "", seed = {}) {
   if (type === "userRoles" && !id)
     Object.assign(rec, { name: "", email: "", roles: [], grades: [], active: true });
   if (!opts) return;
+  $('modalSaveNext').hidden=type!=='m02';
   ui.editing = { type, id, seed, classId:c.id, month:ui.month,
     epoch:cloud.epoch, owner:auth.email, classObject:c,
     baseline:stableString(lookup(type,id)||{}) };
@@ -95,10 +96,11 @@ function openModal(type, id = "", seed = {}) {
     $("modalBody").scrollTop = 0;
     return;
   }
-  let h = "";
+  let h = "",advanced="";
   if(type==='m02') {
+    h+=renderQuickMeetingTools();
     const initial=meetingEditorValues(rec);
-    h+=`<div id="previousMeetingPanel" class="wide">${previousMeetingPanel(c,rec.studentId,ui.month,id,initial.actualDateTime)}</div>`;
+    h+=`<details class="wide"><summary>Lần gặp trước · Thông tin tham khảo</summary><div id="previousMeetingPanel">${previousMeetingPanel(c,rec.studentId,ui.month,id,initial.actualDateTime)}</div></details>`;
   }
   if (type === "m05detail") {
     h += `<div class="footnote wide">Lượt gặp: ${esc(rec.actual || "")}</div>`;
@@ -152,14 +154,18 @@ function openModal(type, id = "", seed = {}) {
       control = `<textarea name="${key}" ${req} placeholder="${esc(label)}">${esc(value)}</textarea>`;
     } else
       control = `<input name="${key}" type="${kind}" value="${esc(value)}" ${req} placeholder="${esc(label)}">`;
-    h += `<div data-field="${key}" class="field ${kind === "textarea" || type==='m02'&&['actual','progressEvidence'].includes(key) || type==='m03'&&key==='channel' || type==='profile'&&key==='result' ? "wide" : ""}"><label>${esc(label)}${required ? " *" : ""}</label>${control}</div>`;
+    const fieldHtml=`<div data-field="${key}" class="field ${kind === "textarea" || type==='m02'&&['actual','progressEvidence'].includes(key) || type==='m03'&&key==='channel' || type==='profile'&&key==='result' ? "wide" : ""}"><label>${esc(label)}${required ? " *" : ""}</label>${control}</div>`;
+    if(type==='m02'&&['cooperation','needsCoop','profileId','profileProgress','profileNext'].includes(key))advanced+=fieldHtml;
+    else h+=fieldHtml;
   }
   if (type === "m02")
-    h += `<div class="footnote wide">Muốn cập nhật diễn biến Mẫu 05: chọn phiếu phù hợp và bổ sung hai trường M05, sau đó xem tiến trình theo phiếu cá nhân.</div>`;
+    h += `<details id="meetingExtra" class="wide meeting-extra" ${rec.needsCoop==='Có'||rec.profileId?'open':''}><summary>Phối hợp & liên kết Mẫu 5</summary><div class="fieldgrid">${advanced}</div></details>`;
   $("modalBody").innerHTML = `<div class="fieldgrid">${h}</div>`;
   updateMeetingFields();
+  if(type==='m02')syncMeetingModeButtons();
   refreshButtonChoices($("entryForm"));
   $("editor").showModal();
+  $("modalBody").scrollTop=0;
 }
 
 async function submitForm(e) {
@@ -323,10 +329,12 @@ async function submitForm(e) {
     return;
   }
   clearEditorDraft();
+  const nextStudent=type==='m02'&&e.submitter?.id==='modalSaveNext'?record.studentId:'';
   $("editor").close();
   ui.editing = null;
   render();
   toast(cloud.ready ? "Đã lưu, đang đồng bộ dữ liệu…" : "Đã lưu thông tin.");
+  if(nextStudent)openNextMeeting(nextStudent);
 }
 
 async function removeRecord(type, id) {

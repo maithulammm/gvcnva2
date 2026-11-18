@@ -14,6 +14,48 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('quick meeting saves before moving to the next appointment and survives background acknowledgement',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`cls().students=[{id:'S1',name:'First'},{id:'S2',name:'Second'}];
+    mdata().schedule={S1:{appointments:[{id:'A1',date:'2026-11-18',session:'morning',planTime:'18/11/2026 · Sáng 9:55–10:15'}]},S2:{appointments:[{id:'A2',date:'2026-11-18',session:'afternoon',planTime:'18/11/2026 · Chiều 15:00–15:20'}]}};
+    for(const sid of ['S1','S2'])mdata().schedule[sid]=appointmentRollup({},mdata().schedule[sid].appointments);save()`);
+  await f.run('flushCloud()');f.run(`openScheduledMeeting('S1','A1')`);
+  f.ctx.input={...completeMeeting,profileId:'',profileProgress:'',profileNext:''};
+  await f.run(`submitForm({preventDefault(){},currentTarget:input,submitter:{id:'modalSaveNext'}})`);
+  assert.equal(f.run('mdata().meetings.length'),1);
+  assert.equal(f.run('ui.editing.seed.studentId'),'S2');assert.equal(f.run('ui.editing.seed.appointmentId'),'A2');
+  assert.equal(f.run('ui.editing.seed.actualDateTime'),'2026-11-18T15:00');
+  assert(!f.el('modalBody').innerHTML.includes('>'+completeMeeting.participation+'</textarea>'));
+  await f.run('flushCloud()');assert.equal(f.run('editorContextCurrent()'),true);
+  assert.equal((await api.bootstrap(admin)).classes['6A1'].months['T11/2026'].meetings.length,1);
+  f.ctx.input={...f.ctx.input,studentId:'S2'};
+  f.run(`save=()=>false`);
+  await f.run(`submitForm({preventDefault(){},currentTarget:input,submitter:{id:'modalSaveNext'}})`);
+  assert.equal(f.run('mdata().meetings.length'),1);assert.equal(f.run('ui.editing.seed.studentId'),'S2');
+});
+
+test('personal suggestion templates exclude observations and are isolated by teacher account',async()=>{
+  const f=frontend();await f.login();f.run(`cls().students=[{id:'S1',name:'First'}];openModal('m02','',{studentId:'S1'})`);
+  Object.assign(f.el('entryForm'),{concern:'Study routine',action:'Review next week',goal1:'Finish tasks',goalAmount1:'1',goalUnit1:'week',
+    participation:'Private observation',progressEvidence:'Có',studentId:'S1',actualDateTime:'2026-11-18T09:55'});
+  await f.run('saveMeetingTemplate()');
+  const templates=JSON.parse(f.run('JSON.stringify(personalMeetingTemplates())'));
+  assert.equal(templates.length,1);assert.equal(templates[0].goals[0].text,'Finish tasks');
+  assert(!JSON.stringify(templates).includes('Private observation'));assert(!JSON.stringify(templates).includes('S1'));
+  assert.equal(f.run('mdata().meetings.length'),0);
+  f.run(`auth.email='other@vietanhschool.edu.vn'`);assert.equal(f.run('personalMeetingTemplates().length'),0);
+});
+
+test('monthly-work page is retired and import/export navigation belongs only to Admin',async()=>{
+  const f=frontend();await f.login();f.run('render()');
+  assert(!f.run(`VIEW_LIST.some(([key])=>key==='work')`));
+  const nav=f.el('nav').innerHTML;
+  assert(nav.indexOf("navTo('export')")>nav.indexOf('class="admin-nav"'));
+  f.run(`navTo('work')`);assert.equal(f.run('ui.page'),'m02');
+  f.run(`auth.assignment={role:'gvcn',roles:['gvcn'],classId:'6A1'};navTo('export')`);
+  assert.equal(f.run('ui.page'),'dashboard');assert(!f.el('nav').innerHTML.includes("navTo('export')"));
+  assert(f.el('mobileNavLinks').innerHTML.includes("navTo('m02')"));
+});
 test('custom dialogs queue messages, cancel prompts and reject confirmations after context changes',async()=>{
   const f=frontend();await f.login();
   let result=f.run(`realDialogs.confirm('Delete this record?')`);
@@ -136,7 +178,7 @@ test('automatic saving and polling synchronize without showing the blocking load
 test('mobile menu preserves role scope, closes on navigation and clears after logout',async()=>{
   const f=frontend();await f.login();f.ctx.window.innerWidth=390;
   f.run(`auth.assignment={role:'gvcn',roles:['gvcn'],classId:'8C3'};ui.classId='8C3';render();openMobileNavigation()`);
-  assert(f.el('mobileNav').open);assert(f.el('mobileNavLinks').innerHTML.includes("navTo('work')"));
+  assert(f.el('mobileNav').open);assert(f.el('mobileNavLinks').innerHTML.includes("navTo('m02')"));
   assert(!f.el('mobileNavLinks').innerHTML.includes("navTo('users')"));
   assert.equal(f.el('mobileWorkButton').hidden,false);assert(f.bodyClasses.has('single-class-view'));
   f.run(`navTo('m02')`);assert(!f.el('mobileNav').open);
@@ -464,7 +506,7 @@ test('monthly work and original editor produce identical BGH totals and validati
     await f.run('flushCloud()');
     const originalSummary=f.run('JSON.stringify(summarize(cls(),ui.month))');
     f.run(`navTo('work')`);
-    assert(f.el('view').innerHTML.includes('Ghi cuộc gặp'));
+    assert.equal(f.run('ui.page'),'m02');assert(f.el('view').innerHTML.includes('Sổ ghi lượt gặp thực tế'));
     if(quick) f.run(`openWorkEntry('m02','S1')`);else f.run(`openModal('m02')`);
     assert.equal(f.run('JSON.stringify(summarize(cls(),ui.month))'),originalSummary);
     f.ctx.meetingInput=completeMeeting;

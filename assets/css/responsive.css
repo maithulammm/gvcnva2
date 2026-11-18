@@ -182,3 +182,13 @@ body:has(#editor[open]), body:has(#mobileNav[open]) { overflow: hidden; }
 .work-filters button{min-height:44px}
 .work-filters button[aria-pressed="true"]{background:#205e73;color:white}
 @media(max-width:600px){.today-grid{grid-template-columns:1fr}}
+.quick-meeting-tools { display:grid;gap:10px; }
+.quick-meeting-tools .actions { flex-wrap:wrap; }
+.quick-meeting-tools [data-meeting-mode][aria-pressed="true"] { background:#205e73;color:#fff; }
+.quick-meeting-tools summary,.meeting-extra > summary { cursor:pointer;font-weight:700;min-height:44px;padding:10px 0; }
+.meeting-extra { border-top:1px solid #dce7e7;padding-top:6px; }
+.meeting-template-list { display:flex;flex-wrap:wrap;gap:8px;margin:12px 0; }
+.meeting-template-list > div { display:flex;gap:3px;max-width:100%; }
+.meeting-template-list button { overflow-wrap:anywhere;white-space:normal; }
+#modalSaveNext { min-height:44px; }
+@media(max-width:600px){#editor .modal-f{flex-wrap:wrap;gap:6px}#editor .modal-f .btn{font-size:12px;padding:8px}#modalSaveNext{flex:1 1 100%}}
