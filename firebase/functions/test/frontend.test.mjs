@@ -14,6 +14,17 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('GitHub mirror moves to the configured production site without forwarding tokens or deleting local data',()=>{
+  const f=frontend(),before=[...f.memory.entries()];let target;
+  Object.assign(f.ctx.location,{origin:'https://maithulammm.github.io',pathname:'/gvcnva2/index.html',search:'?code=private',hash:'#id_token=private',replace:url=>{target=url;}});
+  assert.equal(f.run('redirectGitHubMirror()'),true);
+  assert.equal(target,'https://gvcnva2.netlify.app/index.html');
+  assert.deepEqual([...f.memory.entries()],before);
+  for(const [origin,pathname] of [['https://gvcnva2.netlify.app','/index.html'],['http://127.0.0.1:5500','/index.html'],['https://maithulammm.github.io','/another-project/index.html']]) {
+    Object.assign(f.ctx.location,{origin,pathname});target=undefined;
+    assert.equal(f.run('redirectGitHubMirror()'),false);assert.equal(target,undefined);
+  }
+});
 test('meeting totals count repeated appointments, legacy plans and actual records independently',async()=>{
   const f=frontend();await f.login();
   f.run(`cls().students=[{id:'S1',name:'One'},{id:'S2',name:'Two'},{id:'S3',name:'Three'}];
@@ -416,7 +427,7 @@ test('monthly work and original editor produce identical BGH totals and validati
     const boot=await api.bootstrap(admin),c=boot.classes['6A1'];
     assert.equal(c.months['T11/2026'].meetings.length,1);
     assert.equal(c.months['T11/2026'].connections.length,0);
-    assert(f.run('renderM01().includes("Đã gặp")'));
+    assert(!f.run('renderM01().includes("/3 lịch")'));
     assert(f.run('renderM05().includes("1 lượt")'));
     results.push({totals:summary(c,'T11/2026'),checks:validateReport(c,'T11/2026')});
     await api.saveUserRoles(admin,{email:'bgh@vietanhschool.edu.vn',name:'BGH',roles:['bgh'],active:true});

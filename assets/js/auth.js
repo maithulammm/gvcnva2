@@ -289,6 +289,7 @@ async function makeMsalClient(config) {
 async function initializeMsLogin() {
   // Silent renewal loads this callback in an iframe; only the parent handles it.
   if(window.parent&&window.parent!==window)return;
+  if(redirectGitHubMirror())return;
   const release=beginPageLoading('Đang kiểm tra phiên đăng nhập…');
   try {
   lockUi();
@@ -330,6 +331,15 @@ async function initializeMsLogin() {
     $("msLoginBtn").disabled = false;
   }
   } finally {release();}
+}
+
+function redirectGitHubMirror() {
+  const {origin,pathname}=window.location;
+  if(origin!=='https://maithulammm.github.io'||!/^\/gvcnva2\/(?:index\.html)?$/.test(pathname))return false;
+  // Keep authentication and API calls on the configured production origin.
+  // Never forward OAuth fragments, query parameters or device-local data.
+  window.location.replace('https://gvcnva2.netlify.app/index.html');
+  return true;
 }
 
 function microsoftErrorText(error) {
