@@ -1,5 +1,7 @@
 /* Layout and touch controls; shared data/forms remain the same on every device. */
 .mobile-bar { display: none; }
+.mobile-school-brand { display:flex;align-items:center;gap:6px; }
+.mobile-school-brand img { display:block;width:28px;height:34px;object-fit:contain;flex:0 0 auto; }
 .sidebar { overflow-y: auto; }
 .main, #view, .card, .cols2 > *, .fieldgrid > * { min-width: 0; }
 .logo small { display: block; }

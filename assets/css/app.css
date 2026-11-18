@@ -81,15 +81,11 @@ small,
   padding: 0 9px;
 }
 .logo-badge {
-  display: grid;
-  place-items: center;
-  border-radius: 15px;
-  background: #dceee6;
-  color: #164756;
-  font-size: 19px;
-  font-weight: 900;
-  width: 45px;
-  height: 45px;
+  display: block;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 62px;
+  object-fit: contain;
 }
 .logo strong {
   color: white;
@@ -891,6 +887,7 @@ body.auth-ready #authGate {
   gap: 12px;
   margin-bottom: 18px;
 }
+.auth-brand .logo-badge { width:64px;height:76px; }
 .auth-brand strong {
   font-size: 20px;
   letter-spacing: -0.4px;
