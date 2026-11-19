@@ -42,7 +42,7 @@ function meetingTimeControls(record) {
     <label>Ngày gặp<input type="date" name="actualDate" value="${esc(v.actualDate)}" onchange="updatePreviousMeetingPanel()" ${legacy?'':'required'}></label>
     <label>Giờ (24 giờ)<input type="text" name="actualTime" value="${esc(v.actualTime)}" onchange="updatePreviousMeetingPanel()" placeholder="HH:mm" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" maxlength="5" title="Nhập giờ 24 giờ, ví dụ 09:55 hoặc 15:00" ${legacy?'':'required'}></label></div>
     <label>Địa điểm<input type="text" name="actualLocation" value="${esc(v.actualLocation)}" required maxlength="200"></label></div>
-    ${legacy?`<p class="help">Thời gian đã lưu: ${esc(record.actual)}. Để trống ngày giờ để giữ nguyên.</p>`:''}
+    ${legacy?`<p class="help">Thời gian đã lưu: ${esc(displayDateText(record.actual))}. Để trống ngày giờ để giữ nguyên.</p>`:''}
     <input type="hidden" name="actualDateTime" value="${esc(v.actualDateTime)}">
     <input type="hidden" name="actual" value="${esc(record.actual||'')}">`;
 }

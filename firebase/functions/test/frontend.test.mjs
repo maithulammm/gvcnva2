@@ -14,6 +14,20 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+
+test('display dates use padded Vietnamese dates and local timestamps without modifying stored records',async()=>{
+  const f=frontend();await f.login();
+  assert.equal(f.run(`displayDateText('2026-11-19')`),'19/11/2026');
+  assert.equal(f.run(`displayDateText('2026-01-02T15:00')`),'02/01/2026 15:00');
+  assert.equal(f.run(`displayDateText('2026-11-18T18:05:00Z')`),'19/11/2026 01:05');
+  assert.equal(f.run(`displayDateText('2/1/2027')`),'02/01/2027');
+  assert.equal(f.run(`displayDateText('Tuần 3')`),'Tuần 3');
+  f.run(`cls().students=[{id:'S1',name:'Student',code:''}];mdata().connections=[{id:'C1',studentId:'S1',date:'2026-11-19'}];mdata().plans=[{id:'P1',studentId:'S1',deadline:'2026-12-02'}]`);
+  const before=f.run('JSON.stringify(appData)');
+  assert(f.run('renderM03()').includes('19/11/2026'));
+  assert(f.run('renderM04()').includes('02/12/2026'));
+  assert.equal(f.run('JSON.stringify(appData)'),before);
+});
 test('dashboard support filters and manual rescheduling retain appointment content and exclude holidays',async()=>{
   const f=frontend();await f.login();
   f.run(`cls().students=[{id:'S1',name:'Student 1',code:''}];mdata().schedule.S1={appointments:[{id:'A1',date:'2026-11-02',session:'morning',planTime:'02/11/2026 · Sáng 9:55–10:15',goal:'Vở ghi',topics:['Vở ghi'],note:'Keep note'}]};

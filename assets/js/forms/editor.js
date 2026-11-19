@@ -102,7 +102,7 @@ function openModal(type, id = "", seed = {}) {
     h+=`<details class="wide"><summary>Lần gặp trước · Thông tin tham khảo</summary><div id="previousMeetingPanel">${previousMeetingPanel(c,rec.studentId,ui.month,id,initial.actualDateTime)}</div></details>`;
   }
   if (type === "m05detail") {
-    h += `<div class="footnote wide">Lượt gặp: ${esc(rec.actual || "")}</div>`;
+    h += `<div class="footnote wide">Lượt gặp: ${esc(displayDateText(rec.actual || ""))}</div>`;
   }
   if (type === "userRoles")
     h += `<div class="footnote wide">Phân công GVCN được quản lý trong mục Quản lý GVCN; vai trò GVCN hiện có không thể bị bỏ tại đây.</div>`;

@@ -28,7 +28,7 @@ function previousMeetingPanel(c,studentId,month,editingId='',before='') {
   const previous=previousMeetingFor(c,studentId,month,editingId,before);
   if(!previous)return '<p class="help">Chưa có lần gặp trước được lưu cho học sinh này.</p>';
   const r=previous.record;
-  return `<section class="meeting-reference"><b>${previous.knownDate?'Lần gặp trước':'Lần gặp đã lưu'} · ${esc(r.actual||previous.month)}</b>
+  return `<section class="meeting-reference"><b>${previous.knownDate?'Lần gặp trước':'Lần gặp đã lưu'} · ${esc(displayDateText(r.actual||previous.month))}</b>
     ${!previous.knownDate?'<p class="help">Thời gian cũ chưa đủ ngày giờ để xếp thứ tự chính xác.</p>':''}
     <div><small>Mục tiêu đã thống nhất</small><p class="work-appointments">${esc(r.goal||'Chưa ghi')}</p></div>
     <div><small>Việc cần kiểm tra</small><p class="work-appointments">${esc(r.action||r.profileNext||'Chưa ghi')}</p></div>
