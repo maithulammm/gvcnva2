@@ -17,6 +17,17 @@
 #editor .schedule-custom-time input:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
 #editor .schedule-calendar .calendar-day:disabled{opacity:.38;background:var(--canvas);box-shadow:none;}
 #editor #deleteAppointmentButton{margin-right:auto;}
+#editor .meeting-session-choices{display:flex;align-items:center;flex-wrap:nowrap;gap:7px;margin-bottom:12px;}
+#editor .meeting-session-choices .schedule-choice{flex:0 1 auto;min-width:0;white-space:nowrap;}
+@media(min-width:901px){
+  #editor .meeting-suggestions{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);align-items:stretch;gap:6px;}
+  #editor .meeting-suggestions .schedule-choice{min-width:0;width:100%;padding:7px 5px;white-space:normal;overflow-wrap:anywhere;line-height:1.35;font-size:12px;}
+  #editor .meeting-options,#editor .goal-duration{flex-wrap:nowrap;}
+  #editor .goal-duration input[type="number"]{flex:0 0 62px;}
+  #editor .meeting-options label{white-space:nowrap;}
+  #editor .modal-f{flex-wrap:nowrap;}
+  #editor .modal-f .btn{white-space:nowrap;}
+}
 .app-dialog{overflow:hidden;}
 .app-dialog[open]{display:flex;flex-direction:column;}
 .app-dialog-header{flex:0 0 auto;}

@@ -112,7 +112,6 @@ function openModal(type, id = "", seed = {}) {
   }
   let h = "",advanced="";
   if(type==='m02') {
-    h+=renderQuickMeetingTools();
     const initial=meetingEditorValues(rec);
     h+=`<details class="wide"><summary>Lần gặp trước · Thông tin tham khảo</summary><div id="previousMeetingPanel">${previousMeetingPanel(c,rec.studentId,ui.month,id,initial.actualDateTime)}</div></details>`;
   }
