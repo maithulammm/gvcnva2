@@ -85,15 +85,15 @@ const HEADINGS = {
   work: ["Công việc tháng", ""],
   teachers: [
     "Quản lý giáo viên chủ nhiệm",
-    "Admin thêm, sửa, xóa GVCN và phân công lớp",
+    "",
   ],
   users: [
     "Người dùng & vai trò",
-    "Admin quản lý vai trò, phạm vi khối và tài khoản được cấp quyền",
+    "",
   ],
   database: [
     "Kết nối dữ liệu Firebase",
-    "Trạng thái đồng bộ, cấu hình và chuyển dữ liệu cũ",
+    "",
   ],
   dashboard: [
     "Tổng quan công tác chủ nhiệm",
@@ -101,35 +101,35 @@ const HEADINGS = {
   ],
   students: [
     "Hồ sơ lớp học",
-    "Nhập danh sách học sinh từ Excel và quản lý lớp",
+    "",
   ],
   m01: [
     "Mẫu 01 · Lịch gặp gỡ học sinh",
-    "Một học sinh một dòng theo từng tháng; tự đối chiếu cuộc gặp đã thực hiện",
+    "",
   ],
   m02: [
     "Mẫu 02 · Sổ theo dõi gặp gỡ",
-    "Mỗi lượt gặp thực tế là một bản ghi; tách số lượt và số học sinh",
+    "",
   ],
   m03: [
     "Mẫu 03 · Kết nối tích cực với PHHS",
-    "Chỉ ghi nội dung tích cực đã thực sự gửi tới gia đình",
+    "",
   ],
   m04: [
     "Mẫu 04 · Kế hoạch hỗ trợ học sinh",
-    "Kết quả tháng trước và kế hoạch hỗ trợ trong tháng hiện tại",
+    "",
   ],
   m05: [
     "Mẫu 05 · Phiếu theo dõi cá nhân",
-    "Hồ sơ chuyên sâu chỉ mở khi thực sự cần theo dõi nhiều mốc",
+    "",
   ],
   check: [
     "Kiểm tra & xác nhận báo cáo",
-    "Chốt dữ liệu, cảnh báo K1–K9 và quy trình 3 cấp",
+    "",
   ],
   export: [
     "Nhập / xuất và sao lưu",
-    "Xuất Excel đủ 15 sheet theo file mẫu nhà trường; sao lưu JSON",
+    "",
   ],
 };
 

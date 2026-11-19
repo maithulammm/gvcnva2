@@ -47,7 +47,7 @@ function renderDashboard() {
     let unconn = c.students.filter(
       (st) => !m.connections.some((r) => r.studentId === st.id),
     );
-    h += `<div class="cols2"><section class="card"><div class="section-head" style="margin-top:0"><h2>Tiến độ lớp ${c.id}</h2>${statusTag(stageName(s.state))}</div><div class="stack"><div><div class="filterline" style="justify-content:space-between"><b>Gặp gỡ học sinh</b><span>${s.met}/${s.count}</span></div><div class="bar"><i style="width:${Math.min(s.rate, 100)}%"></i></div></div><div><div class="filterline" style="justify-content:space-between"><b>Kết nối tích cực với phụ huynh</b><span>${s.connectedStudents}/${s.count}</span></div><div class="bar"><i style="width:${s.count ? Math.min(100, (100 * s.connectedStudents) / s.count) : 0}%"></i></div></div><div class="filterline">${btn("Mở Mẫu 01", "navTo('m01')")}${btn("Ghi lượt gặp", "navTo('m02')", "primary")}${btn("Kiểm tra báo cáo", "navTo('check')")}</div></div></section><section class="card"><div class="section-head" style="margin-top:0"><h2>Cần theo dõi</h2><span class="pill">${v.errors.length} lỗi · ${v.warnings.length} chú ý</span></div><p class="help">Các thông tin sau chỉ xuất hiện trong phạm vi làm việc của GVCN.</p><b>${ungap.length} học sinh chưa có lượt gặp trong tháng</b><div class="help">${esc(
+    h += `<div class="cols2"><section class="card"><div class="section-head" style="margin-top:0"><h2>Tiến độ lớp ${c.id}</h2>${statusTag(stageName(s.state))}</div><div class="stack"><div><div class="filterline" style="justify-content:space-between"><b>Gặp gỡ học sinh</b><span>${s.met}/${s.count}</span></div><div class="bar"><i style="width:${Math.min(s.rate, 100)}%"></i></div></div><div><div class="filterline" style="justify-content:space-between"><b>Kết nối tích cực với phụ huynh</b><span>${s.connectedStudents}/${s.count}</span></div><div class="bar"><i style="width:${s.count ? Math.min(100, (100 * s.connectedStudents) / s.count) : 0}%"></i></div></div><div class="filterline">${btn("Mở Mẫu 01", "navTo('m01')")}${btn("Ghi lượt gặp", "navTo('m02')", "primary")}${btn("Kiểm tra báo cáo", "navTo('check')")}</div></div></section><section class="card"><div class="section-head" style="margin-top:0"><h2>Cần theo dõi</h2><span class="pill">${v.errors.length} lỗi · ${v.warnings.length} chú ý</span></div><b>${ungap.length} học sinh chưa có lượt gặp trong tháng</b><div class="help">${esc(
       ungap
         .slice(0, 6)
         .map((x) => x.name)
@@ -67,6 +67,6 @@ function renderDashboard() {
     })
     .join(
       "",
-    )}</tbody></table></div></section><p class="help">Chỉ tiêu tổng hợp BGH không hiển thị chi tiết cá nhân học sinh. ${cloud.ready ? "Dữ liệu được lấy từ Firebase trong phạm vi phân công." : "Dữ liệu hiện lưu trên trình duyệt, chưa đồng bộ từ các máy GVCN."}</p>`;
+    )}</tbody></table></div></section>`;
   return h;
 }

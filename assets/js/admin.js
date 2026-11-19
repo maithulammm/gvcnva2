@@ -8,7 +8,6 @@ function renderTeachers() {
     a.classId.localeCompare(b.classId, undefined, { numeric: true }),
   );
   return `<div class="section-head"><h2>Danh sách GVCN · ${teachers.length} giáo viên</h2><div class="actions">${btn("＋ Thêm GVCN", "openModal('teacherAccount')", "primary")}${cloud.ready ? btn("Tải dữ liệu mới", "refreshCloud()") : ""}</div></div>
-    <p class="help">Mỗi GVCN được phân công một lớp và dùng email Microsoft công vụ. Khi kết nối Firebase, phân công này quyết định quyền truy cập của giáo viên. Xóa GVCN thu hồi phân công và giữ hồ sơ lớp/học sinh.</p>
     <section class="card no-pad"><div class="table-wrap"><table><thead><tr><th>Họ tên</th><th>Email Microsoft</th><th>Lớp</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${teachers.map((t) => `<tr><td>${esc(t.name)}</td><td>${esc(t.email)}</td><td>${esc(t.classId)}</td><td>${statusTag(t.active !== false ? "Đang hoạt động" : "Ngừng hoạt động")}</td><td class="actions-cell">${btn("Sửa", `openModal('teacherAccount','${t.id}')`, "small")}${btn("Học sinh", `openClassStudents('${t.classId}')`, "small")}${btn("Xóa", `deleteTeacherAccount('${t.id}')`, "small danger")}</td></tr>`).join("") || '<tr><td colspan="5"><div class="empty">Chưa có GVCN trong danh sách quản lý. Bấm Thêm GVCN để bắt đầu.</div></td></tr>'}</tbody></table></div></section>`;
 }
 
@@ -32,7 +31,6 @@ function renderUsers() {
     })
     .join("");
   return `<div class="section-head"><h2>Tài khoản & vai trò · ${users.length} tài khoản</h2><div class="actions">${cloud.ready ? btn("＋ Thêm tài khoản", "openModal('userRoles')", "primary") + btn("Nhập danh sách đã chuẩn bị", "$('directoryInput').click()") : ""}</div></div>
-    <p class="help">GVCN có thể kiêm khối trưởng; Admin có quyền quản lý toàn trường. Vai trò được kiểm tra tại API. Tài khoản mới liên kết với Microsoft khi đăng nhập lần đầu.</p>
     ${cloud.ready ? `<section class="card no-pad"><div class="table-wrap"><table><thead><tr><th>Họ tên</th><th>Email công vụ</th><th>Vai trò</th><th>Phạm vi</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${rows || '<tr><td colspan="6"><div class="empty">Chưa có tài khoản được phân công.</div></td></tr>'}</tbody></table></div></section>` : '<section class="card"><p class="help">Kết nối Firebase để xem và quản lý vai trò máy chủ.</p></section>'}`;
 }
 
@@ -110,9 +108,9 @@ async function importDirectoryFile(e) {
 function renderDatabase() {
   if (!hasAppRole("admin")) return "";
   return `<div class="section-head"><h2>Dữ liệu</h2></div>
-    <div class="cols2"><section class="card"><h2>Kết nối dữ liệu dùng chung</h2><p class="help">32 lớp · năm học ${YEARS}. Tài khoản Admin đầu tiên: lammt@vietanhschool.edu.vn.</p>
+    <div class="cols2"><section class="card"><h2>Kết nối dữ liệu dùng chung</h2>
     <p class="help" style="overflow-wrap:anywhere">Database: ${esc(FIREBASE_DATABASE_URL)}</p>
-    <p class="help">${cloud.ready ? esc(cloud.error || "Dữ liệu tự đồng bộ khi lưu; kiểm tra cập nhật mỗi 45 giây khi không có bản đang sửa.") : "Cần triển khai API Firebase trước khi bật kết nối. Mã nguồn và hướng dẫn nằm trong thư mục firebase của dự án."}</p>
+    ${cloud.error?`<p class="help">${esc(cloud.error)}</p>`:!cloud.ready?'<p class="help">Chưa kết nối dữ liệu dùng chung.</p>':''}
     <div class="actions">${cloud.ready ? btn("Tải dữ liệu mới", "refreshCloud()") + btn("Thử đồng bộ lại", "retryCloud()") + btn("Xuất bản lưu chờ đồng bộ", "exportPendingDrafts()") : btn("Bật kết nối Firebase", "enableFirebase()", "primary")}${btn("Xuất JSON sao lưu", "jsonBackup()")}</div></section>
     <section class="card"><h2>Chuyển dữ liệu cũ lên Firebase</h2><p class="help">Bản dữ liệu cục bộ ban đầu được giữ nguyên. Chỉ chuyển vào lớp trống; lớp đã có hồ sơ trên Firebase được bỏ qua. Thông tin và lịch sử cũ được giữ trong bản nhập.</p>
     <div class="actions">${btn("Xuất dữ liệu cục bộ ban đầu", "exportLegacyData()")}${cloud.ready ? btn("Chuyển dữ liệu cũ lên Firebase", "migrateLegacyData()", "primary") : ""}</div></section></div>`;
