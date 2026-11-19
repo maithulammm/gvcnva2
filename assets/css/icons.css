@@ -1,0 +1,4 @@
+.ico svg{display:block;width:21px;height:21px;flex-shrink:0;fill:currentColor;}
+.schedule-icon svg{width:20px;height:20px;fill:currentColor;}
+.m01-visit-label .schedule-icon svg{width:15px;height:15px;}
+#mobileMenuButton svg,.mobile-nav-header button svg{width:18px;height:18px;vertical-align:-3px;fill:currentColor;}
