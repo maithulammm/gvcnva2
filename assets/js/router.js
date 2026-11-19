@@ -176,4 +176,5 @@ function render() {
   hydrateEvidenceImages($('view'));
   updateStorageNotice();
   refreshButtonChoices();
+  if(ui.page==='database'&&!ui.storageStatus&&!ui.storageStatusLoading)loadStorageStatus();
 }

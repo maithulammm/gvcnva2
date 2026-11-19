@@ -1,5 +1,45 @@
 "use strict";
 
+/** Chỉ Admin thấy trạng thái và thao tác liên kết kho ảnh tập trung. */
+function renderStorageSettings(){
+  const status=ui.storageStatus;
+  return `<section class="card"><h2>Kho ảnh minh chứng</h2><p id="storageStatusText" class="help">${status?esc(status.connected?'Đã kết nối · '+status.ownerEmail:status.configured?'Chưa kết nối tài khoản chủ kho ảnh.':'Máy chủ chưa có đủ cấu hình kho ảnh.'):'Đang kiểm tra kết nối…'}</p>
+    <div class="actions"><button type="button" class="btn primary" id="connectStorageButton" onclick="connectSchoolStorage()" ${!cloud.ready||status?.canConnect===false?'disabled':''}>${status?.connected?'Kết nối lại OneDrive':'Kết nối OneDrive của tôi'}</button>${btn('Kiểm tra kết nối','loadStorageStatus()')}</div>
+    <p class="help">Chỉ chủ kho ảnh thực hiện bước này. Giáo viên dùng ảnh ngay trong biểu mẫu, không cần cấp quyền lưu trữ.</p></section>`;
+}
+async function loadStorageStatus(){
+  if(!canEditSetup()||!cloud.ready||ui.storageStatusLoading)return;
+  const epoch=cloud.epoch,owner=auth.email;ui.storageStatusLoading=true;
+  try{
+    const status=await databaseRequest('/evidence/admin/status','GET',undefined,{silent:true});
+    if(epoch!==cloud.epoch||owner!==auth.email||!canEditSetup())return;
+    ui.storageStatus=status;
+    const text=$('storageStatusText');if(text)text.textContent=status.connected?'Đã kết nối · '+status.ownerEmail:status.configured?'Chưa kết nối tài khoản chủ kho ảnh.':'Máy chủ chưa có đủ Client ID / Client Secret cho kho ảnh.';
+    const button=$('connectStorageButton');if(button){button.disabled=!status.configured||!status.canConnect;button.textContent=status.connected?'Kết nối lại OneDrive':'Kết nối OneDrive của tôi';}
+  }catch(error){const text=$('storageStatusText');if(text)text.textContent=error.message;}
+  finally{if(epoch===cloud.epoch)ui.storageStatusLoading=false;}
+}
+async function connectSchoolStorage(){
+  if(!canEditSetup()||!cloud.ready)return;
+  const owner=auth.email,epoch=cloud.epoch,button=$('connectStorageButton');if(button)button.disabled=true;
+  try{
+    await flushCloud();
+    const result=await databaseRequest('/evidence/admin/connect','POST',{returnUrl:currentRedirectUri()});
+    if(owner!==auth.email||epoch!==cloud.epoch||!canEditSetup()||ui.page!=='database')return;
+    const url=new URL(result.url);
+    if(url.origin!=='https://login.microsoftonline.com')throw Error('Địa chỉ kết nối Microsoft không hợp lệ.');
+    window.location.assign(url.href);
+  }catch(error){appAlert(error.message);if(button)button.disabled=false;}
+}
+function handleStorageReturn(){
+  const hash=window.location?.hash||'';
+  if(!['#evidence-connected','#evidence-connect-error'].includes(hash)||!hasAppRole('admin'))return;
+  window.history?.replaceState?.(null,'',window.location.pathname+window.location.search);
+  ui.storageStatus=null;navTo('database');
+  if(hash==='#evidence-connected')toast('Đã kết nối kho ảnh. Bạn có thể thử tải minh chứng ở Mẫu 3.');
+  else appAlert('Chưa hoàn tất kết nối kho ảnh. Hãy chọn đúng tài khoản chủ kho; nếu Microsoft yêu cầu quản trị viên phê duyệt thì chính sách trường chưa cho phép tự cấp quyền.');
+}
+
 async function loadRecovery(){
   if(!hasAppRole('admin')||!cloud.ready)return;
   const context=dialogContext(),id=ui.classId;
@@ -128,7 +168,7 @@ async function importDirectoryFile(e) {
 
 function renderDatabase() {
   if (!hasAppRole("admin")) return "";
-  return `<div class="section-head"><h2>Dữ liệu</h2></div>
+  return `<div class="section-head"><h2>Dữ liệu</h2></div>${renderStorageSettings()}
     <div class="cols2"><section class="card"><h2>Kết nối dữ liệu dùng chung</h2>
     <p class="help" style="overflow-wrap:anywhere">Database: ${esc(FIREBASE_DATABASE_URL)}</p>
     ${cloud.error?`<p class="help">${esc(cloud.error)}</p>`:!cloud.ready?'<p class="help">Chưa kết nối dữ liệu dùng chung.</p>':''}

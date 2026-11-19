@@ -32,7 +32,7 @@ export default async function gvcnApi(request) {
     .replace(/^\/api(?=\/|$)/,'')
     .replace(/^\/\.netlify\/functions\/gvcnApi(?=\/|$)/,'')||'/';
   const result=await handle({method:request.method,path:pathname,origin:request.headers.get('origin'),
-    authorization:request.headers.get('authorization'),rawBodyLength:rawBody.byteLength,body,bodyError});
+    authorization:request.headers.get('authorization'),rawBodyLength:rawBody.byteLength,body,bodyError,query:Object.fromEntries(new URL(request.url).searchParams)});
   const headers=new Headers(result.headers);
   if(result.status===204) return new Response(null,{status:204,headers});
   headers.set('Content-Type','application/json; charset=utf-8');

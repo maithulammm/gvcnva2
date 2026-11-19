@@ -151,6 +151,50 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       }):[],serverTime:now()};
   }
   return {
+    async storageAdmin(identity,ownerOnly=false){
+      const s=normalizeSchool((await ref.get()).val()),u=assignmentFor(s,identity);
+      requireValue(hasRole(u,'admin'),'Chỉ Admin được quản lý kho ảnh.',403);
+      if(ownerOnly)requireValue(identity.email===adminEmail,'Chỉ chủ kho ảnh được kết nối OneDrive.',403);
+    },
+    async storageState(){return normalizeSchool((await ref.get()).val()).storageAuth||{};},
+    async createStorageFlow(identity,key,sealed,expiresAt){
+      await mutate(identity,null,(s,u)=>{
+        requireValue(hasRole(u,'admin')&&identity.email===adminEmail,'Chỉ chủ kho ảnh được kết nối.',403);
+        s.storageAuth ||= {};const flows=s.storageAuth.flows ||= {};
+        for(const [id,flow]of Object.entries(flows))if(flow.expiresAt<=clock().getTime())delete flows[id];
+        requireValue(Object.keys(flows).length<6,'Có nhiều yêu cầu kết nối đang chờ. Hãy thử lại sau ít phút.',429);
+        flows[key]={sealed,expiresAt};
+      });
+    },
+    async consumeStorageFlow(key){
+      let flow;
+      await ref.get();
+      await ref.transaction(raw=>{
+        flow=null;if(!raw)return undefined;const s=normalizeSchool(raw),candidate=s.storageAuth?.flows?.[key];
+        if(!candidate)return undefined;
+        delete s.storageAuth.flows[key];
+        if(candidate.expiresAt>clock().getTime())flow=candidate;
+        return s;
+      },undefined,false);
+      requireValue(flow,'Yêu cầu kết nối đã hết hạn hoặc đã được sử dụng. Mở lại kết nối từ trang Admin.',400);
+      return flow.sealed;
+    },
+    async bindStorage(identity,sealed,expectedBinding){
+      const s=await mutate(identity,'storage:connect',(school,u)=>{
+        requireValue(hasRole(u,'admin')&&identity.email===adminEmail,'Chỉ chủ kho ảnh được kết nối.',403);
+        const old=school.storageAuth||{};
+        requireValue((old.bindingId||'')===expectedBinding,'Kho ảnh đã được kết nối trong cửa sổ khác. Hãy thử lại.',409);
+        school.storageAuth={...old,sealed,bindingId:randomUUID(),ownerEmail:identity.email,ownerOid:identity.oid,connectedAt:now()};
+      });return s.storageAuth.bindingId;
+    },
+    async refreshStorage(sealed,bindingId){
+      let saved=false;
+      await ref.get();await ref.transaction(raw=>{
+        saved=false;if(!raw)return undefined;const s=normalizeSchool(raw);
+        if(s.storageAuth?.bindingId!==bindingId)return undefined;
+        s.storageAuth.sealed=sealed;saved=true;return s;
+      },undefined,false);requireValue(saved,'Kết nối kho ảnh đã thay đổi. Hãy thử lại.',409);
+    },
     async evidenceScope(identity,id,month,studentId){
       requireValue(MONTHS.includes(month)&&typeof studentId==='string'&&studentId,'Chọn học sinh và tháng hợp lệ.');
       const s=normalizeSchool((await ref.get()).val());evidenceAccess(s,identity,id,month,studentId,true);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createEvidenceStore,centralEvidenceConfigured} from '../evidence-store.mjs';
-const env={MICROSOFT_TENANT_ID:'tenant',EVIDENCE_CLIENT_ID:'storage-app',EVIDENCE_CLIENT_SECRET:'server-only',EVIDENCE_DRIVE_ID:'drive',EVIDENCE_ROOT_ID:'root'};
+const env={EVIDENCE_AUTH_MODE:'application',MICROSOFT_TENANT_ID:'tenant',EVIDENCE_CLIENT_ID:'storage-app',EVIDENCE_CLIENT_SECRET:'server-only',EVIDENCE_DRIVE_ID:'drive',EVIDENCE_ROOT_ID:'root'};
 const bytes=Buffer.from([255,216,255,217]);
 test('central store keeps credentials server-side, uploads below configured root and proxies image bytes',async()=>{
   const calls=[];let tokenCalls=0;

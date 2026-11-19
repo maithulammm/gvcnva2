@@ -15,6 +15,21 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
 
+test('storage settings are Admin-only and connect navigates only to Microsoft after the protected API reply',async()=>{
+  const f=frontend();await f.login();f.run('cloud.ready=true');
+  const destinations=[];f.ctx.location.assign=url=>destinations.push(url);
+  f.ctx.fetch=async(url,options={})=>{
+    assert.equal(options.headers.Authorization,'Bearer SYNTHETIC-TEST-TOKEN');
+    return {ok:true,json:async()=>String(url).endsWith('/status')?{configured:true,connected:false,canConnect:true}:
+      {url:'https://login.microsoftonline.com/tenant/oauth2/v2.0/authorize?response_type=code&state=opaque'}};
+  };
+  f.run("navTo('database')");await new Promise(resolve=>setImmediate(resolve));
+  assert(f.el('view').innerHTML.includes('connectStorageButton'));assert.equal(f.el('connectStorageButton').disabled,false);
+  await f.run('connectSchoolStorage()');assert.equal(destinations.length,1);assert(destinations[0].startsWith('https://login.microsoftonline.com/'));
+  f.run("auth.assignment={role:'gvcn',roles:['gvcn'],classId:'6A1'}");assert.equal(f.run('renderDatabase()'),'');
+  await f.run('connectSchoolStorage()');assert.equal(destinations.length,1);
+});
+
 test('M03 central upload retries missing images without requesting teacher Graph permissions',async()=>{
   const f=frontend();await f.login();f.run(`cls().students=[{id:'S1',name:'Student',code:''}];openModal('m03');
     ui.editing.evidence.entries=[{file:new Blob(['one']),uploadId:'one'},{file:new Blob(['two']),uploadId:'two'}];`);

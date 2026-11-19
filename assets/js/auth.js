@@ -162,6 +162,7 @@ function handleMicrosoftLogoutStorage(event) {
  * hiệu lực.
  */
 function lockUi() {
+  ui.storageStatus=null;ui.storageStatusLoading=false;
   clearEvidenceImages();
   resetEvidenceEditor();
   closeFormHelp(false);
@@ -291,6 +292,7 @@ async function authenticatedStart(account,{fresh=false,restoring=false}={}) {
     render();
     document.body.classList.add("auth-ready");
     rememberMicrosoftAccount(account,fresh);
+    handleStorageReturn();
   } catch (e) {
     console.error(e);
     lockUi();

@@ -43,7 +43,7 @@ export function createWorker({createDatabase=createFirebaseRestDatabase}={}) {
       finally{reader.releaseLock();}
     }
     const result=await handle({method:request.method,path:path.slice(4)||'/',origin:request.headers.get('origin'),
-      authorization:request.headers.get('authorization'),rawBodyLength,body,bodyError});
+      authorization:request.headers.get('authorization'),rawBodyLength,body,bodyError,query:Object.fromEntries(new URL(request.url).searchParams)});
     const headers=new Headers(result.headers);headers.set('Content-Type','application/json; charset=utf-8');
     return new Response(result.status===204?null:JSON.stringify(result.body),{status:result.status,headers});
   }};
