@@ -3,6 +3,9 @@
   .mobile-bar{padding:8px 12px;gap:8px;min-height:60px;}
   .mobile-bar .btn{min-height:44px;padding:8px 12px;font-size:14px;}
   .mobile-school-brand{min-width:0;font-size:14px;white-space:nowrap;overflow:hidden;}
+  .mobile-brand-text{display:flex;flex-direction:column;min-width:0;gap:3px;}
+  .mobile-brand-text strong{font-size:14px;line-height:1.2;}
+  .mobile-brand-text small{font-size:9px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .page-toolbar>.topline.app-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;width:100%;overflow:visible;padding:10px 12px;}
   .app-toolbar .top-heading{grid-column:1/-1;min-width:0;max-width:none;}
   .app-toolbar h1{font-size:18px;white-space:normal;}
