@@ -2,22 +2,22 @@
 .page-toolbar{border:0;border-radius:10px;}
 .page-toolbar>.topline.app-toolbar{padding:6px 10px;gap:14px;scrollbar-width:none;}
 .page-toolbar>.topline.app-toolbar::-webkit-scrollbar{display:none;width:0;height:0;}
-.app-toolbar .top-heading{flex:0 1 160px;min-width:100px;max-width:160px;}
+.app-toolbar .top-heading{flex:1.2 0 150px;min-width:120px;max-width:none;}
 .app-toolbar h1{font-size:17px;line-height:1.35;}
 .app-toolbar .subtitle{display:none;}
-.topline.app-toolbar .selectors{gap:14px;align-items:center;}
-.topline.app-toolbar .selectors>label,.topline.app-toolbar #rolePreview label{grid-template-rows:14px 32px;gap:0;font-size:11px;line-height:14px;}
+.topline.app-toolbar .selectors{display:contents;}
+.topline.app-toolbar .selectors>label,.topline.app-toolbar #rolePreview label{flex:1 0 110px;width:auto;grid-template-rows:14px 32px;gap:0;font-size:11px;line-height:14px;}
 .topline.app-toolbar .selectors select,.topline.app-toolbar #rolePreview select{height:32px;min-height:32px;border:0;border-radius:4px;padding:0 18px 0 0;background:transparent;color:var(--primary);font-size:14px;font-weight:600;text-overflow:ellipsis;box-shadow:none;}
 .topline.app-toolbar .selectors select:disabled{opacity:1;color:var(--muted);}
 .topline.app-toolbar .selectors select:focus-visible,.topline.app-toolbar #rolePreview select:focus-visible{outline:2px solid var(--primary);outline-offset:1px;}
-.topline.app-toolbar .selectors>.role-selector{width:132px;}
-.topline.app-toolbar .selectors>.grade-selector{width:100px;}
-.topline.app-toolbar .selectors>.class-selector{width:62px;}
-.topline.app-toolbar .selectors>.month-selector{width:104px;}
+.topline.app-toolbar .selectors>.role-selector{flex:1.5 0 170px;width:auto;}
+.topline.app-toolbar .selectors>.grade-selector{flex:1 0 125px;width:auto;}
+.topline.app-toolbar .selectors>.class-selector{flex:.65 0 84px;width:auto;}
+.topline.app-toolbar .selectors>.month-selector{flex:1 0 116px;width:auto;}
 .topline.app-toolbar #roleLabel{height:32px;min-height:32px;line-height:32px;padding:0;border:0;background:transparent;color:var(--primary);font-size:13px;}
-.topline.app-toolbar #rolePreview{gap:12px;align-items:center;}
-.topline.app-toolbar #rolePreview label{width:140px;}
-.topline.app-toolbar #rolePreview label:nth-of-type(2){width:100px;}
+.topline.app-toolbar #rolePreview{display:contents;}
+.topline.app-toolbar #rolePreview label{flex:1.5 0 170px;width:auto;}
+.topline.app-toolbar #rolePreview label:nth-of-type(2){flex:1 0 120px;width:auto;}
 .topline.app-toolbar #rolePreview .toolbar-mode-status{font-size:11px;white-space:nowrap;border-radius:4px;background:var(--primary-soft);color:var(--primary);padding:3px 5px;}
 .topline.app-toolbar #rolePreview .toolbar-exit{width:36px;height:36px;min-height:36px;padding:4px;border:0;background:transparent;font-size:20px;}
 .app-toolbar:has(#rolePreview[data-mode="gvcn"]) .role-selector,
@@ -29,6 +29,6 @@
   .topline.app-toolbar .selectors select,.topline.app-toolbar #rolePreview select{height:44px;min-height:44px;font-size:16px;}
   .topline.app-toolbar #roleLabel{height:44px;line-height:44px;}
   .topline.app-toolbar #rolePreview .toolbar-exit{width:44px;height:44px;min-height:44px;}
-  .app-toolbar .top-heading{min-width:90px;max-width:120px;}
+  .app-toolbar .top-heading{flex:1 0 120px;min-width:100px;max-width:none;}
   .app-toolbar h1{font-size:15px;}
 }
