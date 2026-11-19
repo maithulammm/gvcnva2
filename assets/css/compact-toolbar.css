@@ -24,6 +24,10 @@
 .app-toolbar:has(#rolePreview[data-mode="gvcn"]) .grade-selector,
 .app-toolbar:has(#rolePreview[data-mode="gvcn"]) .class-selector{display:none;}
 .topline.app-toolbar #offlineNotice.sync-ok{font-size:18px;flex-basis:18px;}
+.topline.app-toolbar #offlineNotice.sync-icon{display:grid;place-items:center;flex:0 0 24px;width:24px;min-height:24px;margin:0;padding:0;background:transparent;border:0;font-size:18px;}
+.sync-loading::before{content:'';width:17px;height:17px;border:2px solid var(--line);border-top-color:var(--primary);border-radius:50%;animation:sync-indicator-spin .8s linear infinite;}
+.sync-error{color:var(--red);font-weight:700;}
+@keyframes sync-indicator-spin{to{transform:rotate(360deg)}}
 @media(max-width:900px),(pointer:coarse){
   .topline.app-toolbar .selectors>label,.topline.app-toolbar #rolePreview label{grid-template-rows:14px 44px;}
   .topline.app-toolbar .selectors select,.topline.app-toolbar #rolePreview select{height:44px;min-height:44px;font-size:16px;}

@@ -353,16 +353,20 @@ function updateStorageNotice() {
       : cloud.worker || cloud.pending.size
         ? "Đang chờ đồng bộ Firebase · " + cloud.pending.size + " lớp."
         : "✓";
-  const synced = cloud.ready && !cloud.error && !cloud.worker && !cloud.pending.size &&
+  const synced = cloud.ready && !cloud.error && !cloud.busy && !cloud.worker && !cloud.pending.size &&
     !Object.keys(cloud.unassignedDrafts).length;
-  $("offlineNotice").className = synced ? "sync-ok" : "notice";
-  $("offlineNotice").setAttribute("aria-label", synced ? "Đã đồng bộ dữ liệu" : "Trạng thái đồng bộ");
-  $("offlineNotice").title = synced ? "Đã đồng bộ dữ liệu" : "";
-  $("offlineNotice").textContent =
-    message +
+  const loading=cloud.ready&&!cloud.error&&(cloud.busy||cloud.worker||cloud.pending.size);
+  const detail=message +
     (Object.keys(cloud.unassignedDrafts).length
       ? " Có bản lưu chờ đồng bộ thuộc phân công cũ. Bạn có thể xuất bản lưu này; hệ thống không tự gửi vào lớp mới."
       : "");
+  const label=synced?'Đã đồng bộ dữ liệu':loading?'Đang đồng bộ dữ liệu':detail;
+  $('offlineNotice').className=synced?'sync-ok':loading?'sync-icon sync-loading':'sync-icon sync-error';
+  $('offlineNotice').setAttribute('role','status');
+  $('offlineNotice').setAttribute('aria-label',label);
+  $('offlineNotice').setAttribute('aria-busy',String(!!loading));
+  $('offlineNotice').title=label;
+  $('offlineNotice').textContent=synced?'✓':loading?'':'!';
   $("syncActions").innerHTML =
     cloud.ready &&
     (cloud.error ||

@@ -17,7 +17,7 @@
   .topline.app-toolbar #rolePreview select,.topline.app-toolbar .selectors select{width:100%;font-size:16px;}
   .topline.app-toolbar #roleLabel{font-size:13px;}
   .topline.app-toolbar #offlineNotice{grid-column:1/-1;width:auto;max-width:100%;white-space:normal;}
-  .topline.app-toolbar #offlineNotice.sync-ok{position:absolute;right:12px;top:10px;}
+  .topline.app-toolbar #offlineNotice.sync-ok,.topline.app-toolbar #offlineNotice.sync-icon{position:absolute;right:12px;top:10px;}
   .topline.app-toolbar{position:relative;}
   .app-toolbar .top-heading{padding-right:24px;}
   #view>.actions[aria-label="Lọc lớp cần hỗ trợ"]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:12px;}

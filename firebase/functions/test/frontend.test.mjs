@@ -881,8 +881,9 @@ test('healthy synchronization uses a green check while errors remain visible',as
   assert.equal(f.el('offlineNotice').textContent,'✓');
   assert.equal(f.el('offlineNotice').className,'sync-ok');
   f.run(`cloud.error='Network unavailable';updateStorageNotice()`);
-  assert(f.el('offlineNotice').textContent.includes('Network unavailable'));
-  assert.equal(f.el('offlineNotice').className,'notice');
+  assert(f.el('offlineNotice').title.includes('Network unavailable'));
+  assert.equal(f.el('offlineNotice').textContent,'!');
+  assert.equal(f.el('offlineNotice').className,'sync-icon sync-error');
   assert(!entryHtml.includes('sidebarStorage'));
   assert(!entryHtml.includes('TRƯỜNG VIỆT ANH · HỆ THỐNG QUẢN LÝ'));
 });
