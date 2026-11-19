@@ -706,6 +706,38 @@ test('failed form persistence keeps the draft and retry does not duplicate a mee
   assert.equal(f.run('mdata().meetings.length'),1);
   assert(!f.memory.has(key));
 });
+test('planned schedule XLSX groups all visits per student and preserves detailed goals and notes',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Nguyễn <An> & Bình',code:''},{id:'S2',name:'=Student',code:''},{id:'S3',name:'Not scheduled',code:''}];
+    mdata().schedule.S1={appointments:[
+      {id:'A2',date:'2026-11-18',session:'afternoon',planTime:'18/11/2026 · Chiều 15:00–15:20',goal:'Vở ghi',note:'Ghi chú riêng'},
+      {id:'A1',date:'2026-11-02',session:'morning',planTime:'02/11/2026 · Sáng 9:55–10:15',goal:'Mục tiêu',note:''},
+      {id:'A3',date:'2026-11-25',session:'morning',planTime:'25/11/2026 · Sáng 9:55–10:15',goal:'Học sinh chia sẻ',note:''}]};
+    mdata().schedule.S2={planTime:'Tuần 4',goal:'Giữ nội dung cũ',note:'Legacy note'};`);
+  const before=f.run('JSON.stringify(appData)');
+  let exported,filename;f.ctx.downloadFile=(blob,name)=>{exported=blob;filename=name;};
+  f.run('exportSchedule()');assert(exported);assert.match(filename,/Lich_gap_6A1_T11-2026.xlsx/);
+  f.ctx.buffer=await exported.arrayBuffer();const files=await f.run('readZip(buffer)');
+  const parse=file=>new DOMParser().parseFromString(new TextDecoder().decode(files[file]),'application/xml');
+  const main=parse('xl/worksheets/sheet1.xml'),detail=parse('xl/worksheets/sheet2.xml');
+  const value=(doc,addr)=>Array.from(doc.getElementsByTagName('c')).find(c=>c.getAttribute('r')===addr)?.textContent;
+  assert.match(value(main,'A1'),/VỚI HỌC SINH LỚP 6A1/);assert.equal(value(main,'A2'),'Tháng 11/2026');
+  assert.equal(value(main,'B4'),'Nguyễn <An> & Bình');
+  assert.equal(value(main,'C4'),'9h55 - 10h15\n15h00 - 15h20\n9h55 - 10h15');
+  assert.equal(value(main,'D4'),'02/11/2026\n18/11/2026\n25/11/2026');
+  assert.equal(value(main,'D5'),'Tuần 4');assert.match(value(main,'E4'),/nguyện vọng/);
+  assert(Array.from(main.getElementsByTagName('mergeCell')).some(c=>c.getAttribute('ref')==='E4:E5'));
+  assert.equal(main.getElementsByTagName('row').length,5);
+  assert.equal(value(detail,'F3'),'Ghi chú riêng');assert.equal(value(detail,'E5'),'Giữ nội dung cũ');
+  assert.equal(main.getElementsByTagName('f').length,0);assert.equal(detail.getElementsByTagName('f').length,0);
+  assert.equal(f.run('JSON.stringify(appData)'),before);
+  assert(f.run('renderM01()').includes('Xuất Excel lịch gặp'));
+  const styles=parse('xl/styles.xml');assert.equal(styles.getElementsByTagName('cellXfs')[0].getAttribute('count'),'7');
+  assert(Array.from(styles.getElementsByTagName('color')).every(c=>c.getAttribute('rgb')==='FF000000'));
+  f.run('mdata().schedule={};exportSchedule()');assert(f.alerts.some(s=>s.includes('Chưa có lịch')));
+  assert(!f.run('renderM01()').includes('Xuất Excel lịch gặp'));
+});
+
 test('classes above 28 students save to Firebase and export all students across every month',async()=>{
   const api=createService(memoryDatabase());
   const f=frontend({api});await f.login();
