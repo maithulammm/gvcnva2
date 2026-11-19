@@ -1,0 +1,100 @@
+/* Playful Contrast: purple foundation, cream canvas, orange and yellow accents. */
+:root {
+  --primary:#4b1d67;
+  --primary-hover:#37124e;
+  --primary-soft:#f2eaf7;
+  --accent-orange:#ff7721;
+  --accent-yellow:#ffca32;
+  --canvas:#fff9f0;
+  --surface:#fffefd;
+  --selection-bg:#f2eaf7;
+  --ink:#2d1838;
+  --muted:#6c5b70;
+  --blue:var(--primary);
+  --mint:var(--primary-soft);
+  --line:#e4d9e8;
+  --soft:#faf4fc;
+  --white:var(--surface);
+  --orange:#9c430d;
+  --red:#a82c3b;
+  --green:#246846;
+  --shadow:0 8px 28px #4b1d670c;
+}
+html,body { background:var(--canvas);color:var(--ink); }
+h1,h2,h3,.auth-brand strong { color:var(--primary); }
+.sidebar,.mobile-bar,.mobile-nav { background:var(--primary);color:var(--canvas); }
+.logo strong,.logo small,.nav button,.admin-nav > summary { color:var(--canvas); }
+.mobile-nav-header h2 { color:var(--canvas); }
+.admin-nav,.admin-nav-links { border-color:#ffffff38; }
+.nav button.active { background:var(--accent-yellow);color:var(--primary);box-shadow:inset 4px 0 var(--accent-orange); }
+.nav button:hover:not(.active),.admin-nav > summary:hover { background:#64377e;color:#fff; }
+.mobile-bar .btn { background:#fff9f0;color:var(--primary);border-color:#fff9f0; }
+.card,.kpi,.page-toolbar,.account-dropdown,.app-dialog,.auth-panel,dialog { background:var(--surface);border-color:var(--line); }
+.page-toolbar > .topline.app-toolbar { background:transparent; }
+.topline.app-toolbar { border-color:var(--line); }
+.topline.app-toolbar .selectors > label,.topline.app-toolbar #rolePreview label,
+.field label,.schedule-student,.calendar-heading { color:var(--muted); }
+.topline.app-toolbar .selectors select,.topline.app-toolbar #rolePreview select,
+.field input,.field textarea,.field select,.inline-select,.work-search,.choice-search,#appDialogInput,
+.auth-config input,.filterline input { background:var(--surface);color:var(--ink);border-color:var(--line); }
+.btn,#accountMenuButton,.choice-buttons button,.schedule-choice,.calendar-day,
+.meeting-options span,.auth-config button { background:var(--surface);color:var(--primary);border-color:#cdb9d7; }
+.btn:hover,#accountMenuButton:hover,.choice-buttons button:hover,.schedule-choice:hover,.calendar-day:hover { background:var(--primary-soft); }
+.btn.primary,.ms-btn { background:var(--primary);color:#fff;border-color:var(--primary); }
+.btn.primary:hover,.ms-btn:hover:not(:disabled) { background:var(--primary-hover);border-color:var(--primary-hover); }
+.btn.success { background:var(--green);color:#fff;border-color:var(--green); }
+.btn.warn { background:var(--accent-yellow);color:var(--ink);border-color:#d49c08; }
+.btn.danger,.account-dropdown button { color:var(--red); }
+.account-dropdown button:hover,.account-dropdown button:focus-visible { background:#fff0ef; }
+.choice-buttons button[aria-pressed="true"],.schedule-choice[aria-pressed="true"],
+.calendar-day[aria-pressed="true"],.meeting-options input:checked + span,
+.work-filters button[aria-pressed="true"] { background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:inset 0 -2px var(--accent-orange); }
+.calendar-day[aria-pressed="true"] small,.schedule-choice[aria-pressed="true"] small,.btn.primary small { color:inherit; }
+.calendar-weekend:not([aria-pressed="true"]) { background:#f4eff2;color:var(--muted); }
+.pill,.status { background:var(--primary-soft);color:var(--primary);border-color:var(--line); }
+.status.info { background:var(--primary-soft);color:var(--primary); }
+.status.ok { background:#eaf5ed;color:#205a39; }
+.status.bad { background:#ffeded;color:var(--red); }
+.status.warn,.notice { background:#fff1c7;color:#644009;border-color:#e9c775; }
+.kpi { border-top:3px solid var(--primary); }
+.kpi:nth-child(2) { border-top-color:var(--accent-orange); }
+.kpi:nth-child(3) { border-top-color:var(--accent-yellow); }
+.kpi:nth-child(4) { border-top-color:#ad82c2; }
+.kpi span,.help,.footnote,.subtitle,.muted,small,td .hint,.field .hint,.empty { color:var(--muted); }
+.nav small,.logo small { color:#f0dff7; }
+th { background:var(--primary-soft);color:var(--primary); }
+th,td,.m01-table.responsive-records tr { border-color:var(--line); }
+tbody tr:nth-child(even),.responsive-records tbody tr:nth-child(even) { background:#fffcf6; }
+tbody tr:hover { background:#faf3fd; }
+.responsive-records td[data-label]::before { color:var(--muted); }
+.bar { background:#eee3f2; }
+.bar i { background:var(--primary); }
+.readonly,.meeting-reference,.footnote,.headnote { background:var(--soft);border-color:var(--line);color:var(--muted); }
+.readonly { border-left-color:var(--accent-orange); }
+.tl { background:var(--surface);border-color:var(--line); }
+.timeline,.check { border-color:var(--line); }
+.tl:before { background:var(--primary); }
+.check.ok .dot { background:var(--green); }
+.check.bad .dot { background:var(--red); }
+.check.warn .dot { background:#9c6500; }
+.warntext { color:var(--orange); }
+.highlight,.tag { background:#fff1c7;color:var(--primary); }
+.modal-h,.modal-f,.app-dialog-header,.app-dialog-actions { border-color:var(--line); }
+.modal-h { background:var(--surface); }
+.modal-f { background:#fcf7ff; }
+.close,.request-overlay { color:var(--primary); }
+.request-spinner { border-color:#eadff0;border-top-color:var(--accent-orange); }
+.app-dialog::backdrop,.request-overlay::backdrop,dialog::backdrop { background:#2d123f88; }
+.app-dialog { box-shadow:0 24px 90px #37124e40; }
+.toast { background:var(--primary);color:#fff; }
+#authGate { background:radial-gradient(circle at 12% 18%,#ffe7ba,transparent 42%),radial-gradient(circle at 88% 22%,#ecdaf5,transparent 40%),var(--canvas); }
+.auth-panel { box-shadow:0 18px 65px #4b1d6714; }
+.eyebrow { color:var(--muted); }
+input,button { accent-color:var(--primary); }
+input::placeholder,textarea::placeholder { color:var(--muted);opacity:1; }
+.btn:focus-visible,.nav button:focus-visible,#accountMenuButton:focus-visible,.choice-buttons button:focus-visible,
+.schedule-choice:focus-visible,.calendar-day:focus-visible,.admin-nav > summary:focus-visible,
+button:focus-visible,summary:focus-visible,a:focus-visible { outline:3px solid var(--primary);outline-offset:3px;box-shadow:0 0 0 5px #ffca3266; }
+.sidebar button:focus-visible,.mobile-nav button:focus-visible,.admin-nav > summary:focus-visible { outline-color:var(--accent-yellow); }
+.field input:focus,.field select:focus,.field textarea:focus,select:focus-visible,input:focus-visible,textarea:focus-visible { outline:2px solid var(--primary);outline-offset:2px;border-color:var(--primary); }
+::selection { background:var(--accent-yellow);color:var(--ink); }
