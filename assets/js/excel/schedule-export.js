@@ -9,6 +9,7 @@ function scheduleExportEntries(c,month) {
 }
 
 function scheduleExportTime(appointment) {
+  if(appointment.session==='other')return appointment.startTime+' - '+appointment.endTime;
   const session=scheduleSlot(appointment).session;
   return session==='morning'?'9h55 - 10h15':session==='afternoon'?'15h00 - 15h20':appointment.planTime||'';
 }

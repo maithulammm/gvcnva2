@@ -5,6 +5,8 @@ const MEETING_SESSIONS = {
   afternoon:{label:"Chiều",time:"15:00–15:20"},
 };
 const MEETING_TOPICS = ["Mục tiêu","Vở ghi","Học sinh chia sẻ"];
+function appointmentRange(a){return a.session==='other'?[a.startTime||'11:00',a.endTime||'11:20']:a.session==='afternoon'?['15:00','15:20']:['09:55','10:15'];}
+function customHoliday(date,start,end){return isExcludedMeetingDate(date)||((schoolCalendar().excludedSessions||[]).some(s=>s.date===date&&(s.session==='morning'?start<'12:00':end>'12:00')));}
 
 function scheduleMonthDates(month=ui.month) {
   const match=/^T(\d{2})\/(\d{4})$/.exec(month);
@@ -30,22 +32,29 @@ function studentAppointments(c,month,studentId) {
 
 function monthlyAppointments(c=cls(),month=ui.month) {
   return c.students.flatMap(s=>studentAppointments(c,month,s.id).map(a=>({...a,studentId:s.id})))
-    .sort((a,b)=>`${scheduleSlot(a).date}:${scheduleSlot(a).session==='afternoon'?1:0}`.localeCompare(`${scheduleSlot(b).date}:${scheduleSlot(b).session==='afternoon'?1:0}`));
+    .sort((a,b)=>`${scheduleSlot(a).date}:${appointmentRange({...a,...scheduleSlot(a)})[0]}`.localeCompare(`${scheduleSlot(b).date}:${appointmentRange({...b,...scheduleSlot(b)})[0]}`));
 }
 
 function scheduleSessionAllowed(c,date,session) {
   const day=new Date(date+'T12:00:00').getDay();
-  return day>=1&&day<=5 || Number(c.grade)===12&&day===6&&session==='morning';
+  return day>=1&&day<=5 || Number(c.grade)===12&&day===6&&(session==='morning'||session==='other'&&(ui.editing?.schedule?.endTime||'11:20')<='12:00');
+}
+function changeCustomScheduleTime(key,value){
+  if(!['startTime','endTime'].includes(key)||!editorContextCurrent()||!editable())return;
+  ui.editing.schedule[key]=value;ui.editing.schedule.note=$('scheduleNote').value;renderScheduleEditor();saveEditorDraft();
 }
 
 function scheduleOccupant(date,session,studentId=ui.editing?.id,c=cls(),month=ui.month,appointmentId=ui.editing?.seed?.appointmentId) {
+  const [start,end]=appointmentRange({...(session==='other'?ui.editing?.schedule:{}),session});
   return monthlyAppointments(c,month).find(a=>{
     const slot=scheduleSlot(a);
-    return !(a.studentId===studentId&&a.id===appointmentId) && slot.date===date&&slot.session===session;
+    const [otherStart,otherEnd]=appointmentRange({...a,...slot});
+    return !(a.studentId===studentId&&a.id===appointmentId) && slot.date===date&&start<otherEnd&&end>otherStart;
   })?.studentId;
 }
 
 function scheduleAvailable(date,session,studentId=ui.editing?.id,c=cls(),month=ui.month,appointmentId=ui.editing?.seed?.appointmentId) {
+  if(session==='other'&&customHoliday(date,...appointmentRange({...ui.editing?.schedule,session})))return false;
   return !isExcludedMeetingDate(date,session) && scheduleSessionAllowed(c,date,session) && !scheduleOccupant(date,session,studentId,c,month,appointmentId) &&
     !studentAppointments(c,month,studentId).some(a=>a.id!==appointmentId&&scheduleSlot(a).date===date);
 }
@@ -80,7 +89,7 @@ function openStudentAppointment(studentId,appointmentId='') {
 
 function scheduleEditorState(record) {
   const slot=scheduleSlot(record), dates=scheduleMonthDates();
-  return {date:dates.includes(slot.date)?slot.date:"",session:MEETING_SESSIONS[slot.session]?slot.session:"",
+  return {date:dates.includes(slot.date)?slot.date:"",session:slot.session==='other'?'other':MEETING_SESSIONS[slot.session]?slot.session:"",startTime:record.startTime||'11:00',endTime:record.endTime||'11:20',
     topics:Array.isArray(record.topics)?record.topics.filter(t=>MEETING_TOPICS.includes(t)):
       MEETING_TOPICS.filter(t=>String(record.goal||"").split(" · ").includes(t)),note:String(record.note||"")};
 }
@@ -89,7 +98,7 @@ function selectSchedulePart(key,value) {
   if (ui.editing?.type!=="m01" || !editorContextCurrent() || !editable()) return;
   const state=ui.editing.schedule;
   state.note=$("scheduleNote").value;
-  if (key==="session" && MEETING_SESSIONS[value]) {
+  if (key==="session" && (MEETING_SESSIONS[value]||value==='other')) {
     if (state.date && !scheduleAvailable(state.date,value)) return;
     state.session=value;
   } else if (key==="date" && scheduleMonthDates().includes(value)) {
@@ -118,7 +127,7 @@ function renderScheduleEditor() {
       const occupant=date&&scheduleOccupant(date,key);
       const blocked=date&&!scheduleAvailable(date,key);
       return `<button type="button" class="schedule-choice" aria-pressed="${session===key}" ${blocked?'disabled':''} onclick="selectSchedulePart('session','${key}')"><b>${value.label}</b><span>${value.time}</span>${occupant?`<small>Đã hẹn: ${esc(studentName(cls(),occupant))}</small>`:''}</button>`;
-    }).join('')}</div></fieldset>
+    }).join('')}<button type="button" class="schedule-choice" aria-pressed="${session==='other'}" onclick="selectSchedulePart('session','other')">Giờ khác</button></div>${session==='other'?`<div class="meeting-date-clock"><label>Giờ bắt đầu (24 giờ)<input name="startTime" value="${esc(ui.editing.schedule.startTime)}" placeholder="HH:mm" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" required onchange="changeCustomScheduleTime(this.name,this.value)"></label><label>Giờ kết thúc (24 giờ)<input name="endTime" value="${esc(ui.editing.schedule.endTime)}" placeholder="HH:mm" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" required onchange="changeCustomScheduleTime(this.name,this.value)"></label></div>`:''}</fieldset>
     <fieldset><legend>Chọn ngày · Tháng ${month}/${year}</legend><div class="schedule-calendar" role="group" aria-label="Lịch tháng ${month}/${year}">
       ${['T2','T3','T4','T5','T6','T7','CN'].map(day=>`<span class="calendar-heading">${day}</span>`).join('')}
       ${Array.from({length:offset},()=>'<span aria-hidden="true"></span>').join('')}
@@ -127,7 +136,7 @@ function renderScheduleEditor() {
         const capacity=Object.keys(MEETING_SESSIONS).filter(s=>scheduleSessionAllowed(cls(),day,s)).length;
         const blocked=session?!scheduleAvailable(day,session):!Object.keys(MEETING_SESSIONS).some(s=>scheduleAvailable(day,s));
         return `<button type="button" class="calendar-day" data-date="${day}" aria-label="Ngày ${day.slice(8)}/${day.slice(5,7)}/${day.slice(0,4)}" aria-pressed="${day===date}" ${blocked?'disabled':''} onclick="selectSchedulePart('date','${day}')"><b>${Number(day.slice(8))}</b><small>${capacity?`${occupied}/${capacity} đã hẹn`:'Nghỉ'}</small></button>`;
-      }).join('')}</div><p class="help">${selected}${session?' · '+MEETING_SESSIONS[session].label+' '+MEETING_SESSIONS[session].time:''} · T2–T6${Number(cls().grade)===12?', thêm sáng T7':''}</p></fieldset>
+      }).join('')}</div><p class="help">${selected}${session==='other'?' · Giờ khác':session?' · '+MEETING_SESSIONS[session].label+' '+MEETING_SESSIONS[session].time:''}</p></fieldset>
     <fieldset><legend>Mục tiêu cuộc gặp · Có thể chọn nhiều</legend><div class="schedule-topics">${MEETING_TOPICS.map(t=>`<button type="button" class="schedule-choice" aria-pressed="${topics.includes(t)}" onclick="selectSchedulePart('topic','${t}')">${t}</button>`).join('')}</div>
       ${legacyGoal?`<p class="help">Nội dung đã có được giữ lại: ${esc(legacyGoal)}</p>`:''}</fieldset>
     <label class="field"><b>Ghi chú</b><textarea id="scheduleNote" name="note" rows="3">${esc(note)}</textarea></label>
@@ -138,8 +147,11 @@ function renderScheduleEditor() {
 
 function buildScheduleRecord(c,month,id,record) {
   if (!scheduleMonthDates(month).includes(record.date)) throw Error("Hãy chọn ngày hợp lệ trong tháng đang mở.");
-  if (!MEETING_SESSIONS[record.session]) throw Error("Hãy chọn buổi sáng hoặc buổi chiều.");
+  if (!MEETING_SESSIONS[record.session]&&record.session!=='other') throw Error("Hãy chọn buổi sáng, buổi chiều hoặc giờ khác.");
+  if(record.session==='other'&&(!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(record.startTime)||!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(record.endTime)||record.startTime>=record.endTime))throw Error('Giờ bắt đầu/kết thúc phải hợp lệ, kết thúc sau bắt đầu.');
+  if(record.session==='other'&&customHoliday(record.date,record.startTime,record.endTime))throw Error('Khung giờ nằm trong lịch nghỉ.');
   if (!scheduleSessionAllowed(c,record.date,record.session)) throw Error('Chỉ hẹn T2–T6; lớp 12 được thêm sáng T7.');
+  if(record.session==='other')Object.assign(ui.editing.schedule,{startTime:record.startTime,endTime:record.endTime});
   const occupant=scheduleOccupant(record.date,record.session,id,c,month);
   if (occupant) throw Error(`Khung giờ này đã hẹn ${studentName(c,occupant)}. Hãy chọn khung giờ khác.`);
   const old=mdata(c,month,false).schedule[id]||{}, appointments=studentAppointments(c,month,id);
@@ -148,9 +160,9 @@ function buildScheduleRecord(c,month,id,record) {
   if (appointments.some(a=>a.id!==appointmentId&&scheduleSlot(a).date===record.date)) throw Error('Hai buổi trong ngày phải hẹn hai học sinh khác nhau.');
   const topics=MEETING_TOPICS.filter(t=>record.topics.includes(t));
   const legacyGoal=String(previous?.goal||(!appointments.length?old.goal:'')||"").split(" · ").filter(t=>!MEETING_TOPICS.includes(t));
-  const info=MEETING_SESSIONS[record.session], date=record.date;
+  const info=record.session==='other'?{label:'Giờ khác',time:record.startTime+'–'+record.endTime}:MEETING_SESSIONS[record.session], date=record.date;
   const appointment={...previous,id:previous?.id||newID(),date,session:record.session,topics,note:record.note,
-    goal:[...legacyGoal,...topics].filter(Boolean).join(" · "),
+    ...(record.session==='other'?{startTime:record.startTime,endTime:record.endTime}:{}),goal:[...legacyGoal,...topics].filter(Boolean).join(" · "),
     planTime:`${date.slice(8)}/${date.slice(5,7)}/${date.slice(0,4)} · ${info.label} ${info.time}`};
   return appointmentRollup(old,previous?appointments.map(a=>a.id===appointmentId?appointment:a):[...appointments,appointment]);
 }

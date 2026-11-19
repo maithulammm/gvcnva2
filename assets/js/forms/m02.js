@@ -23,9 +23,9 @@ function openScheduledMeeting(studentId,appointmentId) {
   if (!appointment) return;
   const recorded=mdata().meetings.find(r=>r.appointmentId===appointmentId);
   if (recorded) return openModal('m02',recorded.id);
-  const slot=scheduleSlot(appointment),time=slot.session==='afternoon'?'15:00':'09:55';
+  const slot=scheduleSlot(appointment),time=slot.session==='other'?appointment.startTime:slot.session==='afternoon'?'15:00':'09:55';
   openModal('m02','',{studentId,appointmentId,goal:appointment.goal||'',actual:'',
-    actualDateTime:slot.date&&MEETING_SESSIONS[slot.session]?`${slot.date}T${time}`:'',actualLocation:`Phòng ${cls().id}`});
+    actualDateTime:slot.date&&(MEETING_SESSIONS[slot.session]||slot.session==='other')?`${slot.date}T${time}`:'',actualLocation:`Phòng ${cls().id}`});
 }
 
 function renderPendingMeetings(c,m) {

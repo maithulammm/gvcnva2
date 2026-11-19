@@ -210,7 +210,8 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
         validateClass(c,old.data);
         for(const [month,m] of Object.entries(c.months))for(const st of c.students)for(const a of appointmentEntries(m,st.id)){
           const previous=appointmentEntries(old.data.months[month],st.id).find(p=>p.id===a.id);
-          if(previous?.date===a.date&&previous?.session===a.session)continue;
+          if(previous?.date===a.date&&previous?.session===a.session&&previous?.startTime===a.startTime&&previous?.endTime===a.endTime)continue;
+          if(a.session==='other')requireValue(!school.calendar.excludedDates.includes(a.date)&&!school.calendar.excludedSessions.some(slot=>slot.date===a.date&&(slot.session==='morning'?a.startTime<'12:00':a.endTime>'12:00')),'Khung giờ nằm trong lịch nghỉ.',409);
           requireValue(!school.calendar.excludedDates.includes(a.date)&&!school.calendar.excludedSessions.some(slot=>slot.date===a.date&&slot.session===a.session),'Ngày hoặc buổi đã chọn là lịch nghỉ. Hãy tải lại lịch.',409);
         }
         put(school,id,c,old.revision,identity);

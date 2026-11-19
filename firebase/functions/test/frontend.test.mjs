@@ -15,6 +15,22 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
 
+test('custom planned times persist and prefill actual meetings while overlapping intervals are rejected',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`cls().students=[{id:'S1',name:'One',code:''},{id:'S2',name:'Two',code:''}];openStudentAppointment('S1')`);
+  f.ctx.input={date:'2026-11-20',session:'other',startTime:'11:10',endTime:'11:35',topics:[],note:'Custom'};
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');await f.run('flushCloud()');
+  const c=(await api.bootstrap(admin)).classes['6A1'];assert.equal(c.months['T11/2026'].schedule.S1.appointments[0].startTime,'11:10');
+  f.run(`globalThis.a=studentAppointments(cls(),ui.month,'S1')[0];openScheduledMeeting('S1',a.id)`);
+  assert.equal(f.run('ui.editing.seed.actualDateTime'),'2026-11-20T11:10');
+  f.run(`openStudentAppointment('S2')`);f.ctx.input={...f.ctx.input,startTime:'11:20',endTime:'11:40'};
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');assert.equal(f.run(`studentAppointments(cls(),ui.month,'S2').length`),0);
+  const bad=structuredClone(c),a=bad.months['T11/2026'].schedule.S1.appointments[0];
+  const overlap={...a,id:'OTHER',startTime:'11:20',endTime:'11:40',planTime:'20/11/2026 · Giờ khác 11:20–11:40'};
+  bad.months['T11/2026'].schedule.S2={appointments:[overlap],planTime:overlap.planTime};
+  await assert.rejects(api.putClass(admin,'6A1',{classData:bad,revision:(await api.bootstrap(admin)).revisions['6A1']}),{status:409});
+});
+
 test('follow-up review persists on the current meeting without changing the previous meeting or totals',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
   f.run(`cls().students=[{id:'S1',name:'Student',code:''}];mdata().meetings=[{...${JSON.stringify({id:'OLD',studentId:'S1',actual:'03/11/2026 09:55 · Phòng 6A1',goal:'Original goal',participation:'Original observation'})}}];save()`);await f.run('flushCloud()');

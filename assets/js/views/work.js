@@ -97,11 +97,11 @@ function renderTodayWork(c,canEdit,month) {
   if(!today)return '';
   if(`T${today.slice(5,7)}/${today.slice(0,4)}`!==month)return '';
   const m=mdata(c,month,false), appointments=monthlyAppointments(c,month).filter(a=>scheduleSlot(a).date===today);
-  return `<section class="card marg-top"><h2>Lịch gặp hôm nay · ${esc(today.split('-').reverse().join('/'))}</h2><div class="today-grid">${['morning','afternoon'].map(session=>{
+  return `<section class="card marg-top"><h2>Lịch gặp hôm nay · ${esc(today.split('-').reverse().join('/'))}</h2><div class="today-grid">${['morning','afternoon',...(appointments.some(a=>a.session==='other')?['other']:[])].map(session=>{
     const entries=appointments.filter(a=>scheduleSlot(a).session===session);
     return `<div class="meeting-reference"><b>${MEETING_SESSIONS[session].label} · ${MEETING_SESSIONS[session].time}</b>${entries.map(a=>{
       const done=m.meetings.some(r=>r.appointmentId===a.id);
-      return `<p><b>${esc(studentName(c,a.studentId))}</b></p><p>${esc(a.goal||'')}</p><p>${done?'✓ Đã ghi nhận':'Chưa ghi nhận'}</p>${canEdit?btn(done?'Xem cuộc gặp':'Ghi nhận cuộc gặp',`openTodayMeeting('${month}','${a.studentId}','${a.id}')`,'small'):''}`;
+      return `<p><b>${esc(studentName(c,a.studentId))}</b></p><p>${session==='other'?esc(displayDateText(a.planTime))+' ? ':''}${esc(a.goal||'')}</p><p>${done?'✓ Đã ghi nhận':'Chưa ghi nhận'}</p>${canEdit?btn(done?'Xem cuộc gặp':'Ghi nhận cuộc gặp',`openTodayMeeting('${month}','${a.studentId}','${a.id}')`,'small'):''}`;
     }).join('')||'<p>Chưa có lịch hẹn.</p>'}</div>`;
   }).join('')}</div></section>`;
 }
