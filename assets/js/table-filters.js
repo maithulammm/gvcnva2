@@ -18,6 +18,8 @@ function installTableFilters(table,index){
   panel.innerHTML=`<div class="table-filter-top"><label><span class="table-search-label">Tìm trong bảng</span><input type="search" class="table-search" placeholder="Tìm tên hoặc nội dung…" aria-label="Tìm trong bảng ${index+1}"></label><button type="button" class="btn small table-filter-clear">Xóa tìm kiếm</button></div><p class="table-filter-empty" role="status" hidden>Không có kết quả phù hợp.</p>`;
   const wrap=table.closest('.table-wrap')||table;
   wrap.parentNode.insertBefore(panel,wrap);
+  const count=table.closest('.pending-meetings')?.querySelector('.pending-count');
+  if(count)panel.querySelector('.table-filter-top').append(count);
   const records=[...table.querySelectorAll('tbody > tr')].filter(row=>!row.querySelector('td[colspan]')).map(row=>({row,values:[...row.cells].map(cell=>{
     const copy=cell.cloneNode(true);for(const action of copy.querySelectorAll('button,select,input'))action.remove();
     return tableFilterText(copy.textContent);

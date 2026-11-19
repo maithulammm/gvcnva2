@@ -8,3 +8,14 @@ table tbody>tr[hidden]{display:none!important}
 
 .table-search-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .table-filter-panel{padding:8px 12px}.table-filter-top{align-items:center;gap:8px}.table-filter-empty{margin:6px 0 0;font-size:13px}.table-filter-panel .table-filter-clear{min-height:40px}
+.pending-meetings.card{padding:14px;}
+.pending-meetings>.section-head{margin:0 0 8px;}
+.pending-meetings>.section-head h2{margin:0;font-size:19px;}
+.pending-meetings .table-filter-panel{padding:0 0 8px;border-bottom:0;}
+.pending-meetings .pending-count{margin-left:auto;flex:0 0 auto;white-space:nowrap;}
+@media(max-width:600px){
+  .pending-meetings.card{padding:10px;}
+  .pending-meetings .table-filter-top{gap:6px;}
+  .pending-meetings .table-filter-clear{font-size:11px;padding:6px;}
+  .pending-meetings .pending-count{font-size:11px;padding:5px 7px;}
+}

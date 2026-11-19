@@ -16,8 +16,7 @@ function openScheduledMeeting(studentId,appointmentId) {
 function renderPendingMeetings(c,m) {
   const pending=monthlyAppointments(c).filter(a=>!m.meetings.some(r=>r.appointmentId===a.id));
   if (!pending.length) return '';
-  return `<section class="card"><div class="section-head"><h2>Lịch gặp dự kiến từ Mẫu 1</h2><span class="pill">${pending.length} lịch</span></div>
-    <p class="help">Chỉ được tính là đã gặp sau khi ghi nhận cuộc gặp thực tế và lưu thông tin.</p>
+  return `<section class="card pending-meetings"><div class="section-head"><h2>Lịch gặp dự kiến từ Mẫu 1</h2><span class="pill pending-count">${pending.length} lịch</span></div>
     <div class="table-wrap"><table><thead><tr><th>Ngày / buổi</th><th>Học sinh</th><th>Mục tiêu</th><th>Ghi chú</th><th></th></tr></thead><tbody>
     ${pending.map(a=>`<tr><td>${esc(displayDateText(a.planTime))}</td><td><b>${esc(studentName(c,a.studentId))}</b></td><td>${esc(a.goal||'—')}</td><td>${esc(a.note||'—')}</td><td>${editable()?btn('Ghi nhận đã gặp',`openScheduledMeeting('${a.studentId}','${a.id}')`,'small primary'):'Dự kiến'}</td></tr>`).join('')}
     </tbody></table></div></section>`;
