@@ -7,25 +7,43 @@ function clearAccountPhoto(){
   accountPhoto.owner='';accountPhoto.url='';accountPhoto.controller=null;
   const img=$('accountPhoto');if(img){img.hidden=true;img.removeAttribute?.('src');}
 }
-async function updateAccountPhoto(){
+function photoStatus(message){
+  const status=$('accountPhotoStatus');if(status)status.textContent=message;
+  const avatar=$('accountPhoto');if(avatar?.parentElement)avatar.parentElement.title=message;
+}
+async function refreshAccountPhoto(){await updateAccountPhoto(true);}
+async function updateAccountPhoto(interactive=false){
   const fallback=$('accountInitials'),img=$('accountPhoto');if(!fallback||!img)return;
   fallback.textContent=accountDisplayName().split(/\s+/).slice(-2).map(s=>s[0]).join('').toUpperCase();
   if(!auth.account||!auth.client?.acquireTokenSilent)return;
   const owner=auth.email+'|'+(auth.account.homeAccountId||'');
-  if(accountPhoto.owner===owner)return;
+  if(accountPhoto.owner===owner&&!interactive)return;
   clearAccountPhoto();accountPhoto.owner=owner;
   const controller=accountPhoto.controller=new AbortController();
   const current=()=>!controller.signal.aborted&&accountPhoto.owner===owner&&!!auth.account;
+  photoStatus('Đang tải ảnh Microsoft…');
+  const refresh=$('refreshAccountPhotoButton');if(refresh)refresh.disabled=true;
   try{
-    const token=await auth.client.acquireTokenSilent({account:auth.account,scopes:['User.Read']});
-    if(!current()||!token.accessToken)return;
+    const request={account:auth.account,scopes:['User.Read']};
+    const token=interactive?await auth.client.acquireTokenPopup({...request,prompt:'consent'}):await auth.client.acquireTokenSilent(request);
+    if(!current())return;
+    if(!token.accessToken)throw Error('missing_access_token');
+    if(token.account?.homeAccountId&&auth.account.homeAccountId&&token.account.homeAccountId!==auth.account.homeAccountId)throw Error('account_mismatch');
     const response=await fetch('https://graph.microsoft.com/v1.0/me/photo/$value',{headers:{Authorization:'Bearer '+token.accessToken},signal:controller.signal});
-    if(!response.ok||!current())return;
-    const blob=await response.blob();if(!current()||!blob.type.startsWith('image/')||blob.size>5*1024*1024)return;
-    accountPhoto.url=URL.createObjectURL(blob);img.src=accountPhoto.url;
-    img.onload=()=>{if(current())img.hidden=false;};
-    img.onerror=()=>{img.hidden=true;};
-  }catch{/* Missing photo or consent must never interrupt sign-in. */}
+    if(!current())return;
+    if(!response.ok)throw Error('photo_http_'+response.status);
+    const blob=await response.blob();if(!current())return;
+    if(!blob.type.startsWith('image/')||blob.size>5*1024*1024)throw Error('invalid_photo');
+    accountPhoto.url=URL.createObjectURL(blob);
+    img.onload=()=>{if(current()){img.hidden=false;photoStatus('Đã tải ảnh Microsoft.');}};
+    img.onerror=()=>{if(current()){img.hidden=true;photoStatus('Không hiển thị được ảnh. Bấm Cập nhật ảnh Microsoft để thử lại.');}};
+    img.src=accountPhoto.url;
+  }catch(error){
+    if(!current())return;
+    const code=String(error.errorCode||error.message||'');
+    const message=code==='photo_http_404'?'Microsoft Graph chưa trả về ảnh cho tài khoản này.':code==='photo_http_403'?'Microsoft chưa cấp quyền đọc ảnh cho ứng dụng. Cần kiểm tra quyền User.Read trong Entra.':code==='photo_http_401'?'Phiên đọc ảnh đã hết hạn. Bấm Cập nhật ảnh Microsoft.':interactive?'Chưa cấp được quyền đọc ảnh ('+code.replace(/[^a-zA-Z0-9_]/g,'').slice(0,64)+'). Nếu Microsoft yêu cầu phê duyệt, cần quản trị Microsoft của trường hỗ trợ.':'Chưa tải được ảnh. Bấm Cập nhật ảnh Microsoft để cấp quyền và thử lại.';
+    photoStatus(message);if(interactive)appAlert(message);
+  }finally{if(accountPhoto.owner===owner&&refresh)refresh.disabled=false;}
 }
 
 function accountDisplayName() {
@@ -51,6 +69,7 @@ function toggleAccountMenu() {
   const width=Math.min(200,window.innerWidth-24);
   menu.style.width=width+'px';
   menu.style.left=Math.max(12,Math.min(anchor.left,window.innerWidth-width-12))+'px';
-  menu.style.top=Math.max(8,anchor.top-68)+'px';
-  menu.hidden=false;$('accountMenuButton').setAttribute('aria-expanded','true');$('msLogoutBtn').focus();
+  menu.hidden=false;
+  menu.style.top=Math.max(8,anchor.top-menu.getBoundingClientRect().height-6)+'px';
+  $('accountMenuButton').setAttribute('aria-expanded','true');$('refreshAccountPhotoButton').focus();
 }
