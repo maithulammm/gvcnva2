@@ -1,0 +1,17 @@
+.meeting-row-toggle{display:none;}
+@media(max-width:900px){
+  table.meeting-records-table.responsive-records tbody{display:block;padding:0;}
+  table.meeting-records-table.responsive-records tbody>tr.meeting-collapsible{display:block;margin:0;padding:0;border:0;border-bottom:1px solid var(--line);border-radius:0;}
+  .meeting-records-table .meeting-collapsible:not(.meeting-expanded)>td:not(.meeting-name-cell){display:none!important;}
+  .meeting-records-table .meeting-name-original,.meeting-records-table td.meeting-name-cell::before{display:none!important;}
+  table.meeting-records-table.responsive-records td.meeting-name-cell{padding:0;}
+  .meeting-row-toggle{display:flex;align-items:center;gap:10px;width:100%;min-width:0;min-height:48px;padding:10px 12px;border:0;background:transparent;color:var(--ink);text-align:left;font:inherit;cursor:pointer;}
+  .meeting-row-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;font-size:14px;}
+  .meeting-row-time{flex:0 0 auto;white-space:nowrap;font-size:13px;}
+  .meeting-row-arrow{flex:0 0 auto;color:var(--primary);}
+  .meeting-row-toggle[aria-expanded="true"] .meeting-row-arrow{transform:rotate(180deg);}
+  .meeting-row-toggle:focus-visible{outline:2px solid var(--primary);outline-offset:-3px;}
+  table.meeting-records-table.responsive-records .meeting-expanded>td:not(.meeting-name-cell){padding:6px 12px;}
+  table.meeting-records-table.responsive-records .meeting-expanded>td:first-child{display:none;}
+  table.meeting-records-table.responsive-records .meeting-expanded>td:last-child{padding-bottom:12px;}
+}

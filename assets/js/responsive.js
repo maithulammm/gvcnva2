@@ -27,6 +27,7 @@ function adaptResponsiveTables() {
   let tableIndex=0;
   for(const table of host.querySelectorAll('table')) {
     installTableFilters(table,tableIndex++);
+    installMeetingSummaries(table);
     const headers=[...table.querySelectorAll('thead th')].map(th=>th.textContent.trim());
     if(!headers.length)continue;
     table.classList.add('responsive-records');
