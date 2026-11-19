@@ -15,6 +15,21 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
 
+test('bulk schedule deletion confirms, preserves roster/actual records and persists only selected students',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`cls().students=[{id:'S1',name:'One',code:''},{id:'S2',name:'Two',code:''}];mdata().schedule=buildAutomaticSchedule().classData.months[ui.month].schedule;
+    mdata().meetings=[{id:'R1',studentId:'S1',appointmentId:studentAppointments(cls(),ui.month,'S1')[0].id}];save()`);await f.run('flushCloud()');
+  f.run(`scheduleSelection().add('S1')`);
+  const before=f.run('JSON.stringify(cls())');f.ctx.confirm=()=>false;
+  await f.run('deleteSelectedSchedules()');assert.equal(f.run('JSON.stringify(cls())'),before);
+  f.ctx.confirm=()=>true;await f.run('deleteSelectedSchedules()');await f.run('flushCloud()');
+  const c=(await api.bootstrap(admin)).classes['6A1'];
+  assert.equal(c.students.length,2);assert.equal(c.months['T11/2026'].meetings.length,1);
+  assert.equal(c.months['T11/2026'].meetings[0].appointmentId,undefined);
+  assert.equal(c.months['T11/2026'].schedule.S1.planTime,'');assert.equal(c.months['T11/2026'].schedule.S2.appointments.length,21);
+  f.run(`scheduleSelection().add('S2');ui.month='T12/2026'`);assert.equal(f.run('scheduleSelection().size'),0);
+});
+
 test('custom planned times persist and prefill actual meetings while overlapping intervals are rejected',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
   f.run(`cls().students=[{id:'S1',name:'One',code:''},{id:'S2',name:'Two',code:''}];openStudentAppointment('S1')`);

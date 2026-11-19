@@ -1,5 +1,18 @@
 .meeting-row-toggle{display:none;}
+@media(max-width:900px){table.m01-table.compact-list-table.responsive-records tr.meeting-collapsible>td.schedule-selection-cell:has(input){display:flex!important;}}
+.m01-table input[type="checkbox"],.mobile-bulk-select input{width:18px;height:18px;min-height:0;margin:0;vertical-align:middle;accent-color:var(--primary);}
+.m01-table th:first-child{width:76px;white-space:nowrap;}
+.mobile-bulk-select{display:none!important;}
+#bulkScheduleDelete:disabled{opacity:.45;cursor:default;}
+#bulkScheduleDelete:not(:disabled){background:var(--red,#b82935);color:white;border-color:var(--red,#b82935);}
 @media(max-width:900px){
+  .mobile-bulk-select{display:flex!important;align-items:center;gap:5px;white-space:nowrap;}
+  .m01-table .meeting-collapsible{position:relative;}
+  table.m01-table.responsive-records .meeting-collapsible>td.schedule-selection-cell:has(input){display:flex!important;align-items:center;justify-content:center;position:absolute;left:0;top:0;width:40px;height:48px;padding:0!important;z-index:1;}
+  .m01-table .schedule-selection-cell>span,.m01-table .schedule-selection-cell::before{display:none!important;}
+  .m01-table .meeting-collapsible:has([data-select-student]) .meeting-row-toggle{padding-left:40px;}
+  .m01-section .table-filter-top{flex-wrap:wrap;}
+  .m01-section .table-filter-top>label:not(.mobile-bulk-select){flex:1 1 100px;}
   table.compact-list-table.responsive-records tbody{display:block;padding:0;}
   table.compact-list-table.responsive-records tbody>tr.meeting-collapsible{display:block!important;margin:0;padding:0;border:0;border-bottom:1px solid var(--line);border-radius:0;}
   table.compact-list-table.responsive-records .meeting-collapsible:not(.meeting-expanded)>td:not(.meeting-name-cell){display:none!important;}

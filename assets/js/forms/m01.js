@@ -10,11 +10,11 @@ function renderM01() {
   return `<section class="m01-section"><div class="section-head"><h2>Lịch gặp của lớp ${esc(c.id)} · ${esc(ui.month)}</h2><div class="actions">
     <span class="pill">${monthlyAppointments().length} lịch · ${plannedStudentIds(c,m).length}/${c.students.length} HS</span>
     ${canEdit?btn('Tự động xếp lịch tháng','autoScheduleMonth()','primary'):''}${monthlyAppointments().length?btn('Xuất Excel lịch gặp','exportSchedule()'):''}${btn('Đến Mẫu 02',"navTo('m02')")}</div></div>
-    <div class="card no-pad"><div class="table-wrap"><table class="m01-table"><thead><tr><th>STT</th><th>Học sinh</th><th>Lịch dự kiến</th><th>Mục tiêu</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody>
+    <div class="card no-pad"><div class="table-wrap"><table class="m01-table"><thead><tr><th>${canEdit?'<input type="checkbox" data-schedule-select-all aria-label="Chọn tất cả học sinh đang hiển thị" onchange="selectAllScheduleStudents(this.checked)"> ':''}STT</th><th>Học sinh</th><th>Lịch dự kiến</th><th>Mục tiêu</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody>
     ${c.students.map((student,index)=>{
       const appointments=studentAppointments(c,ui.month,student.id);
       const schedule=m.schedule[student.id]||{},hasGoal=appointments.some(a=>a.goal)||(!appointments.length&&schedule.goal),hasNote=appointments.some(a=>a.note)||(!appointments.length&&schedule.note);
-      return `<tr><td>${index+1}</td><td><b>${esc(student.name)}</b></td>
+      return `<tr><td class="schedule-selection-cell">${canEdit?`<input type="checkbox" data-select-student="${esc(student.id)}" aria-label="Chọn lịch của ${esc(student.name)}" ${scheduleSelection().has(student.id)?'checked':''} ${appointments.length?'':'disabled'} onchange="selectScheduleStudent('${student.id}',this.checked)"> `:''}<span>${index+1}</span></td><td><b>${esc(student.name)}</b></td>
         <td class="m01-dates">${appointments.map((a,i)=>`<div class="m01-entry"><b>Lần ${i+1}</b> · ${esc(displayDateText(a.planTime))}${m.meetings.some(r=>r.appointmentId===a.id)?' · Đã ghi nhận':''}</div>`).join('')||'Chưa hẹn'}</td>
         <td class="long ${hasGoal?'':'m01-empty'}">${appointments.map((a,i)=>`<div class="m01-entry ${a.goal?'':'is-empty'}"><span class="m01-entry-label">Lần ${i+1} · </span>${esc(a.goal||'—')}</div>`).join('')||esc(schedule.goal||'—')}</td>
         <td class="long ${hasNote?'':'m01-empty'}">${appointments.map((a,i)=>`<div class="m01-entry ${a.note?'':'is-empty'}"><span class="m01-entry-label">Lần ${i+1} · </span>${esc(a.note||'—')}</div>`).join('')||esc(schedule.note||'—')}</td>

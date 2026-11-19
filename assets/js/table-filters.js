@@ -20,6 +20,7 @@ function installTableFilters(table,index){
   wrap.parentNode.insertBefore(panel,wrap);
   const count=table.closest('.pending-meetings')?.querySelector('.pending-count');
   if(count)panel.querySelector('.table-filter-top').append(count);
+  installScheduleBulk(table,panel);
   const records=[...table.querySelectorAll('tbody > tr')].filter(row=>!row.querySelector('td[colspan]')).map(row=>({row,values:[...row.cells].map(cell=>{
     const copy=cell.cloneNode(true);for(const action of copy.querySelectorAll('button,select,input'))action.remove();
     return tableFilterText(copy.textContent);
@@ -30,6 +31,7 @@ function installTableFilters(table,index){
     let count=0;
     for(const {row,values} of records){const match=!term||values.join(' ').includes(term);row.hidden=!match;if(match)count++;}
     panel.querySelector('.table-filter-empty').hidden=!(count===0&&records.length&&term);
+    if(table.classList.contains('m01-table')&&editable())updateScheduleSelection();
   }
   global.addEventListener('input',()=>{state.search=global.value;apply();});
   panel.querySelector('.table-filter-clear').addEventListener('click',()=>{state.search='';global.value='';apply();global.focus();});
