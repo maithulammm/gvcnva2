@@ -2,16 +2,26 @@
 .page-toolbar { display:flex;align-items:stretch;gap:0;min-width:0;margin-bottom:18px;border:1px solid #dce7e7;border-radius:12px;background:#fff; }
 .page-toolbar > .topline.app-toolbar { flex:1 1 0;width:0;margin-bottom:0;border:0;border-radius:0;background:transparent; }
 .account-control { display:flex;flex:0 0 auto;align-items:center;min-width:0;width:100%;margin:0; }
-.sidebar { overflow:hidden; }
-.sidebar > #nav { flex:1;min-height:0;overflow-y:auto; }
-.nav,.admin-nav-links{grid-auto-rows:max-content;align-content:start;}
+.sidebar { overflow:hidden;min-width:0; }
+.sidebar > #nav { flex:1;min-height:0;overflow-y:auto;overflow-x:hidden; }
+.sidebar #nav,.mobile-nav #mobileNavLinks{scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior:contain;}
+.sidebar #nav::-webkit-scrollbar,.mobile-nav #mobileNavLinks::-webkit-scrollbar{display:none;width:0;height:0;}
+.nav,.admin-nav-links{grid-template-columns:minmax(0,1fr);grid-auto-rows:max-content;align-content:start;min-width:0;max-width:100%;}
+.nav button,.admin-nav>summary{min-width:0;max-width:100%;overflow:hidden;}
+.nav .ico{flex:0 0 21px;}
+.admin-nav>summary::after{flex-shrink:0;}
+.sidebar .logo{min-width:0;flex-shrink:0;}
+.sidebar .logo>div{min-width:0;}
+.sidebar .logo strong,.sidebar .logo small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sidebar .nav button:focus-visible,.mobile-nav .nav button:focus-visible,.admin-nav>summary:focus-visible{outline-offset:-3px;}
 .nav button,.admin-nav>summary{height:48px;min-height:48px;max-height:48px;box-sizing:border-box;flex-shrink:0;}
-.nav .nav-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nav .nav-text{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mobile-nav .nav .nav-text{display:block;}
 .account-footer { flex:0 0 auto;margin-top:auto;padding-top:12px;min-width:0; }
 .account-footer #accountMenuButton { width:100%;justify-content:space-between; }
 .mobile-nav[open] { display:flex;flex-direction:column; }
 .mobile-nav-header { flex-shrink:0; }
-.mobile-nav > #mobileNavLinks { flex:1;min-height:0;overflow-y:auto; }
+.mobile-nav > #mobileNavLinks { flex:1;min-height:0;overflow-y:auto;overflow-x:hidden; }
 #accountMenuButton { display:flex;align-items:center;gap:8px;min-height:44px;max-width:100%;padding:10px 12px;border:1px solid #dce7e7;border-radius:10px;background:#fff;color:#205e73;font:inherit;font-weight:700;cursor:pointer; }
 #identityLabel { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .account-dropdown { position:fixed;z-index:1000;padding:6px;border:1px solid #dce7e7;border-radius:10px;background:#fff;box-shadow:0 10px 30px #133c4926; }
