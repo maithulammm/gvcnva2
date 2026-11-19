@@ -8,7 +8,7 @@ hiện gọi trực tiếp API Cloudflare, không dùng Netlify làm trung gian.
 
 Mở **`index.html`** bằng Live Server hoặc máy chủ HTTP/HTTPS. Giao diện dùng HTML, CSS và JavaScript thuần; không cần cài thư viện hoặc chạy bước build cho frontend.
 
-Mẫu 2 hiện có **Ghi nhanh / Đầy đủ**: phần phối hợp, liên kết Mẫu 5 và mục tiêu
+Mẫu 2 dùng một giao diện nhập thống nhất: phần phối hợp, liên kết Mẫu 5 và mục tiêu
 2–3 có thể mở khi cần. Mẫu nội dung chỉ điền gợi ý chủ đề, mục tiêu và hành động;
 không tự điền nhận xét, mức tiến bộ, ngày gặp hoặc tạo cuộc gặp thực tế. GVCN có
 thể lưu tối đa 20 mẫu riêng trên thiết bị, tách theo tài khoản Microsoft.

@@ -162,7 +162,6 @@ function openModal(type, id = "", seed = {}) {
     h += `<details id="meetingExtra" class="wide meeting-extra" ${rec.needsCoop==='Có'||rec.profileId?'open':''}><summary>Phối hợp & liên kết Mẫu 5</summary><div class="fieldgrid">${advanced}</div></details>`;
   $("modalBody").innerHTML = `<div class="fieldgrid">${h}</div>`;
   updateMeetingFields();
-  if(type==='m02')syncMeetingModeButtons();
   refreshButtonChoices($("entryForm"));
   $("editor").showModal();
   $("modalBody").scrollTop=0;

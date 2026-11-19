@@ -19,23 +19,12 @@ function personalMeetingTemplates() {
 }
 function allMeetingTemplates(){return [...DEFAULT_MEETING_TEMPLATES,...personalMeetingTemplates()];}
 function renderQuickMeetingTools() {
-  return `<div class="wide quick-meeting-tools"><div class="actions"><button type="button" class="btn small" data-meeting-mode="quick" onclick="setMeetingMode('quick')">Ghi nhanh</button><button type="button" class="btn small" data-meeting-mode="full" onclick="setMeetingMode('full')">Đầy đủ</button></div>
+  return `<div class="wide quick-meeting-tools">
     <details><summary>Mẫu nội dung · Gợi ý mục tiêu và hành động</summary><div id="meetingTemplates">${renderMeetingTemplates()}</div></details></div>`;
 }
 function renderMeetingTemplates() {
   return `<div class="meeting-template-list">${allMeetingTemplates().map((t,i)=>`<div><button type="button" class="btn small" onclick="applyMeetingTemplate(${i})">${esc(t.name)}</button>${t.id?`<button type="button" class="btn small danger" aria-label="Xóa mẫu ${esc(t.name)}" onclick="deleteMeetingTemplate(${i})">×</button>`:''}</div>`).join('')}</div>
     ${btn('Lưu nội dung thành mẫu riêng','saveMeetingTemplate()','small')}<p class="help">Mẫu riêng lưu trên thiết bị này. Chỉ gợi ý chủ đề, mục tiêu và hành động; hãy kiểm tra trước khi dùng.</p>`;
-}
-function syncMeetingModeButtons() {
-  if(!$('entryForm').querySelectorAll)return;
-  for(const button of $('entryForm').querySelectorAll('[data-meeting-mode]'))button.setAttribute('aria-pressed',String(button.dataset.meetingMode===(ui.meetingMode||'quick')));
-  if(ui.meetingMode==='full')for(const panel of $('entryForm').querySelectorAll('.meeting-extra'))panel.open=true;
-}
-function setMeetingMode(mode) {
-  if(!['quick','full'].includes(mode)||ui.editing?.type!=='m02')return;
-  ui.meetingMode=mode;
-  for(const panel of $('entryForm').querySelectorAll('.meeting-extra'))panel.open=mode==='full';
-  syncMeetingModeButtons();
 }
 function meetingFormSuggestions(form=$('entryForm')) {
   const fd=new FormData(form),goals=[];

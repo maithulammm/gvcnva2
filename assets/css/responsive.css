@@ -184,7 +184,6 @@ body:has(#editor[open]), body:has(#mobileNav[open]) { overflow: hidden; }
 @media(max-width:600px){.today-grid{grid-template-columns:1fr}}
 .quick-meeting-tools { display:grid;gap:10px; }
 .quick-meeting-tools .actions { flex-wrap:wrap; }
-.quick-meeting-tools [data-meeting-mode][aria-pressed="true"] { background:#205e73;color:#fff; }
 .quick-meeting-tools summary,.meeting-extra > summary { cursor:pointer;font-weight:700;min-height:44px;padding:10px 0; }
 .meeting-extra { border-top:1px solid #dce7e7;padding-top:6px; }
 .meeting-template-list { display:flex;flex-wrap:wrap;gap:8px;margin:12px 0; }
