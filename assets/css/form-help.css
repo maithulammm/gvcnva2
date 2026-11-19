@@ -1,0 +1,13 @@
+.page-title-line{display:flex;align-items:center;gap:8px;min-width:0;}
+.page-title-line h1{min-width:0;}
+#formHelpButton{display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;min-height:32px;padding:0;border-radius:50%;font-weight:800;font-size:18px;}
+.form-help-dialog{width:min(700px,calc(100% - 24px));}
+.form-help-dialog .app-dialog-body{flex:1 1 auto;line-height:1.65;}
+.form-help-dialog .app-dialog-actions{align-items:center;justify-content:space-between;}
+.form-help-dialog li{padding-left:4px;margin-bottom:10px;}
+.form-help-dialog ol{padding-left:22px;}
+.form-help-dialog .close{flex:0 0 44px;}
+.form-help-preference{display:flex;align-items:center;gap:8px;min-height:44px;font-size:13px;cursor:pointer;}
+.form-help-preference input{width:18px;height:18px;min-height:0;}
+body:has(#formHelp[open]){overflow:hidden;}
+@media(max-width:900px){#formHelpButton{flex-basis:44px;width:44px;height:44px;min-height:44px;}.form-help-dialog .app-dialog-header,.form-help-dialog .app-dialog-body,.form-help-dialog .app-dialog-actions{padding:12px 14px;}.form-help-dialog .app-dialog-header h2{font-size:17px;}}

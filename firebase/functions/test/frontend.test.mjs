@@ -15,6 +15,23 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
 
+test('form guides open per form, remember opt-out per account and reopen manually without changing reports',async()=>{
+  const f=frontend();await f.login();f.run('mdata()');const before=f.run('JSON.stringify(appData)');
+  for(const page of ['m01','m02','m03','m04','m05']){
+    f.run(`navTo('${page}')`);assert(f.el('formHelp').open);assert(f.el('formHelpBody').innerHTML.includes('<ol>'));
+    f.el('formHelpNever').checked=true;f.run('closeFormHelp()');
+    f.run(`navTo('${page}')`);assert(!f.el('formHelp').open);
+    f.run('openFormHelp()');assert(f.el('formHelp').open);assert(f.el('formHelpNever').checked);
+    f.el('formHelpNever').checked=false;f.run('closeFormHelp()');
+    f.run(`navTo('${page}')`);assert(f.el('formHelp').open);f.run('closeFormHelp()');
+  }
+  assert.equal(f.run('JSON.stringify(appData)'),before);
+  f.run(`navTo('m01');globalThis.helpKey=formHelpKey('m01')`);f.el('formHelpNever').checked=true;f.run('closeFormHelp()');
+  assert.equal(f.memory.get(f.run('helpKey')),'1');
+  f.run(`auth.email='other@vietanhschool.edu.vn';openFormHelp('m01',true)`);assert(f.el('formHelp').open);
+  f.run('lockUi()');assert(!f.el('formHelp').open);
+});
+
 test('bulk schedule deletion confirms, preserves roster/actual records and persists only selected students',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
   f.run(`cls().students=[{id:'S1',name:'One',code:''},{id:'S2',name:'Two',code:''}];mdata().schedule=buildAutomaticSchedule().classData.months[ui.month].schedule;

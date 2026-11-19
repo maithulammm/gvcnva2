@@ -13,6 +13,7 @@ function markChanged() {
 }
 
 function navTo(page) {
+  closeFormHelp();
   closeMobileNavigation();
   ui.page = page==='work'?'m02':page;
   ui.search = "";
@@ -21,6 +22,7 @@ function navTo(page) {
   render();
   window.scrollTo?.({top:0,behavior:'auto'});
   $('pageTitle').focus({preventScroll:true});
+  openFormHelp(ui.page,true);
 }
 
 function setRolePreview(role, classId = ui.preview?.classId || ui.classId) {
@@ -133,6 +135,7 @@ function render() {
     (hasAppRole('admin')?`<details class="admin-nav" ${adminPages.includes(ui.page)||ui.adminMenuOpen?'open':''} ontoggle="ui.adminMenuOpen=this.open"><summary title="Quản trị viên"><span class="ico" aria-hidden="true">⚙</span><span class="nav-text">Quản trị viên</span></summary><div class="admin-nav-links">${permitted.filter(([k])=>adminPages.includes(k)).map(navButton).join('')}</div></details>`:'');
   const head = HEADINGS[ui.page];
   $("pageTitle").textContent = head[0];
+  $('formHelpButton').hidden=!FORM_HELP[ui.page];
   $("pageTitle").title = head[0];
   $("pageSubtitle").textContent = head[1];
   $("pageSubtitle").hidden = !head[1];

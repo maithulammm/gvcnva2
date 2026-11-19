@@ -69,6 +69,7 @@ $("msLoginBtn").addEventListener("click", async () => {
 });
 
 $("msLogoutBtn").addEventListener("click", logoutMicrosoft);
+$('formHelp').addEventListener('cancel',event=>{event.preventDefault();closeFormHelp();});
 document.addEventListener?.('pointerdown',event=>{if(!event.target.closest?.('#identityBox,#accountMenu'))closeAccountMenu();});
 document.addEventListener?.('focusin',event=>{if(!event.target.closest?.('#identityBox,#accountMenu'))closeAccountMenu();});
 $('accountMenuButton').addEventListener('keydown',event=>{if(event.key==='ArrowDown'){event.preventDefault();if($('accountMenu').hidden)toggleAccountMenu();else $('msLogoutBtn').focus();}});

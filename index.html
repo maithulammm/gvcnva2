@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="assets/css/mobile-polish.css?v=20261119-sync-icon" />
     <link rel="stylesheet" href="assets/css/popup-layout.css?v=20261119-time-layout" />
     <link rel="stylesheet" href="assets/css/meeting-cards.css?v=20261119-bulk" />
+      <link rel="stylesheet" href="assets/css/form-help.css?v=20261119" />
   </head>
   <body>
     <!-- Microsoft login gate: before authentication NO application view is rendered. -->
@@ -66,7 +67,7 @@
         <div class="page-toolbar">
         <div class="topline app-toolbar">
           <div class="top-heading">
-            <h1 id="pageTitle" tabindex="-1">Tổng quan công tác chủ nhiệm</h1>
+            <div class="page-title-line"><button type="button" id="formHelpButton" class="btn form-help-trigger" hidden aria-label="Hướng dẫn biểu mẫu" title="Hướng dẫn biểu mẫu" onclick="openFormHelp()">!</button><h1 id="pageTitle" tabindex="-1">Tổng quan công tác chủ nhiệm</h1></div>
             <p class="subtitle" id="pageSubtitle">
               Theo dõi đồng bộ 5 biểu mẫu trên 32 lớp
             </p>
@@ -92,6 +93,11 @@
       <div class="mobile-nav-header"><h2 id="mobileNavTitle">Chọn chức năng</h2><button type="button" class="btn" aria-label="Đóng menu" onclick="closeMobileNavigation()">✕</button></div>
       <nav id="mobileNavLinks" class="nav" aria-label="Điều hướng trên điện thoại"></nav>
       <div id="mobileAccountFooter" class="account-footer"></div>
+    </dialog>
+    <dialog id="formHelp" class="app-dialog form-help-dialog" aria-labelledby="formHelpTitle">
+      <div class="app-dialog-header"><h2 id="formHelpTitle">Hướng dẫn biểu mẫu</h2><button type="button" class="close" aria-label="Đóng hướng dẫn" onclick="closeFormHelp()">×</button></div>
+      <div id="formHelpBody" class="app-dialog-body"></div>
+      <div class="app-dialog-actions"><label class="form-help-preference"><input type="checkbox" id="formHelpNever"> Không hiển thị lại</label><button type="button" id="formHelpClose" class="btn primary" onclick="closeFormHelp()">Đóng</button></div>
     </dialog>
     <dialog id="editor">
       <div class="modal-h">
@@ -150,7 +156,8 @@
     <script defer src="assets/js/data.js?v=20261119-admin-class-edit"></script>
     <script defer src="assets/js/permissions.js?v=20261119-lead-readonly"></script>
     <script defer src="assets/js/validation.js?v=20261119-workflow"></script>
-    <script defer src="assets/js/router.js?v=20261119-lead-readonly"></script>
+    <script defer src="assets/js/form-help.js?v=20261119"></script>
+    <script defer src="assets/js/router.js?v=20261119-form-help"></script>
     <script defer src="assets/js/table-filters.js?v=20261119-bulk"></script>
     <script defer src="assets/js/responsive.js?v=20261119-compact-lists"></script>
     <script defer src="assets/js/account-menu.js?v=20261119-avatar-retry"></script>
@@ -183,7 +190,7 @@
     <script defer src="assets/js/demo.js?v=20261118-school-calendar"></script>
     <script defer src="assets/js/firebase.js?v=20261119-sync-icon"></script>
     <script defer src="assets/js/admin.js?v=20261119-date-format"></script>
-    <script defer src="assets/js/auth.js?v=20261119-avatar"></script>
-    <script defer src="assets/js/main.js?v=20261119-avatar"></script>
+    <script defer src="assets/js/auth.js?v=20261119-form-help"></script>
+    <script defer src="assets/js/main.js?v=20261119-form-help"></script>
   </body>
 </html>
