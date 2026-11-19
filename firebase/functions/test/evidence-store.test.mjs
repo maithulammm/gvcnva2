@@ -9,6 +9,7 @@ test('central store keeps credentials server-side, uploads below configured root
     url=String(url);calls.push({url,options});
     if(url.includes('oauth2')){tokenCalls++;assert(String(options.body).includes('client_credentials'));return Response.json({access_token:'SERVER-TOKEN',expires_in:3600});}
     if(url==='https://school.sharepoint.com/download'){
+      assert.equal(options.redirect,'manual','Workers does not implement redirect:error');
       assert(!options.headers?.Authorization,'Signed download must not receive Graph bearer');return new Response(bytes);
     }
     assert.equal(options.headers.Authorization,'Bearer SERVER-TOKEN');
@@ -21,6 +22,43 @@ test('central store keeps credentials server-side, uploads below configured root
   assert.equal(image.contentBase64,bytes.toString('base64'));assert.equal(image.mimeType,'image/jpeg');
   assert(!JSON.stringify(image).includes('sharepoint'));assert(!JSON.stringify(item).includes('server-only'));assert.equal(tokenCalls,1);
   assert(calls.some(c=>c.url.includes('/items/root:/2026-2027')));
+});
+
+test('image reader falls back to Graph content and follows trusted redirects without forwarding bearer tokens',async()=>{
+  const visited=[];
+  const store=createEvidenceStore(env,{fetchImpl:async(url,options={})=>{
+    url=String(url);visited.push(url);
+    if(url.includes('oauth2'))return Response.json({access_token:'GRAPH-ONLY',expires_in:3600});
+    if(url.includes('$select='))return Response.json({file:{mimeType:'image/jpeg'},size:4});
+    assert.equal(options.redirect,'manual');
+    if(url.includes('/items/file/content')){
+      assert.equal(options.headers.Authorization,'Bearer GRAPH-ONLY');
+      return new Response(null,{status:302,headers:{location:'https://school.sharepoint.com/download'}});
+    }
+    assert(!options.headers?.Authorization);
+    if(url==='https://school.sharepoint.com/download')return new Response(null,{status:307,headers:{location:'https://region.files.1drv.com/image'}});
+    assert.equal(url,'https://region.files.1drv.com/image');return new Response(bytes);
+  }});
+  const result=await store.read({driveId:'drive',itemId:'file'});
+  assert.equal(result.contentBase64,bytes.toString('base64'));assert(!JSON.stringify(result).includes('sharepoint'));
+  assert(visited.some(url=>url.includes('/content')));
+});
+
+test('image reader blocks an untrusted redirect and reports download failures as image errors, not unhandled TypeError',async()=>{
+  for(const failure of ['untrusted','network','loop']){
+    const visited=[];
+    const store=createEvidenceStore(env,{fetchImpl:async(url,options={})=>{
+      url=String(url);visited.push(url);
+      if(url.includes('oauth2'))return Response.json({access_token:'SERVER-TOKEN',expires_in:3600});
+      if(url.includes('$select='))return Response.json({file:{mimeType:'image/jpeg'},size:4,'@microsoft.graph.downloadUrl':'https://school.sharepoint.com/download'});
+      assert.equal(options.redirect,'manual');assert(!options.headers?.Authorization);
+      if(failure==='network')throw new TypeError('Network detail with private signed URL');
+      return new Response(null,{status:302,headers:{location:failure==='untrusted'?'https://attacker.invalid/steal?signed=private':'/loop'}});
+    }});
+    await assert.rejects(store.read({driveId:'drive',itemId:'file'}),error=>error.status===503&&!error.message.includes('private'));
+    assert(!visited.some(url=>url.startsWith('https://attacker.invalid')));
+    assert(visited.length<=7);
+  }
 });
 test('central store refuses absent configuration, oversized/non-image payload and legacy wrong-drive access',async()=>{
   assert.equal(!!centralEvidenceConfigured({}),false);assert.throws(()=>createEvidenceStore({}),{status:503});

@@ -83,7 +83,7 @@ export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=pr
     } catch(error) {
       const status=error.status||500;
       if(status===500) console.error('GVCN_API_ERROR',error.code||error.name);
-      return respond(status,{error:status===500?'Không thể xử lý dữ liệu Firebase. Vui lòng thử lại.':error.message});
+      return respond(status,{error:status===500?(String(path).startsWith('/evidence/')?'Không thể xử lý ảnh minh chứng. Vui lòng thử lại.':'Không thể xử lý dữ liệu Firebase. Vui lòng thử lại.'):error.message});
     }
   };
 }

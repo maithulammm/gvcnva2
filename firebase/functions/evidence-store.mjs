@@ -43,6 +43,29 @@ export function createEvidenceStore(env,{fetchImpl=fetch,clock=()=>Date.now(),lo
       catch(conflict){if(conflict.status!==409)throw conflict;const found=await graph(item+':/'+encodeURIComponent(name));requireValue(found.folder,'Cấu trúc kho ảnh không hợp lệ.',503);return found.id;}
     }
   }
+  /** Workers không hỗ trợ redirect:error. Theo từng Location và không gửi Bearer sang host tải ảnh. */
+  async function downloadImage(start){
+    let url;
+    try{url=new URL(start);}catch{throw Object.assign(Error('Kho ảnh chưa trả địa chỉ tải hợp lệ. Hãy thử lại.'),{status:503});}
+    const signal=AbortSignal.timeout(45000);
+    for(let hop=0;hop<5;hop++){
+      const graphHost=url.hostname==='graph.microsoft.com';
+      requireValue(url.protocol==='https:'&&!url.username&&!url.password&&(!url.port||url.port==='443')&&
+        (graphHost||url.hostname.endsWith('.sharepoint.com')||url.hostname.endsWith('.1drv.com')),'Kho ảnh trả địa chỉ tải không hợp lệ.',503);
+      let response;
+      try{response=await fetchImpl(url,{signal,redirect:'manual',...(graphHost?{headers:{Authorization:'Bearer '+await token()}}:{})});}
+      catch{throw Object.assign(Error('Kết nối tải ảnh tạm thời gián đoạn. Vui lòng thử lại.'),{status:503});}
+      if([301,302,303,307,308].includes(response.status)){
+        const location=response.headers.get('location');await response.body?.cancel();
+        requireValue(location,'Kho ảnh thiếu địa chỉ chuyển tiếp. Vui lòng thử lại.',503);
+        try{url=new URL(location,url);}catch{throw Object.assign(Error('Địa chỉ chuyển tiếp của ảnh không hợp lệ.'),{status:503});}
+        continue;
+      }
+      requireValue(response.ok&&response.body,'Không đọc được ảnh. Vui lòng thử lại.',response.status===404?404:503);
+      return response;
+    }
+    throw Object.assign(Error('Kho ảnh chuyển tiếp quá nhiều lần. Vui lòng thử lại.'),{status:503});
+  }
   return {
     async upload({id,classId,month,contentBase64}){
       requireValue(typeof contentBase64==='string'&&contentBase64.length<=Math.ceil(MAX_IMAGE_BYTES/3)*4&&/^[A-Za-z0-9+/]+={0,2}$/.test(contentBase64),'Ảnh không hợp lệ hoặc vượt 2 MB.');
@@ -68,11 +91,10 @@ export function createEvidenceStore(env,{fetchImpl=fetch,clock=()=>Date.now(),lo
       }
       const meta=await graph(path+'?$select=id,file,size,@microsoft.graph.downloadUrl');
       requireValue(['image/jpeg','image/png','image/webp'].includes(meta.file?.mimeType)&&meta.size<=5*1024*1024,'Ảnh không hợp lệ.',400);
-      const url=new URL(meta['@microsoft.graph.downloadUrl']);
-      requireValue(url.protocol==='https:'&&(url.hostname.endsWith('.sharepoint.com')||url.hostname.endsWith('.1drv.com')),'Kho ảnh trả địa chỉ không hợp lệ.',503);
       // URL tải có chữ ký chỉ được dùng trong server; không gửi Location hay token xuống web.
-      const response=await fetchImpl(url,{signal:AbortSignal.timeout(45000),redirect:'error'});
-      requireValue(response.ok,'Không đọc được ảnh.',503);
+      // Nếu metadata thiếu downloadUrl, endpoint /content sẽ cấp URL tải mới qua HTTP 302.
+      const start=meta['@microsoft.graph.downloadUrl']||'https://graph.microsoft.com/v1.0/drives/'+encodeURIComponent(driveId())+path+'/content';
+      const response=await downloadImage(start);
       const chunks=[];let length=0;const reader=response.body.getReader();
       try{while(true){const {done,value}=await reader.read();if(done)break;length+=value.length;if(length>5*1024*1024){await reader.cancel();throw Object.assign(Error('Ảnh vượt dung lượng cho phép.'),{status:413});}chunks.push(Buffer.from(value));}}finally{reader.releaseLock();}
       return {mimeType:meta.file.mimeType,contentBase64:Buffer.concat(chunks).toString('base64')};
