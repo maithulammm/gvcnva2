@@ -87,15 +87,21 @@ function workStudentFlags(c,month,studentId,today=workToday(),drafts=[]) {
     drafts.some(d=>d.context.studentId===studentId)&&'drafts'].filter(Boolean);
 }
 
-function renderTodayWork(c,canEdit) {
-  const today=workToday();
+function openTodayMeeting(month,studentId,appointmentId){
+  if(!MONTHS.includes(month))return;
+  ui.month=month;render();openScheduledMeeting(studentId,appointmentId);
+}
+function renderTodayWork(c,canEdit,month) {
+  const today=month?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()):workToday();
+  month ||= ui.month;
   if(!today)return '';
-  const m=mdata(c,ui.month,false), appointments=monthlyAppointments(c,ui.month).filter(a=>scheduleSlot(a).date===today);
-  return `<section class="card marg-top"><h2>Hôm nay · ${esc(today.split('-').reverse().join('/'))}</h2><div class="today-grid">${['morning','afternoon'].map(session=>{
+  if(`T${today.slice(5,7)}/${today.slice(0,4)}`!==month)return '';
+  const m=mdata(c,month,false), appointments=monthlyAppointments(c,month).filter(a=>scheduleSlot(a).date===today);
+  return `<section class="card marg-top"><h2>Lịch gặp hôm nay · ${esc(today.split('-').reverse().join('/'))}</h2><div class="today-grid">${['morning','afternoon'].map(session=>{
     const entries=appointments.filter(a=>scheduleSlot(a).session===session);
     return `<div class="meeting-reference"><b>${MEETING_SESSIONS[session].label} · ${MEETING_SESSIONS[session].time}</b>${entries.map(a=>{
       const done=m.meetings.some(r=>r.appointmentId===a.id);
-      return `<p><b>${esc(studentName(c,a.studentId))}</b></p><p>${esc(a.goal||'')}</p><p>${done?'✓ Đã ghi nhận':'Chưa ghi nhận'}</p>${canEdit?btn(done?'Xem cuộc gặp':'Ghi cuộc gặp',`openScheduledMeeting('${a.studentId}','${a.id}')`,'small'):''}`;
+      return `<p><b>${esc(studentName(c,a.studentId))}</b></p><p>${esc(a.goal||'')}</p><p>${done?'✓ Đã ghi nhận':'Chưa ghi nhận'}</p>${canEdit?btn(done?'Xem cuộc gặp':'Ghi nhận cuộc gặp',`openTodayMeeting('${month}','${a.studentId}','${a.id}')`,'small'):''}`;
     }).join('')||'<p>Chưa có lịch hẹn.</p>'}</div>`;
   }).join('')}</div></section>`;
 }

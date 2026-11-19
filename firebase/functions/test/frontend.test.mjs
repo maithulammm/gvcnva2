@@ -14,6 +14,22 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('dashboard support filters and manual rescheduling retain appointment content and exclude holidays',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student 1',code:''}];mdata().schedule.S1={appointments:[{id:'A1',date:'2026-11-02',session:'morning',planTime:'02/11/2026 · Sáng 9:55–10:15',goal:'Vở ghi',topics:['Vở ghi'],note:'Keep note'}]};
+    appData.calendar={excludedDates:['2026-11-20'],excludedSessions:[{date:'2026-11-19',session:'morning'}]};openStudentAppointment('S1','A1')`);
+  assert.equal(f.run(`scheduleAvailable('2026-11-20','afternoon')`),false);
+  assert.equal(f.run(`scheduleAvailable('2026-11-19','morning')`),false);
+  assert.equal(f.run(`scheduleAvailable('2026-11-19','afternoon')`),true);
+  f.ctx.fields={date:'2026-11-19',session:'afternoon',topics:['Vở ghi'],note:'Keep note'};
+  await f.run('submitForm({preventDefault(){},currentTarget:fields})');
+  assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1')[0].id`),'A1');
+  assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1')[0].note`),'Keep note');
+  f.run(`ui.dashboardFilter='unsubmitted'`);assert(f.run(`dashboardMatches({state:'draft'})`));assert(!f.run(`dashboardMatches({state:'submitted'})`));
+  f.run(`ui.dashboardFilter='overdue'`);assert(f.run(`dashboardMatches({overdueAppointments:1})`));assert(!f.run(`dashboardMatches({overdueAppointments:0})`));
+  f.run(`ui.dashboardFilter='coordination'`);assert(f.run(`dashboardMatches({coordination:1})`));
+});
+
 test('automatic schedules exclude only the selected session and keep the other session available',async()=>{
   const f=frontend();await f.login();
   f.run(`cls().students=Array.from({length:30},(_,i)=>({id:'S'+i,name:'Student '+i}));appData.calendar={excludedDates:['2026-11-04'],excludedSessions:[{date:'2026-11-02',session:'morning'},{date:'2026-11-03',session:'afternoon'}],revision:1};

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import {appointmentEntries} from './appointments.mjs';
 import {YEAR,GRADES,CLASSES,MONTHS,ROOT,emailKey,list,normalizeSchool,normalizeClass,encodeClass,blankClass,
   assignmentFor,scopeFor,checkScope,requireValue,validateClass,authorizeClassEdit,emptyMonth,validateReport,summary,
   USER_ROLES,rolesOf,gradesOf,hasRole,primaryRole,normalizeAssignment,gradeOf} from './model.mjs';
@@ -56,6 +57,32 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     return {data:normalizeClass(id,stored?.data),revision:stored?.revision||0};
   }
   function put(s,id,c,revision,identity) {
+    const old=entry(s,id);
+    const records=value=>{
+      const result={};
+      for(const st of value.students)result['student:'+st.id]=st;
+      for(const [month,m] of Object.entries(value.months)){
+        for(const [studentId,plan] of Object.entries(m.schedule)){
+          const entries=plan.appointments||[plan];
+          for(const a of entries)result[month+':schedule:'+studentId+':'+(a.id||'legacy')]=a;
+        }
+        for(const type of ['meetings','connections','plans','previous'])for(const r of m[type]||[])result[month+':'+type+':'+r.id]=r;
+      }
+      return result;
+    };
+    const before=records(old.data),after=records(c),changes=[];
+    for(const key of new Set([...Object.keys(before),...Object.keys(after)]))if(JSON.stringify(before[key])!==JSON.stringify(after[key]))changes.push({record:key,operation:!before[key]?'add':!after[key]?'delete':'edit'});
+    if(changes.length)s.audit[randomUUID()]={action:'records:'+id,actor:identity.email,oid:identity.oid,at:now(),changes};
+    s.recovery ||= {};
+    const history=s.recovery[id] ||= {};
+    const stamp=now(),day=stamp.slice(0,10);
+    const snapshot={data:encodeClass(old.data),revision:old.revision,at:stamp,actor:identity.email};
+    if(!history['day-'+day])history['day-'+day]={...snapshot,kind:'daily'};
+    history['rev-'+revision]={...snapshot,kind:'revision'};
+    for(const kind of ['day-','rev-']){
+      const keys=Object.keys(history).filter(k=>k.startsWith(kind)).sort((a,b)=>history[b].at.localeCompare(history[a].at)||history[b].revision-history[a].revision);
+      for(const key of keys.slice(kind==='day-'?30:20))delete history[key];
+    }
     s.classes[id]={data:encodeClass(c),revision:revision+1,updatedAt:now(),updatedBy:identity.email};
   }
   function publicClass(s,id) { return entry(s,id); }
@@ -69,6 +96,9 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       classes[id]={...blankClass(id),teacher:c.teacher,months:{}}; summaries[id]={}; checks[id]={};
       for(const month of MONTHS) {
         summaries[id][month]=summary(c,month);
+        const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(clock());
+        const m=c.months[month]||emptyMonth();
+        summaries[id][month].overdueAppointments=c.students.flatMap(st=>m.schedule[st.id]?.appointments||[]).filter(a=>a.date&&a.date<today&&!m.meetings.some(r=>r.appointmentId===a.id)).length;
         const v=validateReport(c,month);
         checks[id][month]={...v,errors:v.errors.map(e=>({key:e.key,message:'Cần GVCN bổ sung thông tin biểu mẫu.'})),warnings:v.warnings.map(e=>({key:e.key,message:'Báo cáo có nội dung cần lưu ý.'}))};
         classes[id].months[month]={...emptyMonth(),approval:{state:c.months[month]?.approval.state||'draft',history:[]}};
@@ -84,6 +114,36 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       }):[],serverTime:now()};
   }
   return {
+    async backupDaily(){
+      await ref.get();
+      await ref.transaction(raw=>{
+        if(!raw)return undefined;
+        const s=normalizeSchool(raw),at=now(),day=at.slice(0,10);s.recovery ||= {};
+        for(const id of Object.keys(s.classes)){
+          const old=entry(s,id),history=s.recovery[id] ||= {};
+          history['day-'+day] ||= {data:encodeClass(old.data),revision:old.revision,at,actor:'system',kind:'daily'};
+          const keys=Object.keys(history).filter(k=>k.startsWith('day-')).sort().reverse();
+          for(const key of keys.slice(30))delete history[key];
+        }
+        return s;
+      },undefined,false);
+    },
+    async recovery(identity,id){
+      const s=normalizeSchool((await ref.get()).val());
+      requireValue(hasRole(assignmentFor(s,identity),'admin'),'Chỉ Admin được xem bản sao lưu.',403);
+      requireValue(CLASSES.includes(id),'Lớp không hợp lệ.');
+      return {classId:id,revision:entry(s,id).revision,snapshots:s.recovery?.[id]||{},audit:Object.values(s.audit).filter(a=>a.action?.endsWith(':'+id)).sort((a,b)=>b.at.localeCompare(a.at)).slice(0,100)};
+    },
+    async restore(identity,id,body){
+      const s=await mutate(identity,'restore-class:'+id,(school,u)=>{
+        requireValue(hasRole(u,'admin'),'Chỉ Admin được khôi phục.',403);
+        requireValue(CLASSES.includes(id),'Lớp không hợp lệ.');
+        const old=entry(school,id),saved=school.recovery?.[id]?.[body.key];
+        requireValue(saved&&body.revision===old.revision,'Bản sao không tồn tại hoặc dữ liệu đã thay đổi.',409);
+        const c=normalizeClass(id,saved.data);c.teacher=old.data.teacher;c.email=old.data.email;
+        validateClass(c,old.data);put(school,id,c,old.revision,identity);
+      });return publicBootstrap(s,identity);
+    },
     async saveCalendar(identity,body) {
       const dates=body.excludedDates;
       requireValue(Array.isArray(dates)&&dates.length<=366,'Danh sách ngày nghỉ không hợp lệ.');
@@ -149,6 +209,11 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
           requireValue(!old.data.students.length&&!old.data.profiles.length&&!Object.keys(old.data.months).length,'Chỉ nhập dữ liệu cũ vào lớp còn trống; không ghi đè lớp đang có dữ liệu.',409);
         } else authorizeClassEdit(u,old.data,c);
         validateClass(c,old.data);
+        for(const [month,m] of Object.entries(c.months))for(const st of c.students)for(const a of appointmentEntries(m,st.id)){
+          const previous=appointmentEntries(old.data.months[month],st.id).find(p=>p.id===a.id);
+          if(previous?.date===a.date&&previous?.session===a.session)continue;
+          requireValue(!school.calendar.excludedDates.includes(a.date)&&!school.calendar.excludedSessions.some(slot=>slot.date===a.date&&slot.session===a.session),'Ngày hoặc buổi đã chọn là lịch nghỉ. Hãy tải lại lịch.',409);
+        }
         put(school,id,c,old.revision,identity);
       });
       return publicClass(s,id);

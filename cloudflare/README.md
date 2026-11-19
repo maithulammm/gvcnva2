@@ -2,6 +2,17 @@
 
 Production: https://gvcnva2.lammt.workers.dev/index.html
 
+## Sao lưu và khôi phục
+
+Worker có Cron Trigger `0 18 * * *` (01:00 giờ Việt Nam mỗi ngày).
+Sau khi deploy API mới, mỗi lớp giữ tối đa 30 bản sao theo ngày và 20 phiên bản
+trước cập nhật. Bản sao được lưu trong `recovery` cùng gốc dữ liệu Firebase;
+đây là lịch sử khôi phục trong cùng database, không thay thế bản sao ngoài hệ thống.
+Admin vào Dữ liệu, chọn lớp rồi bấm **Sao lưu & lịch sử lớp đang chọn** để tải
+JSON hoặc khôi phục toàn bộ lớp. Khôi phục kiểm tra revision, sao lưu dữ liệu hiện
+tại trước khi thay thế và giữ phân công GVCN hiện hành. Người dùng khác không
+được đọc API `/recovery/:classId`.
+
 ## Xem giao diện mới trên GitHub Pages
 
 Frontend không tự chuyển từ GitHub Pages sang Cloudflare. Mở

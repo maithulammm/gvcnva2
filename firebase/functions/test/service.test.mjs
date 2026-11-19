@@ -12,6 +12,23 @@ async function fixture() {
 }
 const teacherInput={name:'Giáo viên A',email:teacher.email,classId:'8C3',active:true};
 
+test('recovery stores server-side revisions and daily snapshots, denies teachers and restores with concurrency checks',async()=>{
+  const {api}=await fixture();await api.saveTeacher(admin,teacherInput);await api.bootstrap(teacher);
+  let boot=await api.bootstrap(admin),c=boot.classes['8C3'];c.students=[{id:'S1',name:'Before',code:''}];
+  await api.putClass(admin,'8C3',{revision:boot.revisions['8C3'],classData:c});
+  boot=await api.bootstrap(admin);c=boot.classes['8C3'];c.students[0].name='After';
+  await api.putClass(admin,'8C3',{revision:boot.revisions['8C3'],classData:c});
+  const history=await api.recovery(admin,'8C3');
+  const [key]=Object.entries(history.snapshots).find(([,s])=>s.data.students?.[0]?.name==='Before');
+  assert(history.audit.some(a=>a.actor===admin.email&&a.changes?.some(x=>x.operation==='edit')));
+  await assert.rejects(api.recovery(teacher,'8C3'),{status:403});
+  await assert.rejects(api.restore(teacher,'8C3',{key,revision:history.revision}),{status:403});
+  await assert.rejects(api.restore(admin,'8C3',{key,revision:history.revision-1}),{status:409});
+  const restored=await api.restore(admin,'8C3',{key,revision:history.revision});assert.equal(restored.classes['8C3'].students[0].name,'Before');
+  await api.backupDaily();await api.backupDaily();
+  assert(Object.keys((await api.recovery(admin,'8C3')).snapshots).some(k=>k.startsWith('day-')));
+});
+
 test('Admin calendar is shared read-only with teachers and does not replace class records',async()=>{
   const {api}=await fixture();await api.saveTeacher(admin,teacherInput);
   const before=await api.bootstrap(admin);await api.bootstrap(teacher);

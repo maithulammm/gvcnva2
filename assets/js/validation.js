@@ -54,6 +54,7 @@ function summarize(c, month) {
       (s) => m.schedule?.[s.id]?.priority && metSet.has(s.id),
     ).length,
     meetings: meet.length,
+    overdueAppointments: monthlyAppointments(c,month).filter(a=>scheduleSlot(a).date&&scheduleSlot(a).date<new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())&&!meet.some(r=>r.appointmentId===a.id)).length,
     plannedMeetings: c.students.reduce((total, student) => {
       const plan=m.schedule[student.id]||{};
       return total+(Array.isArray(plan.appointments)?plan.appointments.length:plan.planTime?1:0);

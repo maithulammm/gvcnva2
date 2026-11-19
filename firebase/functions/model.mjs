@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import {validateAppointments} from './appointments.mjs';
+import {validateAppointments,appointmentEntries} from './appointments.mjs';
 
 export const YEAR = '2026-2027';
 export const GRADES = {6:6,7:6,8:6,9:5,10:4,11:2,12:3};
@@ -202,7 +202,7 @@ export function validateReport(c,month) {
   const codes=Object.fromEntries(Array.from({length:9},(_,i)=>{const k=`K${i+1}`;return [k,errors.some(e=>e.key===k)?'LỖI':warnings.some(e=>e.key===k)?'CHÚ Ý':hasData?'OK':'—'];}));
   return {errors,warnings,hasData,codes};
 }
-export function summary(c,month) {
+export function summary(c,month,today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())) {
   const m=c.months[month]||emptyMonth(), unique=rows=>new Set(rows.map(r=>r.studentId)).size;
   const met=new Set(m.meetings.map(r=>r.studentId));
   const planned=c.students.filter(s=>m.schedule[s.id]?.planTime||m.schedule[s.id]?.status||met.has(s.id));
@@ -210,6 +210,7 @@ export function summary(c,month) {
     miss:planned.filter(s=>!met.has(s.id)).length,rate:c.students.length?Math.round(1000*met.size/c.students.length)/10:0,
     priorityMet:c.students.filter(s=>m.schedule[s.id]?.priority&&met.has(s.id)).length,meetings:m.meetings.length,
     plannedMeetings:c.students.reduce((total,s)=>{const p=m.schedule[s.id]||{};return total+(Array.isArray(p.appointments)?p.appointments.length:p.planTime?1:0);},0),
+    overdueAppointments:c.students.flatMap(st=>appointmentEntries(m,st.id)).filter(a=>a.date&&a.date<today&&!m.meetings.some(r=>r.appointmentId===a.id)).length,
     improved:unique(m.meetings.filter(r=>r.progressEvidence==='Có')),coordination:unique(m.meetings.filter(r=>r.needsCoop==='Có')),
     connections:m.connections.length,connectedStudents:unique(m.connections),connEvidence:m.connections.filter(r=>r.evidence).length,
     unconnected:Math.max(0,c.students.length-unique(m.connections)),supportPrev:unique(m.previous),supportPlans:unique(m.plans),

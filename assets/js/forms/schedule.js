@@ -46,8 +46,21 @@ function scheduleOccupant(date,session,studentId=ui.editing?.id,c=cls(),month=ui
 }
 
 function scheduleAvailable(date,session,studentId=ui.editing?.id,c=cls(),month=ui.month,appointmentId=ui.editing?.seed?.appointmentId) {
-  return scheduleSessionAllowed(c,date,session) && !scheduleOccupant(date,session,studentId,c,month,appointmentId) &&
+  return !isExcludedMeetingDate(date,session) && scheduleSessionAllowed(c,date,session) && !scheduleOccupant(date,session,studentId,c,month,appointmentId) &&
     !studentAppointments(c,month,studentId).some(a=>a.id!==appointmentId&&scheduleSlot(a).date===date);
+}
+
+async function rescheduleAppointment(studentId,appointmentId){
+  if(!editable()||cloud.busy)return;
+  const context=dialogContext();
+  if(cloud.ready){
+    try{const data=await databaseRequest('/bootstrap','GET',undefined,{silent:true});
+      if(Object.keys(context).some(k=>context[k]!==dialogContext()[k]))return;
+      if(data.calendar)appData.calendar=data.calendar;
+    }catch(error){return appAlert('Chưa kiểm tra được lịch nghỉ: '+error.message);}
+  }
+  openStudentAppointment(studentId,appointmentId);
+  if(ui.editing?.seed?.appointmentId===appointmentId){ui.editing.seed.reschedule=true;$('modalTitle').textContent='Dời lịch · '+studentName(cls(),studentId);}
 }
 
 function appointmentRollup(old,appointments) {
@@ -132,6 +145,7 @@ function buildScheduleRecord(c,month,id,record) {
   if (occupant) throw Error(`Khung giờ này đã hẹn ${studentName(c,occupant)}. Hãy chọn khung giờ khác.`);
   const old=mdata(c,month,false).schedule[id]||{}, appointments=studentAppointments(c,month,id);
   const appointmentId=ui.editing.seed.appointmentId, previous=appointments.find(a=>a.id===appointmentId);
+  if(isExcludedMeetingDate(record.date,record.session)&&(!previous||previous.date!==record.date||previous.session!==record.session))throw Error('Ngày hoặc buổi đã chọn là lịch nghỉ. Hãy chọn lịch khác.');
   if (!previous&&appointments.length>=3) throw Error('Mỗi học sinh tối đa 3 lịch hẹn trong tháng.');
   if (appointments.some(a=>a.id!==appointmentId&&scheduleSlot(a).date===record.date)) throw Error('Hai buổi trong ngày phải hẹn hai học sinh khác nhau.');
   const topics=MEETING_TOPICS.filter(t=>record.topics.includes(t));

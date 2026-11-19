@@ -1,5 +1,26 @@
 "use strict";
 
+async function loadRecovery(){
+  if(!hasAppRole('admin')||!cloud.ready)return;
+  const context=dialogContext(),id=ui.classId;
+  try{
+    const data=await databaseRequest('/recovery/'+id,'GET');
+    if(Object.keys(context).some(k=>context[k]!==dialogContext()[k])||ui.page!=='database')return;
+    ui.recovery=data;
+    $('recoveryPanel').innerHTML=`<h3>Lớp ${esc(id)}</h3><p>30 bản hằng ngày và 20 phiên bản gần nhất. Khôi phục sẽ thay dữ liệu lớp bằng bản được chọn.</p>${Object.entries(data.snapshots).sort((a,b)=>b[1].at.localeCompare(a[1].at)).map(([key,s])=>`<p>${esc(new Date(s.at).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}))} · ${esc(s.actor)} · Phiên bản ${s.revision} <button type="button" class="btn small" onclick="downloadRecovery('${key}')">Tải JSON</button> <button type="button" class="btn small danger" onclick="restoreRecovery('${key}')">Khôi phục</button></p>`).join('')||'<p>Chưa có bản sao lưu.</p>'}<h3>Lịch sử thay đổi</h3>${data.audit.map(a=>`<p>${esc(a.at)} · ${esc(a.actor)} · ${esc(a.action)} ${(a.changes||[]).map(x=>esc(x.operation+" ? "+x.record)).join("; ")}</p>`).join('')}`;
+  }catch(error){appAlert('Chưa tải được lịch sử. API mới cần được triển khai: '+error.message);}
+}
+function downloadRecovery(key){
+  const data=ui.recovery;if(!hasAppRole('admin')||!data?.snapshots[key])return;
+  downloadFile(new Blob([JSON.stringify(data.snapshots[key],null,2)],{type:'application/json'}),`Sao_luu_${data.classId}_${key}.json`);
+}
+async function restoreRecovery(key){
+  const data=ui.recovery;if(!hasAppRole('admin')||!data?.snapshots[key]||ui.classId!==data.classId)return;
+  if(!await appConfirm(`Khôi phục lớp ${data.classId} về phiên bản ${data.snapshots[key].revision}? Dữ liệu hiện tại sẽ được sao lưu trước khi thay thế.`))return;
+  if(ui.recovery!==data||!hasAppRole('admin')||ui.classId!==data.classId)return;
+  try{useBootstrap(await databaseRequest('/recovery/'+data.classId,'POST',{key,revision:data.revision}));render();toast('Đã khôi phục dữ liệu lớp.');}catch(error){appAlert(error.message);}
+}
+
 // Admin teacher assignments and database settings.
 
 function renderTeachers() {
@@ -111,7 +132,7 @@ function renderDatabase() {
     <div class="cols2"><section class="card"><h2>Kết nối dữ liệu dùng chung</h2>
     <p class="help" style="overflow-wrap:anywhere">Database: ${esc(FIREBASE_DATABASE_URL)}</p>
     ${cloud.error?`<p class="help">${esc(cloud.error)}</p>`:!cloud.ready?'<p class="help">Chưa kết nối dữ liệu dùng chung.</p>':''}
-    <div class="actions">${cloud.ready ? btn("Tải dữ liệu mới", "refreshCloud()") + btn("Thử đồng bộ lại", "retryCloud()") + btn("Xuất bản lưu chờ đồng bộ", "exportPendingDrafts()") : btn("Bật kết nối Firebase", "enableFirebase()", "primary")}${btn("Xuất JSON sao lưu", "jsonBackup()")}</div></section>
+    <div class="actions">${cloud.ready ? btn("Tải dữ liệu mới", "refreshCloud()") + btn("Thử đồng bộ lại", "retryCloud()") + btn("Xuất bản lưu chờ đồng bộ", "exportPendingDrafts()") + btn("Sao lưu & lịch sử lớp đang chọn", "loadRecovery()") : btn("Bật kết nối Firebase", "enableFirebase()", "primary")}${btn("Xuất JSON sao lưu", "jsonBackup()")}</div><div id="recoveryPanel"></div></section>
     <section class="card"><h2>Chuyển dữ liệu cũ lên Firebase</h2><p class="help">Bản dữ liệu cục bộ ban đầu được giữ nguyên. Chỉ chuyển vào lớp trống; lớp đã có hồ sơ trên Firebase được bỏ qua. Thông tin và lịch sử cũ được giữ trong bản nhập.</p>
     <div class="actions">${btn("Xuất dữ liệu cục bộ ban đầu", "exportLegacyData()")}${cloud.ready ? btn("Chuyển dữ liệu cũ lên Firebase", "migrateLegacyData()", "primary") : ""}</div></section></div>`;
 }

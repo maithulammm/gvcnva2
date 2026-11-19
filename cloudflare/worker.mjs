@@ -1,10 +1,11 @@
 import {createApiHandler,MAX_BODY_BYTES} from '../firebase/functions/api.mjs';
 import {serviceAccountConfigured} from '../firebase/functions/health.mjs';
 import {createFirebaseRestDatabase} from './firebase-rest.mjs';
+import {createService} from '../firebase/functions/service.mjs';
 
 export function createWorker({createDatabase=createFirebaseRestDatabase}={}) {
   const handlers=new WeakMap();
-  return {async fetch(request,env) {
+  return {async scheduled(event,env,ctx) {ctx.waitUntil(createService(createDatabase(env)).backupDaily());},async fetch(request,env) {
     const path=new URL(request.url).pathname;
     if(path!=='/api'&&!path.startsWith('/api/')) {
       if(path==='/') {

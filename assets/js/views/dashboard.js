@@ -58,9 +58,12 @@ function renderDashboard() {
         .map((x) => x.name)
         .join(", ") || "Không có",
     )} ${unconn.length > 6 ? "…" : ""}</div></section></div>`;
-    return h;
+    const nowParts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).split('-');
+    const todayMonth=`T${nowParts[1]}/${nowParts[0]}`;
+    return renderTodayWork(c,!isRolePreview(),todayMonth)+h;
   }
   h += `<div class="section-head"><h2>Bảng theo dõi ${ui.grade === "all" ? "toàn trường" : "khối " + ui.grade}</h2><div class="actions">${btn("Xuất Excel tổng hợp", "exportSchool()", "primary")}<span class="pill">${reporting}/${scope.length} lớp đã có dữ liệu</span></div></div><section class="card no-pad"><div class="table-wrap"><table><thead><tr><th>Lớp</th><th>GVCN</th><th>Sĩ số</th><th>Đã gặp / sĩ số</th><th>Tỷ lệ</th><th>Lượt gặp<br><small>Thực tế / dự kiến</small></th><th>Kết nối PHHS</th><th>KH hỗ trợ</th><th>Kiểm tra</th><th>Trạng thái</th></tr></thead><tbody>${results
+    .filter(s=>dashboardMatches(s))
     .map((s) => {
       let v = validations(cls(s.classId), ui.month);
       return `<tr><td><b>${s.classId}</b></td><td>${esc(s.teacher || "Chưa gán")}</td><td>${s.count || "—"}</td><td>${s.met}/${s.count}</td><td style="min-width:128px"><div class="bar"><i style="width:${Math.min(s.rate, 100)}%"></i></div><small>${percent(s.rate)}</small></td><td>${s.meetings}/${s.plannedMeetings||0}</td><td>${s.connections}</td><td>${s.supportPlans}</td><td>${v.hasData ? statusTag(v.errors.length ? "Còn lỗi" : v.warnings.length ? "CHÚ Ý" : "OK") : "Chưa nhập"}</td><td>${statusTag(stageName(s.state))}</td></tr>`;
@@ -68,5 +71,15 @@ function renderDashboard() {
     .join(
       "",
     )}</tbody></table></div></section>`;
-  return h;
+  return renderDashboardFilters()+h;
+}
+
+function renderDashboardFilters(){
+  return `<div class="actions" role="group" aria-label="Lọc lớp cần hỗ trợ">${[['all','Tất cả'],['unsubmitted','Chưa gửi báo cáo'],['overdue','Có lịch quá hạn chưa ghi nhận'],['coordination','Có học sinh cần phối hợp']].map(([key,label])=>`<button type="button" class="btn ${(!ui.dashboardFilter&&key==='all'||ui.dashboardFilter===key)?'primary':''}" aria-pressed="${(ui.dashboardFilter||'all')===key}" onclick="ui.dashboardFilter='${key}';render()">${label}</button>`).join('')}</div>`;
+}
+function dashboardMatches(s){
+  if(ui.dashboardFilter==='unsubmitted')return ['draft','returned'].includes(s.state);
+  if(ui.dashboardFilter==='coordination')return (s.coordination||0)>0;
+  if(ui.dashboardFilter==='overdue')return (s.overdueAppointments||0)>0;
+  return true;
 }
