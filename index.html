@@ -21,6 +21,7 @@
       <link rel="stylesheet" href="assets/css/form-help.css?v=20261119" />
   <link rel="stylesheet" href="assets/css/icons.css?v=20261119-bootstrap" />
   <link rel="stylesheet" href="assets/css/simple-flow.css?v=20261119" />
+  <link rel="stylesheet" href="assets/css/evidence.css?v=20261120" />
   </head>
   <body>
     <!-- Microsoft login gate: before authentication NO application view is rendered. -->
@@ -110,7 +111,7 @@
         <h2 id="modalTitle">Biểu mẫu</h2>
         <button
           class="close"
-          onclick="document.getElementById('editor').close()"
+          onclick="requestCloseEditor()"
           aria-label="Đóng"
         >
           X
@@ -125,7 +126,7 @@
           <button
             class="btn"
             type="button"
-            onclick="document.getElementById('editor').close()"
+            onclick="requestCloseEditor()"
           >
             Đóng</button
           ><button class="btn" type="submit" id="modalSaveNext" hidden>Lưu & ghi HS tiếp theo</button><button class="btn primary" type="submit" id="modalSave">
@@ -176,7 +177,7 @@
     <script defer src="assets/js/forms/m01.js?v=20261119-bootstrap-icons"></script>
     <script defer src="assets/js/forms/schedule.js?v=20261119-time-layout"></script>
     <script defer src="assets/js/forms/m02.js?v=20261119-compact-lists"></script>
-    <script defer src="assets/js/forms/m03.js?v=20261119-date-format"></script>
+    <script defer src="assets/js/forms/m03.js?v=20261120-evidence"></script>
     <script defer src="assets/js/forms/m04.js?v=20261119-date-format"></script>
     <script defer src="assets/js/forms/m05.js?v=20261119-date-format"></script>
     <script defer src="assets/js/forms/schema.js?v=20261119-other-schedule"></script>
@@ -184,8 +185,9 @@
     <script defer src="assets/js/forms/history.js?v=20261119-review"></script>
     <script defer src="assets/js/forms/quick-meeting.js?v=20261119-single-editor"></script>
     <script defer src="assets/js/choices.js?v=20261119-month-row"></script>
-    <script defer src="assets/js/forms/editor.js?v=20261119-simple-flow"></script>
-    <script defer src="assets/js/forms/drafts.js?v=20261119-admin-class-edit"></script>
+    <script defer src="assets/js/forms/evidence.js?v=20261120"></script>
+    <script defer src="assets/js/forms/editor.js?v=20261120-evidence"></script>
+    <script defer src="assets/js/forms/drafts.js?v=20261120-evidence"></script>
     <script defer src="assets/js/approval.js?v=20261119-lead-readonly"></script>
     <script defer src="assets/js/excel/template.js?v=20261118-school-calendar"></script>
     <script defer src="assets/js/excel/codec.js?v=20261119-schedule-export"></script>
@@ -196,7 +198,7 @@
     <script defer src="assets/js/demo.js?v=20261118-school-calendar"></script>
     <script defer src="assets/js/firebase.js?v=20261119-sync-icon"></script>
     <script defer src="assets/js/admin.js?v=20261119-date-format"></script>
-    <script defer src="assets/js/auth.js?v=20261119-popup-callback"></script>
-    <script defer src="assets/js/main.js?v=20261119-form-help"></script>
+    <script defer src="assets/js/auth.js?v=20261120-evidence"></script>
+    <script defer src="assets/js/main.js?v=20261120-evidence"></script>
   </body>
 </html>

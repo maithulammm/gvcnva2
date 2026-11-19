@@ -65,6 +65,7 @@ function lookup(type, id) {
  * các trường được dựng.
  */
 function openModal(type, id = "", seed = {}) {
+  if(ui.editing?.evidence?.busy){toast('Đang xử lý ảnh. Vui lòng chờ.');return;}
   if (type === "teacher") {
     openClassTeacher();
     return;
@@ -104,6 +105,7 @@ function openModal(type, id = "", seed = {}) {
   if (!opts) return;
   $('modalSaveNext').hidden=type!=='m02';
   $('deleteAppointmentButton').hidden=true;
+  resetEvidenceEditor();
   ui.editing = { type, id, seed, classId:c.id, month:ui.month,
     epoch:cloud.epoch, owner:auth.email, classObject:c,
     baseline:stableString(lookup(type,id)||{}) };
@@ -122,6 +124,7 @@ function openModal(type, id = "", seed = {}) {
   // Bản nháp chỉ được áp khi còn cùng baseline; ưu tiên nội dung giáo viên chưa lưu.
   const restored = restoreEditorDraft();
   if (restored) Object.assign(rec, restored);
+  if(type==='m03')initEvidenceEditor(rec);
   if(type==='profile'&&!id)rec.code=nextProfileCode(c,rec.startMonth||ui.month);
   $("discardDraftBtn").hidden = !DRAFT_TYPES.includes(type);
   $("editorDraftStatus").textContent = restored ? "Đã khôi phục bản nháp trên máy này. Chưa ghi vào báo cáo." : "";
@@ -208,9 +211,11 @@ function openModal(type, id = "", seed = {}) {
     if(type==='m02'&&['cooperation','needsCoop','profileId','profileProgress','profileNext'].includes(key))advanced+=fieldHtml;
     else h+=fieldHtml;
   }
+  if(type==='m03')h+=evidenceEditorHtml();
   if (type === "m02")
     h += `<details id="meetingExtra" class="wide meeting-extra" ${rec.needsCoop==='Có'||rec.profileId?'open':''}><summary>Phối hợp & liên kết Mẫu 5</summary><div class="fieldgrid">${advanced}</div></details>`;
   $("modalBody").innerHTML = `<div class="fieldgrid">${h}</div>`;
+  if(type==='m03')renderEvidenceEditor();
   updateMeetingFields();
   refreshButtonChoices($("entryForm"));
   $("editor").showModal();
@@ -258,6 +263,16 @@ async function submitForm(e) {
   if(type==='m02') {
     try { record=serializeMeetingInputs(fd,record); }
     catch(error) { appAlert(error.message);return; }
+  }
+  if(type==='m03'){
+    const editor=ui.editing;
+    if(editor.evidence?.busy)return toast('Đang xử lý ảnh. Vui lòng chờ.');
+    $('modalSave').disabled=true;$('modalBody').inert=true;
+    try{
+      record.evidenceImages=await uploadConnectionEvidence(editor);
+      if(!evidenceCurrent(editor))return;
+    }catch(error){appAlert(error.message);return;}
+    finally{$('modalSave').disabled=false;$('modalBody').inert=false;}
   }
   if (type === "userRoles") {
     if (!record.roles.includes("lead")) record.grades = [];
@@ -384,6 +399,7 @@ async function submitForm(e) {
   }
   clearEditorDraft();
   const nextStudent=type==='m02'&&e.submitter?.id==='modalSaveNext'?record.studentId:'';
+  resetEvidenceEditor();
   $("editor").close();
   ui.editing = null;
   render();

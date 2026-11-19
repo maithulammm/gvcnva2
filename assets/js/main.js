@@ -3,6 +3,8 @@
 // Bind DOM events and start the app after all deferred feature scripts.
 
 $("entryForm").addEventListener("submit", submitForm);
+$('editor').addEventListener('cancel',event=>{event.preventDefault();requestCloseEditor();});
+$('editor').addEventListener('close',()=>{if(!$('editor').open)resetEvidenceEditor();});
 $("entryForm").addEventListener("invalid",event=>{
   // Trường bắt buộc có thể nằm trong details đang đóng; mở các lớp cha để người dùng thấy lỗi.
   let panel=event.target.closest?.('details');

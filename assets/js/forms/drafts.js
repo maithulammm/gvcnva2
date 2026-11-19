@@ -41,6 +41,8 @@ function restoreEditorDraft() {
       .map(([k,,kind])=>[k,kind==="boolean"?draft.fields[k]==="1":kind==="choices"?JSON.parse(draft.fields[k]):draft.fields[k]]));
     if(ui.editing.type==='m02') for(const key of MEETING_EXTRA_FIELDS)
       if(typeof draft.fields?.[key]==='string') fields[key]=draft.fields[key];
+    if(ui.editing.type==='m03'&&Array.isArray(draft.evidenceImages))
+      fields.evidenceImages=draft.evidenceImages.map(evidenceMetadata).filter(Boolean);
     return fields;
   } catch { return null; }
 }
@@ -58,7 +60,9 @@ function saveEditorDraft(form=$("entryForm")) {
       if(fd.get(key)!==null) fields[key]=String(fd.get(key)||'');
     const e=ui.editing,studentId=fields.studentId||(e.type==='m01'?e.id:lookup(e.type,e.id)?.studentId)||e.seed?.studentId||'';
     const seed=Object.fromEntries(['studentId','appointmentId','addAppointment','sourceMonth','sourcePlanId'].filter(k=>e.seed?.[k]!==undefined).map(k=>[k,e.seed[k]]));
-    localStorage.setItem(key,JSON.stringify({schema:1,baseline:e.baseline,fields,
+    // Chỉ giữ metadata ảnh đã tải; Blob/token tuyệt đối không vào localStorage/Firebase.
+    const evidenceImages=e.type==='m03'?(e.evidence?.entries||[]).map(item=>item.meta).filter(Boolean):undefined;
+    localStorage.setItem(key,JSON.stringify({schema:1,baseline:e.baseline,fields,evidenceImages,
       context:{owner:auth.email,classId:e.classId,month:e.month,type:e.type,id:e.id,studentId,seed}}));
     $("editorDraftStatus").textContent="Đã giữ bản nháp trên máy này · Chưa ghi vào báo cáo.";
   } catch {
@@ -76,6 +80,7 @@ function clearEditorDraft() {
 }
 
 async function discardEditorDraft() {
+  if(ui.editing?.evidence?.busy)return toast('Đang xử lý ảnh. Vui lòng chờ.');
   if (!ui.editing || !await appConfirm("Bỏ bản nháp chưa lưu của biểu mẫu này?")) return;
   const {type,id,seed}=ui.editing;
   clearEditorDraft();

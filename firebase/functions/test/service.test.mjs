@@ -12,6 +12,23 @@ async function fixture() {
 }
 const teacherInput={name:'Giáo viên A',email:teacher.email,classId:'8C3',active:true};
 
+test('M03 OneDrive metadata survives class save and bootstrap without exposing file links to aggregate roles',async()=>{
+  const {api}=await fixture();await api.saveTeacher(admin,teacherInput);
+  let boot=await api.bootstrap(admin),c=boot.classes['8C3'];
+  c.students=[{id:'S1',name:'Student',code:''}];
+  await api.putClass(admin,'8C3',{classData:c,revision:boot.revisions['8C3']});
+  boot=await api.bootstrap(teacher);c=boot.classes['8C3'];
+  const proof={provider:'onedrive',driveId:'drive',itemId:'private-photo',name:'proof.jpg',
+    webUrl:'https://school-my.sharepoint.com/private-photo',size:5000,mimeType:'image/jpeg',uploadedBy:teacher.email,uploadedAt:'2026-11-20T01:00:00.000Z'};
+  c.months['T11/2026']={...emptyMonth(),connections:[{id:'R1',studentId:'S1',date:'2026-11-20',channel:'Email',message:'Positive update',recipient:'Mẹ',reply:'Sent',evidenceImages:[proof]}]};
+  await api.putClass(teacher,'8C3',{classData:c,revision:boot.revisions['8C3']});
+  boot=await api.bootstrap(teacher);assert.deepEqual(boot.classes['8C3'].months['T11/2026'].connections[0].evidenceImages,[proof]);
+  assert.equal(boot.summaries?.['8C3'],undefined);
+  await api.saveUserRoles(admin,{email:'leader@vietanhschool.edu.vn',name:'Lead',roles:['lead'],grades:['8'],active:true});
+  const aggregate=await api.bootstrap({email:'leader@vietanhschool.edu.vn',oid:'leader-oid',name:'Lead'});
+  assert(!JSON.stringify(aggregate).includes('private-photo'));assert.equal(aggregate.summaries['8C3']['T11/2026'].connections,1);
+});
+
 test('recovery stores server-side revisions and daily snapshots, denies teachers and restores with concurrency checks',async()=>{
   const {api}=await fixture();await api.saveTeacher(admin,teacherInput);await api.bootstrap(teacher);
   let boot=await api.bootstrap(admin),c=boot.classes['8C3'];c.students=[{id:'S1',name:'Before',code:''}];

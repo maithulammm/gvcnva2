@@ -15,6 +15,63 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
 
+test('M03 uploads images to OneDrive before saving, retries only missing files and keeps tokens out of reports',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student',code:''}];openModal('m03');
+    auth.client.acquireTokenSilent=async()=>({accessToken:'TEST-GRAPH-TOKEN',account:auth.account});
+    ui.editing.evidence.entries=[{file:new Blob(['one']),name:'One',uploadName:'one.jpg'},{file:new Blob(['two']),name:'Two',uploadName:'two.jpg'}];`);
+  const uploaded=[];let failSecond=true;
+  f.ctx.fetch=async(url,options={})=>{
+    assert(url.startsWith('https://graph.microsoft.com/v1.0/me/drive/'));
+    assert.equal(options.headers.Authorization,'Bearer TEST-GRAPH-TOKEN');
+    if(options.method!=='PUT')return {ok:true,json:async()=>({id:'folder',folder:{}})};
+    const name=url.includes('one.jpg')?'one.jpg':'two.jpg';uploaded.push(name);
+    if(name==='two.jpg'&&failSecond)return {ok:false,status:503};
+    return {ok:true,json:async()=>({id:name,parentReference:{driveId:'drive'},name,size:3,webUrl:'https://school-my.sharepoint.com/photo/'+name})};
+  };
+  await assert.rejects(f.run('uploadConnectionEvidence(ui.editing)'),/OneDrive/);
+  assert.equal(f.run('ui.editing.evidence.entries.filter(x=>x.meta).length'),1);
+  assert.equal(f.run('mdata().connections.length'),0);
+  assert(![...f.memory.values()].some(value=>value.includes('TEST-GRAPH-TOKEN')));
+  failSecond=false;
+  const result=await f.run('uploadConnectionEvidence(ui.editing)');assert.equal(result.length,2);
+  assert.deepEqual(uploaded,['one.jpg','two.jpg','two.jpg']);
+  f.ctx.input={studentId:'S1',date:'2026-11-20',channel:'Email',message:'Positive update',recipient:'Mẹ',reply:'Sent'};
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');
+  assert.equal(f.run('mdata().connections.length'),1);
+  assert.equal(f.run('mdata().connections[0].evidenceImages.length'),2);
+  assert(!f.run('JSON.stringify(appData)').includes('TEST-GRAPH-TOKEN'));
+  assert(!f.run('JSON.stringify(appData)').includes('"file"'));
+  f.run(`openModal('m03',mdata().connections[0].id)`);f.ctx.confirm=()=>true;
+  await f.run('removeEvidenceImage(0)');assert.equal(uploaded.length,3);
+  assert.equal(f.run('ui.editing.evidence.entries.length'),1);
+  assert.equal(f.run('mdata().connections[0].evidenceImages.length'),2,'Unlink is not committed until save');
+});
+
+test('M03 preserves the editor when OneDrive consent is missing and refuses a stale upload result',async()=>{
+  const f=frontend();await f.login();f.run(`cls().students=[{id:'S1',name:'Student',code:''}];openModal('m03');
+    ui.editing.evidence.entries=[{file:new Blob(['one']),name:'One',uploadName:'one.jpg'}];
+    auth.client.acquireTokenSilent=async()=>{throw Error('interaction_required')};`);
+  let calls=0;f.ctx.fetch=async()=>{calls++;throw Error('unexpected fetch');};
+  f.ctx.input={studentId:'S1',date:'2026-11-20',channel:'Email',message:'Positive update',recipient:'Mẹ',reply:'Sent'};
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');
+  assert.equal(calls,0);assert.equal(f.run('mdata().connections.length'),0);
+  assert.equal(f.el('editor').open,true);assert.equal(f.el('modalSave').disabled,false);
+  assert(f.alerts.some(a=>a.includes('OneDrive')));
+  f.run(`auth.client.acquireTokenSilent=async()=>{cloud.epoch++;return {accessToken:'STALE',account:auth.account}}`);
+  await assert.rejects(f.run('uploadConnectionEvidence(ui.editing)'),/thay đổi/);assert.equal(calls,0);
+});
+
+test('M03 evidence links allow only Microsoft HTTPS and never turn a backup URL into executable markup',async()=>{
+  const f=frontend();await f.login();
+  assert.equal(f.run(`evidenceWebUrl('javascript:alert(1)')`),'');
+  assert.equal(f.run(`evidenceWebUrl('https://school.sharepoint.com.attacker.invalid/photo')`),'');
+  assert.equal(f.run(`evidenceWebUrl('https://user:pass@school.sharepoint.com/photo')`),'');
+  f.ctx.record={evidenceImages:[{provider:'onedrive',itemId:'one',driveId:'d',name:'<img onerror=alert(1)>',webUrl:'https://school.sharepoint.com/photo'}]};
+  const html=f.run('connectionEvidenceLinks(record)');assert(!html.includes('<img'));assert(html.includes('&lt;img'));
+  assert(html.includes('rel="noopener noreferrer"'));
+});
+
 test('M05 generates unique class/month codes automatically and preserves existing codes when editing',async()=>{
   const f=frontend();await f.login();f.run(`cls().students=[{id:'S1',name:'Student',code:''}];openModal('profile')`);
   assert(f.el('modalBody').innerHTML.includes('readonly aria-label="Mã phiếu tự động"'));
