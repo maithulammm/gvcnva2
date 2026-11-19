@@ -18,7 +18,12 @@ Trang Công việc tháng đã được bỏ khỏi menu; lối gọi cũ `navTo
 Trang Nhập / xuất dữ liệu nằm trong nhóm Quản trị viên và chỉ Admin nhìn thấy.
 
 **Quản trị viên → Lịch không gặp:** chọn ngày nghỉ trong 12 tháng từ 09/2026 đến
-08/2027 rồi bấm Lưu. Thiết lập dùng chung được lưu riêng tại `calendar` trong
+08/2027: chọn **Cả ngày / Sáng / Chiều**, bấm ngày để bật/tắt buổi nghỉ rồi bấm Lưu.
+Nghỉ một buổi vẫn cho phép tự động xếp buổi còn lại. Dữ liệu nghỉ cả ngày cũ được
+giữ tại `excludedDates`; buổi nghỉ riêng dùng `excludedSessions: [{date,session}]`
+với `session` là `morning` hoặc `afternoon`. API mới báo `supportsSessions: true`;
+frontend kiểm tra cờ này trước khi ghi để tránh API cũ bỏ qua buổi nghỉ.
+Thiết lập dùng chung được lưu riêng tại `calendar` trong
 năm học Firebase qua `PUT /api/calendar`; chỉ Admin được ghi, có revision để
 tránh ghi đè khi hai Admin sửa đồng thời. Tất cả tài khoản nhận lịch trong
 bootstrap; trước khi tự động xếp lịch, trình duyệt đọc bootstrap mới nhất và bỏ

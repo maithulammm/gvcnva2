@@ -88,15 +88,38 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       const dates=body.excludedDates;
       requireValue(Array.isArray(dates)&&dates.length<=366,'Danh sách ngày nghỉ không hợp lệ.');
       requireValue(new Set(dates).size===dates.length,'Danh sách có ngày nghỉ trùng nhau.');
-      for(const date of dates) {
+      const validateDate=date=>{
         requireValue(typeof date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(date),'Ngày nghỉ không đúng định dạng.');
         const parsed=new Date(date+'T00:00:00Z');
         requireValue(Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===date&&date>='2026-09-01'&&date<='2027-08-31','Ngày nghỉ phải hợp lệ và thuộc năm học 2026–2027.');
+      };
+      for(const date of dates)validateDate(date);
+      if(body.excludedSessions!==undefined) {
+        requireValue(Array.isArray(body.excludedSessions)&&body.excludedSessions.length<=732,'Danh sách buổi nghỉ không hợp lệ.');
+        const seen=new Set();
+        for(const slot of body.excludedSessions) {
+          requireValue(slot&&['morning','afternoon'].includes(slot.session),'Buổi nghỉ phải là sáng hoặc chiều.');
+          validateDate(slot.date);
+          const key=slot.date+':'+slot.session;
+          requireValue(!seen.has(key),'Danh sách có buổi nghỉ trùng nhau.');seen.add(key);
+        }
       }
       const s=await mutate(identity,'calendar:update',(school,u)=>{
         requireValue(hasRole(u,'admin'),'Chỉ Quản trị viên được sửa lịch không gặp.',403);
         requireValue(Number.isInteger(body.revision)&&body.revision===school.calendar.revision,'Lịch không gặp đã được cập nhật ở máy khác. Hãy tải lại trước khi lưu.',409);
-        school.calendar={excludedDates:[...dates].sort(),revision:school.calendar.revision+1};
+        // Old clients editing whole days must not erase already stored half days.
+        const sessions=body.excludedSessions??school.calendar.excludedSessions,full=new Set(dates),byDate=new Map();
+        for(const slot of sessions) {
+          if(!byDate.has(slot.date))byDate.set(slot.date,new Set());
+          byDate.get(slot.date).add(slot.session);
+        }
+        const partial=[];
+        for(const [date,slots] of byDate) {
+          if(slots.size===2)full.add(date);
+          if(!full.has(date))for(const session of slots)partial.push({date,session});
+        }
+        partial.sort((a,b)=>a.date.localeCompare(b.date)||a.session.localeCompare(b.session));
+        school.calendar={excludedDates:[...full].sort(),excludedSessions:partial,revision:school.calendar.revision+1};
       });
       return {calendar:s.calendar};
     },

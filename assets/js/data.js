@@ -7,7 +7,7 @@ function defaultSchool() {
     schema: 2,
     year: YEARS,
     users: [],
-    calendar: {excludedDates:[],revision:0},
+    calendar: {excludedDates:[],excludedSessions:[],revision:0},
     classes: Object.fromEntries(
       CLASSES.map((id) => [
         id,

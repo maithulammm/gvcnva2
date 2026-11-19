@@ -191,6 +191,8 @@ body:has(#editor[open]), body:has(#mobileNav[open]) { overflow: hidden; }
 .meeting-template-list button { overflow-wrap:anywhere;white-space:normal; }
 #modalSaveNext { min-height:44px; }
 .calendar-months { display:flex;flex-wrap:wrap;gap:8px;margin:16px 0; }
+.calendar-session-mode { display:flex;flex-wrap:wrap;gap:8px;margin:12px 0; }
+.calendar-session-mode button { min-height:44px; }
 .calendar-months button { min-height:44px; }
 .school-calendar-body { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px; }
 .school-calendar-body h3 { margin-bottom:12px; }

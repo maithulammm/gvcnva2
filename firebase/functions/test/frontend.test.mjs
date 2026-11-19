@@ -14,6 +14,39 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(src=>({path:src,code:fs.readFileSync(new URL(src,projectRoot),'utf8')}));
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
+test('automatic schedules exclude only the selected session and keep the other session available',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=Array.from({length:30},(_,i)=>({id:'S'+i,name:'Student '+i}));appData.calendar={excludedDates:['2026-11-04'],excludedSessions:[{date:'2026-11-02',session:'morning'},{date:'2026-11-03',session:'afternoon'}],revision:1};
+    globalThis.result=buildAutomaticSchedule();globalThis.slots=monthlyAppointments(result.classData);`);
+  assert(!f.run(`slots.some(a=>a.date==='2026-11-02'&&a.session==='morning')`));
+  assert(f.run(`slots.some(a=>a.date==='2026-11-02'&&a.session==='afternoon')`));
+  assert(f.run(`slots.some(a=>a.date==='2026-11-03'&&a.session==='morning')`));
+  assert(!f.run(`slots.some(a=>a.date==='2026-11-03'&&a.session==='afternoon')`));
+  assert(!f.run(`slots.some(a=>a.date==='2026-11-04')`));
+  assert.equal(f.run('mdata().meetings.length'),0);
+});
+
+test('Admin can toggle from whole-day holiday to afternoon-only, clear it, and save a morning holiday',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  await api.saveCalendar(admin,{excludedDates:['2026-11-20'],revision:0});await f.run('refreshCloud(true)');
+  f.run(`navTo('calendar');selectCalendarSession('morning');toggleExcludedDate('2026-11-20')`);
+  assert.equal(f.run(`calendarDayLabel(calendarDraft(),'2026-11-20')`),'Nghỉ chiều');
+  f.run(`selectCalendarSession('afternoon');toggleExcludedDate('2026-11-20')`);
+  assert.equal(f.run(`calendarDayLabel(calendarDraft(),'2026-11-20')`),'');
+  f.run(`selectCalendarSession('all');toggleExcludedDate('2026-11-20');selectCalendarSession('morning');toggleExcludedDate('2026-11-19')`);
+  await f.run('saveSchoolCalendar()');
+  const calendar=(await api.bootstrap(admin)).calendar;
+  assert.deepEqual(calendar.excludedDates,['2026-11-20']);
+  assert.deepEqual(calendar.excludedSessions,[{date:'2026-11-19',session:'morning'}]);
+});
+
+test('older API capability is checked before writing half-day settings',async()=>{
+  const f=frontend({api:createService(memoryDatabase())});await f.login();
+  f.run(`delete appData.calendar.supportsSessions;navTo('calendar');selectCalendarSession('morning');toggleExcludedDate('2026-11-19')`);
+  let requests=0;f.ctx.fetch=async()=>{requests++;throw Error('must not write');};
+  await f.run('saveSchoolCalendar()');assert.equal(requests,0);
+  assert.equal(f.run('calendarDraft().sessions.length'),1);
+});
 test('calendar saves globally, automatic scheduling reads fresh exclusions and keeps existing visits',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
   f.run(`cls().students=Array.from({length:30},(_,i)=>({id:'S'+i,name:'Student '+i}));save()`);await f.run('flushCloud()');

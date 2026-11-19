@@ -57,7 +57,7 @@ export function encodeClass(c) {
 }
 export function normalizeSchool(s) {
   return {...s,year:YEAR,schema:1,classes:s?.classes||{},teachers:s?.teachers||{},users:s?.users||{},audit:s?.audit||{},
-    calendar:{excludedDates:list(s?.calendar?.excludedDates),revision:s?.calendar?.revision||0}};
+    calendar:{excludedDates:list(s?.calendar?.excludedDates),excludedSessions:list(s?.calendar?.excludedSessions),revision:s?.calendar?.revision||0,supportsSessions:true}};
 }
 export function assignmentFor(s, identity) {
   const stored=s.users[emailKey(identity.email)];

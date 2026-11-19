@@ -166,7 +166,7 @@ function useBootstrap(data) {
     classes: { ...defaults.classes, ...data.classes },
     teachers: data.teachers || {},
     users: data.users || [],
-    calendar: data.calendar || {excludedDates:[],revision:0},
+    calendar: data.calendar || {excludedDates:[],excludedSessions:[],revision:0},
   };
   cloud.baselines = Object.fromEntries(
     Object.entries(data.classes).map(([id, c]) => [

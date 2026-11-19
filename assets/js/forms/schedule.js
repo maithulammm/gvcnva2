@@ -155,7 +155,7 @@ function buildAutomaticSchedule(c=cls(),month=ui.month) {
   let next=0,added=0;
   if (!students.length) return {classData:copy,added};
   for (const date of scheduleMonthDates(month)) for (const session of Object.keys(MEETING_SESSIONS)) {
-    if(isExcludedMeetingDate(date))continue;
+    if(isExcludedMeetingDate(date,session))continue;
     if (!scheduleSessionAllowed(copy,date,session)||scheduleOccupant(date,session,'',copy,month,'')) continue;
     for (let attempt=0;attempt<students.length;attempt++) {
       const student=students[next];next=(next+1)%students.length;

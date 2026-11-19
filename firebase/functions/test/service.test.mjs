@@ -16,7 +16,7 @@ test('Admin calendar is shared read-only with teachers and does not replace clas
   const {api}=await fixture();await api.saveTeacher(admin,teacherInput);
   const before=await api.bootstrap(admin);await api.bootstrap(teacher);
   const result=await api.saveCalendar(admin,{excludedDates:['2027-01-01','2026-11-20'],revision:0});
-  assert.deepEqual(result.calendar,{excludedDates:['2026-11-20','2027-01-01'],revision:1});
+  assert.deepEqual(result.calendar,{excludedDates:['2026-11-20','2027-01-01'],excludedSessions:[],revision:1,supportsSessions:true});
   assert.deepEqual((await api.bootstrap(teacher)).calendar,result.calendar);
   const after=await api.bootstrap(admin);
   assert.deepEqual(after.classes,before.classes);assert.deepEqual(after.revisions,before.revisions);
@@ -30,10 +30,30 @@ test('calendar rejects invalid or out-of-school-year dates without changing stor
   for(const dates of [['2026-11-31'],['2027-02-29'],['2026-08-31'],['2027-09-01'],['2026-11-20','2026-11-20'],['20/11/2026'],[null]]) {
     await assert.rejects(api.saveCalendar(admin,{excludedDates:dates,revision:0}),{status:400});
   }
-  assert.deepEqual((await api.bootstrap(admin)).calendar,{excludedDates:[],revision:0});
+  assert.deepEqual((await api.bootstrap(admin)).calendar,{excludedDates:[],excludedSessions:[],revision:0,supportsSessions:true});
   await api.saveCalendar(admin,{excludedDates:['2026-09-01','2027-08-31'],revision:0});
   await api.saveCalendar(admin,{excludedDates:[],revision:1});
-  assert.deepEqual((await api.bootstrap(admin)).calendar,{excludedDates:[],revision:2});
+  assert.deepEqual((await api.bootstrap(admin)).calendar,{excludedDates:[],excludedSessions:[],revision:2,supportsSessions:true});
+});
+
+test('half-day calendar preserves legacy whole days and does not let older clients erase partial days',async()=>{
+  const {api}=await fixture();
+  let saved=await api.saveCalendar(admin,{excludedDates:['2026-11-20'],excludedSessions:[{date:'2026-11-19',session:'morning'}],revision:0});
+  assert.deepEqual(saved.calendar.excludedSessions,[{date:'2026-11-19',session:'morning'}]);
+  saved=await api.saveCalendar(admin,{excludedDates:['2026-11-20','2026-12-25'],revision:1});
+  assert.deepEqual(saved.calendar.excludedSessions,[{date:'2026-11-19',session:'morning'}]);
+  saved=await api.saveCalendar(admin,{excludedDates:['2026-11-20'],excludedSessions:[{date:'2026-11-19',session:'morning'},{date:'2026-11-19',session:'afternoon'}],revision:2});
+  assert.deepEqual(saved.calendar.excludedDates,['2026-11-19','2026-11-20']);assert.deepEqual(saved.calendar.excludedSessions,[]);
+  saved=await api.saveCalendar(admin,{excludedDates:['2026-11-20'],excludedSessions:[{date:'2026-11-19',session:'afternoon'}],revision:3});
+  assert.deepEqual(saved.calendar.excludedSessions,[{date:'2026-11-19',session:'afternoon'}]);
+});
+
+test('half-day calendar rejects invalid sessions and duplicate slots without writes',async()=>{
+  const {api}=await fixture();
+  for(const sessions of [[{date:'2026-11-19',session:'evening'}],[{date:'2027-02-29',session:'morning'}],[{date:'2026-11-19',session:'morning'},{date:'2026-11-19',session:'morning'}],[null]]) {
+    await assert.rejects(api.saveCalendar(admin,{excludedDates:[],excludedSessions:sessions,revision:0}),{status:400});
+  }
+  assert.equal((await api.bootstrap(admin)).calendar.revision,0);
 });
 
 test('GVCN can submit a complete report with linked M05 and parent contact without evidence codes',async()=>{
