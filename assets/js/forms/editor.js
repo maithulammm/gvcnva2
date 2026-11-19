@@ -66,6 +66,7 @@ function openModal(type, id = "", seed = {}) {
     Object.assign(rec, { name: "", email: "", roles: [], grades: [], active: true });
   if (!opts) return;
   $('modalSaveNext').hidden=type!=='m02';
+  $('deleteAppointmentButton').hidden=true;
   ui.editing = { type, id, seed, classId:c.id, month:ui.month,
     epoch:cloud.epoch, owner:auth.email, classObject:c,
     baseline:stableString(lookup(type,id)||{}) };

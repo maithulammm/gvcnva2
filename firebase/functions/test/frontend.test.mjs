@@ -586,7 +586,7 @@ test('M01 deletes only the edited appointment and persists remaining visits with
   const visits=before.schedule.S1.appointments;
   f.ctx.appointmentId=visits[1].id;
   f.run(`openStudentAppointment('S1',appointmentId)`);
-  assert(f.el('modalBody').innerHTML.includes('Xóa lịch lần 2'));
+  assert.equal(f.el('deleteAppointmentButton').textContent,'Xóa lịch lần 2');
   assert(!f.run('renderM01()').includes('removeAppointment('));
   await f.run('removeEditedAppointment();');await f.run('flushCloud()');
   assert.equal(f.run('ui.editing'),null);assert.equal(f.el('editor').open,false);
@@ -614,7 +614,7 @@ test('M01 cancellation, storage failure, changed context and actual links protec
   f.run('globalThis.originalSave=save;save=()=>false');await f.run('removeEditedAppointment()');
   assert.equal(f.run('JSON.stringify(mdata())'),original);assert(f.el('editor').open);
   f.run(`save=originalSave;mdata().meetings.push({id:'R1',studentId:'S1',appointmentId:target});globalThis.originalHasRole=hasAppRole;hasAppRole=role=>role==='admin'?false:role==='gvcn';auth.assignment.classId=ui.classId;openStudentAppointment('S1',target)`);
-  assert(!f.el('modalBody').innerHTML.includes('id="deleteAppointmentButton"'));
+  assert.equal(f.el('deleteAppointmentButton').hidden,true);
   await f.run('removeEditedAppointment()');assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1').length`),21);
   assert(f.alerts.some(s=>s.includes('không thể xóa')));
   f.run(`hasAppRole=originalHasRole;mdata().meetings=[];openStudentAppointment('S1',target)`);
@@ -628,7 +628,7 @@ test('Admin edits locked reports in any class and deletes linked schedules witho
   f.run(`ui.classId='8C3';cls().students=[{id:'S1',name:'Student',code:''}];mdata().schedule.S1={appointments:[{id:'A1',date:'2026-11-02',session:'morning',planTime:'02/11/2026 · Sáng 9:55–10:15'}]};
     mdata().meetings=[{id:'R1',studentId:'S1',appointmentId:'A1'}];mdata().approval.state='approved';`);
   assert.equal(f.run('editable()'),true);
-  f.run(`openStudentAppointment('S1','A1')`);assert(f.el('modalBody').innerHTML.includes('id="deleteAppointmentButton"'));
+  f.run(`openStudentAppointment('S1','A1')`);assert.equal(f.el('deleteAppointmentButton').hidden,false);
   await f.run('removeEditedAppointment()');
   assert.equal(f.run('mdata().meetings.length'),1);assert.equal(f.run('mdata().meetings[0].appointmentId'),undefined);
   assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1').length`),0);

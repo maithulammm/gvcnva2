@@ -110,6 +110,8 @@ function renderScheduleEditor() {
   const selected=dates.includes(date)?`${date.slice(8)}/${date.slice(5,7)}/${date.slice(0,4)}`:"Chưa chọn ngày";
   const appointmentIndex=studentAppointments(cls(),ui.month,ui.editing.id).findIndex(a=>a.id===ui.editing.seed.appointmentId);
   const linked=old.id&&mdata().meetings.some(r=>r.appointmentId===old.id);
+  $('deleteAppointmentButton').hidden=appointmentIndex<0||!!linked&&!(hasAppRole('admin')||isAdminClassEditing());
+  $('deleteAppointmentButton').textContent='Xóa lịch lần '+(appointmentIndex+1);
   $("modalBody").innerHTML = `<div class="schedule-editor">
     <div class="schedule-student"><b>${esc(studentName(cls(),ui.editing.id))}</b><span>${esc(ui.month)}</span></div>
     <fieldset><legend>Thời gian gặp</legend><div class="schedule-sessions">${Object.entries(MEETING_SESSIONS).map(([key,value])=>{
@@ -129,7 +131,7 @@ function renderScheduleEditor() {
     <fieldset><legend>Mục tiêu cuộc gặp · Có thể chọn nhiều</legend><div class="schedule-topics">${MEETING_TOPICS.map(t=>`<button type="button" class="schedule-choice" aria-pressed="${topics.includes(t)}" onclick="selectSchedulePart('topic','${t}')">${t}</button>`).join('')}</div>
       ${legacyGoal?`<p class="help">Nội dung đã có được giữ lại: ${esc(legacyGoal)}</p>`:''}</fieldset>
     <label class="field"><b>Ghi chú</b><textarea id="scheduleNote" name="note" rows="3">${esc(note)}</textarea></label>
-    ${appointmentIndex>=0?`<div class="schedule-delete">${linked&&!(hasAppRole('admin')||isAdminClassEditing())?'<p class="help">Lịch này đã ghi nhận cuộc gặp thực tế nên không thể xóa.</p>':`<button type="button" class="btn danger" id="deleteAppointmentButton" onclick="removeEditedAppointment()">Xóa lịch lần ${appointmentIndex+1}</button>`}</div>`:''}
+    ${linked&&!(hasAppRole('admin')||isAdminClassEditing())?'<p class="help">Lịch này đã ghi nhận cuộc gặp thực tế nên không thể xóa.</p>':''}
     <input type="hidden" name="date" value="${esc(date)}"><input type="hidden" name="session" value="${esc(session)}">
     ${topics.map(t=>`<input type="hidden" name="topics" value="${esc(t)}">`).join('')}</div>`;
 }

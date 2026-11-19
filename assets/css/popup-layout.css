@@ -8,6 +8,7 @@
 #editor .close{flex:0 0 44px;min-height:44px;}
 #editor .fieldgrid,#editor .field,#editor fieldset,#editor details{min-width:0;}
 #editorDraftStatus{flex:0 0 auto;}
+#editor #deleteAppointmentButton{margin-right:auto;}
 .app-dialog{overflow:hidden;}
 .app-dialog[open]{display:flex;flex-direction:column;}
 .app-dialog-header{flex:0 0 auto;}
@@ -20,4 +21,6 @@
   #editor .modal-f .btn{width:100%;min-width:0;min-height:44px;white-space:normal;line-height:1.25;}
   #editor #modalSave{grid-column:auto;}
   #editor #modalSaveNext{grid-column:1/-1;grid-row:2;}
+  #editor .modal-f:has(#deleteAppointmentButton:not([hidden])){grid-template-columns:repeat(4,minmax(0,1fr));}
+  #editor .modal-f:has(#deleteAppointmentButton:not([hidden])) .btn{font-size:11px;padding:6px 3px;}
 }

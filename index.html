@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="assets/css/theme.css?v=20261119-playful" />
     <link rel="stylesheet" href="assets/css/compact-toolbar.css?v=20261119-fluid" />
     <link rel="stylesheet" href="assets/css/mobile-polish.css?v=20261119" />
-    <link rel="stylesheet" href="assets/css/popup-layout.css?v=20261119" />
+    <link rel="stylesheet" href="assets/css/popup-layout.css?v=20261119-delete-footer" />
   </head>
   <body>
     <!-- Microsoft login gate: before authentication NO application view is rendered. -->
@@ -107,6 +107,7 @@
         <p id="editorDraftStatus" class="help" role="status" aria-live="polite"></p>
         <div class="modal-b" id="modalBody"></div>
         <div class="modal-f">
+          <button type="button" class="btn danger" id="deleteAppointmentButton" hidden onclick="removeEditedAppointment()">Xóa lịch</button>
           <button type="button" class="btn" id="discardDraftBtn" hidden onclick="discardEditorDraft()">Bỏ bản nháp</button>
           <button
             class="btn"
@@ -158,7 +159,7 @@
     <script defer src="assets/js/views/calendar.js?v=20261119-half-days"></script>
     <script defer src="assets/js/views/work.js?v=20261119-date-format"></script>
     <script defer src="assets/js/forms/m01.js?v=20261119-date-format"></script>
-    <script defer src="assets/js/forms/schedule.js?v=20261119-admin-class-edit"></script>
+    <script defer src="assets/js/forms/schedule.js?v=20261119-delete-footer"></script>
     <script defer src="assets/js/forms/m02.js?v=20261119-review"></script>
     <script defer src="assets/js/forms/m03.js?v=20261119-date-format"></script>
     <script defer src="assets/js/forms/m04.js?v=20261119-date-format"></script>
@@ -168,7 +169,7 @@
     <script defer src="assets/js/forms/history.js?v=20261119-review"></script>
     <script defer src="assets/js/forms/quick-meeting.js?v=20261119-single-editor"></script>
     <script defer src="assets/js/choices.js?v=20261118-school-calendar"></script>
-    <script defer src="assets/js/forms/editor.js?v=20261119-date-format"></script>
+    <script defer src="assets/js/forms/editor.js?v=20261119-delete-footer"></script>
     <script defer src="assets/js/forms/drafts.js?v=20261119-admin-class-edit"></script>
     <script defer src="assets/js/approval.js?v=20261119-lead-readonly"></script>
     <script defer src="assets/js/excel/template.js?v=20261118-school-calendar"></script>
