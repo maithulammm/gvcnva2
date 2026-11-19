@@ -47,7 +47,7 @@ function renderRolePreview() {
   host.innerHTML = `<label>Admin · Xem thử vai trò <select data-choice-mode="dropdown" onchange="setRolePreview(this.value)">
     <option value="">Quyền thực tế</option>${["gvcn","lead","bgh","admin"].map(r=>`<option value="${r}" ${role===r?"selected":""}>${esc(ROLE_NAMES[r])}</option>`).join("")}</select></label>
     ${role ? `<label>Lớp / khối mô phỏng <select data-choice-mode="dropdown" onchange="setRolePreview('${role}',this.value)">${CLASSES.map(id=>`<option value="${id}" ${id===classId?"selected":""}>${id} · Khối ${gradeText(id)}</option>`).join("")}</select></label>
-    <span role="status">Đang xem thử ${esc(ROLE_NAMES[role])} · Chỉ xem, không lưu thay đổi.</span>${btn("Thoát xem thử", "setRolePreview('')", "small")}` : ""}`;
+    <span role="status">${role==='gvcn'?'QTV đang chỉnh sửa lớp '+esc(classId)+' · Lưu dữ liệu thật.':'Đang xem thử '+esc(ROLE_NAMES[role])+' · Chỉ xem, không lưu thay đổi.'}</span>${btn("Thoát xem thử", "setRolePreview('')", "small")}` : ""}`;
 }
 
 function renderSelectors() {

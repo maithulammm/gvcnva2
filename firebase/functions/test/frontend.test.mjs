@@ -712,10 +712,10 @@ test('unsubmitted drafts survive reload without entering reports and cannot cros
   assert(next.alerts.some(message=>message.includes('đã thay đổi')));
 });
 
-test('monthly workspace honors preview and locked-month restrictions',async()=>{
+test('Admin GVCN view permits editing while ordinary GVCN still respects locked months',async()=>{
   const f=frontend();await f.login();
   f.run(`cls().students=[{id:'S1',name:'Student',code:''}];setRolePreview('gvcn','6A1');navTo('work');openWorkEntry('m02','S1')`);
-  assert.equal(f.run('ui.editing'),null);
+  assert(f.run('ui.editing'));
   assert(!f.el('view').innerHTML.includes('openWorkEntry('));
   f.run(`setRolePreview('');auth.assignment={role:'gvcn',classId:'6A1'};mdata().approval.state='submitted';navTo('work');openWorkEntry('m02','S1')`);
   assert.equal(f.run('ui.editing'),null);
@@ -845,7 +845,7 @@ test('new devices use source login and Firebase configuration without setup cont
   assert.equal((gate.match(/<button\b/g)||[]).length,1);
   assert(!/<input\b|<details\b/.test(gate));
 });
-test('Admin previews all roles with scoped navigation and no data or role mutations',async()=>{
+test('Admin previews roles with scoped navigation and can edit the selected GVCN class without role mutations',async()=>{
   const f=frontend();await f.login();
   const assignment=f.run('JSON.stringify(auth.assignment)');
   const stored=[...f.memory.entries()];
@@ -854,8 +854,7 @@ test('Admin previews all roles with scoped navigation and no data or role mutati
   assert.deepEqual(JSON.parse(f.run('JSON.stringify(getScope())')),['8C3']);
   assert(f.el('nav').innerHTML.includes("navTo('m01')"));
   assert(!f.el('nav').innerHTML.includes("navTo('users')"));
-  assert.equal(f.run('editable()'),false);assert.equal(f.run('canEditSetup()'),false);
-  assert.equal(f.run('save()'),false);
+  assert.equal(f.run('editable()'),true);assert.equal(f.run('canEditSetup()'),false);
   const before=f.run('JSON.stringify(appData)');
   await f.run(`transition('8C3','submitted')`);
   await f.run('demoData()');
@@ -874,6 +873,22 @@ test('Admin previews all roles with scoped navigation and no data or role mutati
   assert.equal(f.run('canEditSetup()'),true);
   assert.equal(f.run('JSON.stringify(auth.assignment)'),assignment);
   assert.deepEqual([...f.memory.entries()],stored);
+});
+
+test('Admin selected-class edits persist using real Admin identity and other preview roles remain read-only',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`ui.classId='8C3';cls().students=[{id:'S1',name:'Student',code:''}];save()`);await f.run('flushCloud()');
+  const before=(await api.bootstrap(admin)).classes['6A1'];
+  f.run(`setRolePreview('gvcn','8C3');openStudentAppointment('S1')`);
+  assert(f.run('ui.editing'));
+  f.ctx.appointment={date:'2026-11-20',session:'morning',topics:['Vở ghi'],note:'Admin change'};
+  await f.run('submitForm({preventDefault(){},currentTarget:appointment})');await f.run('flushCloud()');
+  const boot=await api.bootstrap(admin);
+  assert.equal(boot.classes['8C3'].months['T11/2026'].schedule.S1.appointments[0].note,'Admin change');
+  assert.deepEqual(boot.classes['6A1'],before);
+  assert((await api.recovery(admin,'8C3')).audit.some(a=>a.actor===admin.email));
+  f.run(`setRolePreview('lead','8C3')`);assert.equal(f.run('editable()'),false);assert.equal(f.run('save()'),false);
+  f.run(`setRolePreview('bgh','8C3')`);assert.equal(f.run('editable()'),false);
 });
 
 test('non-Admin cannot enter preview even by invoking the switch directly',async()=>{

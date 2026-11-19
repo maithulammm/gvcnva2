@@ -25,7 +25,7 @@ function editorDraftKey() {
 
 function restoreEditorDraft() {
   const key=editorDraftKey();
-  if (!key || isRolePreview()) return null;
+  if (!key || isRolePreview()&&!isAdminClassEditing()) return null;
   try {
     const draft=JSON.parse(localStorage.getItem(key));
     if (draft?.schema!==1 || draft.baseline!==ui.editing.baseline) return null;

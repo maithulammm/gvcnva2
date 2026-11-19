@@ -60,7 +60,7 @@ function renderDashboard() {
     )} ${unconn.length > 6 ? "…" : ""}</div></section></div>`;
     const nowParts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).split('-');
     const todayMonth=`T${nowParts[1]}/${nowParts[0]}`;
-    return renderTodayWork(c,!isRolePreview(),todayMonth)+h;
+    return renderTodayWork(c,!isRolePreview()||isAdminClassEditing(),todayMonth)+h;
   }
   h += `<div class="section-head"><h2>Bảng theo dõi ${ui.grade === "all" ? "toàn trường" : "khối " + ui.grade}</h2><div class="actions">${btn("Xuất Excel tổng hợp", "exportSchool()", "primary")}<span class="pill">${reporting}/${scope.length} lớp đã có dữ liệu</span></div></div><section class="card no-pad"><div class="table-wrap"><table><thead><tr><th>Lớp</th><th>GVCN</th><th>Sĩ số</th><th>Đã gặp / sĩ số</th><th>Tỷ lệ</th><th>Lượt gặp<br><small>Thực tế / dự kiến</small></th><th>Kết nối PHHS</th><th>KH hỗ trợ</th><th>Kiểm tra</th><th>Trạng thái</th></tr></thead><tbody>${results
     .filter(s=>dashboardMatches(s))

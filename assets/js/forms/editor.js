@@ -362,7 +362,7 @@ async function removeRecord(type, id) {
     delete m.schedule[id];
   } else if (type === "profile") {
     if (
-      !hasAppRole('admin') && Object.values(c.months).some((mm) =>
+      !(hasAppRole('admin')||isAdminClassEditing()) && Object.values(c.months).some((mm) =>
         (mm.meetings || []).some((x) => x.profileId === id),
       )
     ) {
@@ -370,7 +370,7 @@ async function removeRecord(type, id) {
       return;
     }
     c.profiles = c.profiles.filter((x) => x.id !== id);
-    if(hasAppRole('admin'))for(const mm of Object.values(c.months))for(const meeting of mm.meetings||[])if(meeting.profileId===id){
+    if(hasAppRole('admin')||isAdminClassEditing())for(const mm of Object.values(c.months))for(const meeting of mm.meetings||[])if(meeting.profileId===id){
       delete meeting.profileId;
     }
     ui.profileId = "";

@@ -6,6 +6,11 @@ function isRolePreview() {
   return !!ui.preview && assignmentRoles(auth.assignment).includes("admin");
 }
 
+function isAdminClassEditing() {
+  return !!auth.account&&assignmentRoles(auth.assignment).includes('admin')&&
+    ui.preview?.role==='gvcn'&&ui.preview.classId===ui.classId;
+}
+
 function viewAssignment() {
   return isRolePreview() ? ui.preview : auth.assignment;
 }
@@ -59,7 +64,9 @@ function getScope() {
 }
 
 function editable() {
-  if (!auth.account || cloud.busy || isRolePreview()) return false;
+  if (!auth.account || cloud.busy) return false;
+  if(isAdminClassEditing())return true;
+  if(isRolePreview())return false;
   return (
     hasAppRole("admin") ||
     (hasAppRole("gvcn") &&
