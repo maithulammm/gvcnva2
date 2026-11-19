@@ -1,6 +1,8 @@
 "use strict";
 
 const MEETING_SUGGESTIONS = {
+  previousReview:{required:false,placeholder:"Ví dụ: Đã thực hiện mục tiêu lần trước; còn cần nhắc nhở; chưa đủ thời gian đánh giá…",
+    values:["Đã thực hiện mục tiêu đã thống nhất","Hoàn thành một phần mục tiêu","Chủ động hơn so với lần trước","Còn cần nhắc nhở và hỗ trợ","Chưa thực hiện nội dung đã thống nhất","Chưa đủ thời gian đánh giá","Cần điều chỉnh mục tiêu hoặc thời hạn"]},
   concern:{placeholder:"Ví dụ: lo lắng về kết quả học tập, quan hệ bạn bè hoặc định hướng sau THPT…",
     values:["Kết quả học tập","Quan hệ bạn bè","Gia đình","Định hướng nghề nghiệp","Sức khỏe, cảm xúc","Nề nếp học tập"]},
   participation:{placeholder:"Ví dụ: HS chủ động chia sẻ hơn lần trước; cần gợi mở; chưa đủ điều kiện so sánh…",
@@ -61,7 +63,7 @@ function meetingProgressControls(value) {
 
 function meetingSuggestionControls(key,value) {
   const config=MEETING_SUGGESTIONS[key],selected=String(value).split(';').map(s=>s.trim());
-  return `<textarea name="${key}" required placeholder="${esc(config.placeholder)}">${esc(value)}</textarea>
+  return `<textarea name="${key}" ${config.required===false?'':'required'} placeholder="${esc(config.placeholder)}">${esc(value)}</textarea>
     <div class="meeting-suggestions">${config.values.map((text,i)=>`<button type="button" class="schedule-choice" data-suggestion="${key}:${i}" aria-pressed="${selected.includes(text)}" onclick="toggleMeetingSuggestion('${key}',${i})">${esc(text)}</button>`).join('')}</div>`;
 }
 

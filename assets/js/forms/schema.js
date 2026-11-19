@@ -31,6 +31,7 @@ const FIELDS = {
     ["note", "Ghi chú", "textarea", 0],
   ],
   m02: [
+    ["previousReview", "Nhận xét việc thực hiện sau lần gặp trước", "textarea", false],
     ["studentId", "Học sinh", "students", 1],
     ["actual", "Thời gian gặp thực tế", "text", 1],
     ["concern", "Điều học sinh quan tâm", "textarea", 1],

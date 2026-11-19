@@ -175,7 +175,7 @@ async function exportClass() {
         C: studentName(c, x.studentId),
         D: x.actual,
         E: x.concern,
-        F: x.participation,
+        F: [x.previousReview?'Nhận xét sau lần trước: '+x.previousReview:'',x.participation].filter(Boolean).join('\n'),
         G: x.progressEvidence,
         H: x.goal,
         I: x.action,

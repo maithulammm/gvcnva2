@@ -42,4 +42,6 @@ function updatePreviousMeetingPanel() {
   const date=form.querySelector('[name="actualDate"]')?.value||'',time=form.querySelector('[name="actualTime"]')?.value||'';
   const before=date&&/^\d{2}:\d{2}$/.test(time)?date+'T'+time:'';
   $('previousMeetingPanel').innerHTML=previousMeetingPanel(cls(),student,ui.month,ui.editing.id,before);
+  const review=form.querySelector('[data-field="previousReview"]');
+  if(review)review.hidden=!previousMeetingFor(cls(),student,ui.month,ui.editing.id,before)&&!form.querySelector('[name="previousReview"]')?.value;
 }

@@ -15,6 +15,20 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
 
+test('follow-up review persists on the current meeting without changing the previous meeting or totals',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student',code:''}];mdata().meetings=[{...${JSON.stringify({id:'OLD',studentId:'S1',actual:'03/11/2026 09:55 · Phòng 6A1',goal:'Original goal',participation:'Original observation'})}}];save()`);await f.run('flushCloud()');
+  const old=f.run('JSON.stringify(mdata().meetings[0])');
+  f.run(`openModal('m02','',{studentId:'S1',actual:'2026-11-18'})`);
+  assert(f.el('modalBody').innerHTML.includes('name="previousReview"'));
+  assert(f.el('modalBody').innerHTML.includes('Hoàn thành một phần mục tiêu'));
+  f.ctx.input={...completeMeeting,profileId:'',previousReview:'Hoàn thành một phần mục tiêu'};
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');await f.run('flushCloud()');
+  assert.equal(f.run('JSON.stringify(mdata().meetings[0])'),old);
+  assert.equal((await api.bootstrap(admin)).classes['6A1'].months['T11/2026'].meetings[1].previousReview,'Hoàn thành một phần mục tiêu');
+  assert.equal(f.run('mdata().meetings.length'),2);
+});
+
 test('display dates use padded Vietnamese dates and local timestamps without modifying stored records',async()=>{
   const f=frontend();await f.login();
   assert.equal(f.run(`displayDateText('2026-11-19')`),'19/11/2026');
