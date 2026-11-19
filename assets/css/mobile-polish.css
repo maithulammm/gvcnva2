@@ -1,0 +1,35 @@
+@media(max-width:900px){
+  .main{padding:12px!important;}
+  .mobile-bar{padding:8px 12px;gap:8px;min-height:60px;}
+  .mobile-bar .btn{min-height:44px;padding:8px 12px;font-size:14px;}
+  .mobile-school-brand{min-width:0;font-size:14px;white-space:nowrap;overflow:hidden;}
+  .page-toolbar>.topline.app-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;width:100%;overflow:visible;padding:10px 12px;}
+  .app-toolbar .top-heading{grid-column:1/-1;min-width:0;max-width:none;}
+  .app-toolbar h1{font-size:18px;white-space:normal;}
+  .topline.app-toolbar .selectors>label,.topline.app-toolbar #rolePreview label,
+  .topline.app-toolbar .selectors>.role-selector,.topline.app-toolbar .selectors>.grade-selector,
+  .topline.app-toolbar .selectors>.class-selector,.topline.app-toolbar .selectors>.month-selector,
+  .topline.app-toolbar #rolePreview label:nth-of-type(2){width:100%;min-width:0;}
+  .topline.app-toolbar .selectors>.role-selector,.topline.app-toolbar .selectors>.month-selector{grid-column:auto;}
+  .topline.app-toolbar #rolePreview select,.topline.app-toolbar .selectors select{width:100%;font-size:16px;}
+  .topline.app-toolbar #roleLabel{font-size:13px;}
+  .topline.app-toolbar #offlineNotice{grid-column:1/-1;width:auto;max-width:100%;white-space:normal;}
+  .topline.app-toolbar #offlineNotice.sync-ok{position:absolute;right:12px;top:10px;}
+  .topline.app-toolbar{position:relative;}
+  .app-toolbar .top-heading{padding-right:24px;}
+  #view>.actions[aria-label="Lọc lớp cần hỗ trợ"]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-bottom:12px;}
+  #view>.actions[aria-label="Lọc lớp cần hỗ trợ"] .btn{min-width:0;min-height:44px;padding:7px;font-size:12px;line-height:1.3;white-space:normal;}
+  .kpis{gap:8px;}
+  .kpi{padding:12px;min-width:0;border-radius:14px;}
+  .kpi .value,.kpi .num{font-size:28px;}
+  .section-head{gap:8px;margin-top:16px;}
+  .section-head h2{font-size:18px;}
+  .section-head .actions{gap:6px;}
+  .section-head .btn{min-height:44px;padding:8px 10px;font-size:13px;}
+  table.responsive-records tbody>tr{padding:10px;gap:6px;margin-bottom:8px;}
+  table.responsive-records:not(.m01-table) tbody>tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+  table.responsive-records:not(.m01-table) td.long,table.responsive-records:not(.m01-table) td.table-empty,
+  table.responsive-records:not(.m01-table) td:last-child{grid-column:1/-1;}
+  table.responsive-records td{padding:6px 8px;}
+  table.responsive-records td::before{font-size:11px;}
+}
