@@ -96,14 +96,17 @@ function renderTodayWork(c,canEdit,month) {
   month ||= ui.month;
   if(!today)return '';
   if(`T${today.slice(5,7)}/${today.slice(0,4)}`!==month)return '';
-  const m=mdata(c,month,false), appointments=monthlyAppointments(c,month).filter(a=>scheduleSlot(a).date===today);
-  return `<section class="card marg-top"><h2>Lịch gặp hôm nay · ${esc(today.split('-').reverse().join('/'))}</h2><div class="today-grid">${['morning','afternoon',...(appointments.some(a=>a.session==='other')?['other']:[])].map(session=>{
-    const entries=appointments.filter(a=>scheduleSlot(a).session===session);
-    return `<div class="meeting-reference"><b>${MEETING_SESSIONS[session].label} · ${MEETING_SESSIONS[session].time}</b>${entries.map(a=>{
-      const done=m.meetings.some(r=>r.appointmentId===a.id);
-      return `<p><b>${esc(studentName(c,a.studentId))}</b></p><p>${session==='other'?esc(displayDateText(a.planTime))+' ? ':''}${esc(a.goal||'')}</p><p>${done?'✓ Đã ghi nhận':'Chưa ghi nhận'}</p>${canEdit?btn(done?'Xem cuộc gặp':'Ghi nhận cuộc gặp',`openTodayMeeting('${month}','${a.studentId}','${a.id}')`,'small'):''}`;
-    }).join('')||'<p>Chưa có lịch hẹn.</p>'}</div>`;
-  }).join('')}</div></section>`;
+  const m=mdata(c,month,false), pending=monthlyAppointments(c,month).filter(a=>!m.meetings.some(r=>r.appointmentId===a.id));
+  const appointments=monthlyAppointments(c,month).filter(a=>scheduleSlot(a).date===today);
+  const overdue=pending.filter(a=>scheduleSlot(a).date&&scheduleSlot(a).date<today);
+  const entry=a=>{
+    const done=m.meetings.some(r=>r.appointmentId===a.id),[start,end]=appointmentRange(a);
+    return `<div class="today-meeting-row"><div><b>${esc(studentName(c,a.studentId))}</b><small>${esc(displayDateText(a.date||scheduleSlot(a).date))} · ${start}–${end}</small></div>${done?'<span class="pill">✓ Đã ghi nhận</span>':canEdit?btn('Ghi nhận cuộc gặp',`openTodayMeeting('${month}','${a.studentId}','${a.id}')`,'small primary'):'<span class="pill">Chưa ghi nhận</span>'}</div>`;
+  };
+  return `<section class="card today-work"><div class="section-head"><h2>Lịch gặp hôm nay</h2><span class="pill">${esc(today.split('-').reverse().join('/'))}</span></div>
+    <div class="today-meeting-list">${appointments.map(entry).join('')||'<p class="help">Hôm nay chưa có lịch gặp.</p>'}</div>
+    <div class="today-shortcuts">${btn('Lịch hẹn',"navTo('m01')",'small')}${canEdit?btn('Ghi nhận ngoài lịch',"openModal('m02')",'small'):''}${btn('Kiểm tra báo cáo',"navTo('check')",'small')}</div>
+    ${overdue.length?`<details class="today-overdue"><summary>${overdue.length} lịch trước hôm nay chưa ghi nhận</summary><div class="today-meeting-list">${overdue.map(entry).join('')}</div></details>`:''}</section>`;
 }
 
 function renderMonthlyWork() {

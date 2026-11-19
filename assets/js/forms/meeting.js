@@ -72,8 +72,10 @@ function meetingProgressControls(value) {
 
 function meetingSuggestionControls(key,value) {
   const config=MEETING_SUGGESTIONS[key],selected=String(value).split(';').map(s=>s.trim());
+  const button=(text,i)=>`<button type="button" class="schedule-choice" data-suggestion="${key}:${i}" aria-pressed="${selected.includes(text)}" onclick="toggleMeetingSuggestion('${key}',${i})">${esc(text)}</button>`;
   return `<textarea name="${key}" ${config.required===false?'':'required'} placeholder="${esc(config.placeholder)}">${esc(value)}</textarea>
-    <div class="meeting-suggestions">${config.values.map((text,i)=>`<button type="button" class="schedule-choice" data-suggestion="${key}:${i}" aria-pressed="${selected.includes(text)}" onclick="toggleMeetingSuggestion('${key}',${i})">${esc(text)}</button>`).join('')}</div>`;
+    <div class="meeting-suggestions">${config.values.slice(0,3).map(button).join('')}</div>
+    <details class="meeting-more-suggestions" ${config.values.slice(3).some(text=>selected.includes(text))?'open':''}><summary>Thêm gợi ý</summary><div class="meeting-suggestions">${config.values.slice(3).map((text,i)=>button(text,i+3)).join('')}</div></details>`;
 }
 
 function toggleMeetingSuggestion(key,index) {

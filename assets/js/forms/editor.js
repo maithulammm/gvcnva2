@@ -4,8 +4,18 @@
 
 function rowAction(type, id) {
   return editable()
-    ? `${btn("Sửa", `openModal('${type}','${id}')`, "small")} ${btn("Xóa", `removeRecord('${type}','${id}')`, "small danger")}`
+    ? `${btn("Sửa", `openModal('${type}','${id}')`, "small")} ${btn("Xóa", `removeRecord('${type}','${id}')`, "small danger")}${type==='m02'?`<details class="meeting-followup"><summary>Tiếp theo</summary>${btn('Kết nối phụ huynh',`openMeetingFollowup('${id}','m03')`,'small')}${btn('Kế hoạch hỗ trợ',`openMeetingFollowup('${id}','plans')`,'small')}${btn('Theo dõi cá nhân',`openMeetingFollowup('${id}','profile')`,'small')}</details>`:''}`
     : "—";
+}
+
+function openMeetingFollowup(id,type){
+  if(!editable()||!['m03','plans','profile'].includes(type))return;
+  const record=lookup('m02',id);
+  if(!record||!cls().students.some(s=>s.id===record.studentId))return;
+  const seed={studentId:record.studentId};
+  if(type==='plans')Object.assign(seed,{need:record.concern||'',goal:record.goal||'',action:record.action||''});
+  if(type==='profile')Object.assign(seed,{concern:record.concern||'',goal:record.goal||''});
+  openModal(type,'',seed);
 }
 
 function nextProfileCode(c=cls(),month=ui.month){
@@ -112,8 +122,8 @@ function openModal(type, id = "", seed = {}) {
   }
   let h = "",advanced="";
   if(type==='m02') {
-    const initial=meetingEditorValues(rec);
-    h+=`<details class="wide"><summary>Lần gặp trước · Thông tin tham khảo</summary><div id="previousMeetingPanel">${previousMeetingPanel(c,rec.studentId,ui.month,id,initial.actualDateTime)}</div></details>`;
+    const order=['studentId','actual','previousReview','concern','participation','progressEvidence','goal','action'];
+    opts=[...opts].sort((a,b)=>(order.includes(a[0])?order.indexOf(a[0]):99)-(order.includes(b[0])?order.indexOf(b[0]):99));
   }
   if (type === "m05detail") {
     h += `<div class="footnote wide">Lượt gặp: ${esc(displayDateText(rec.actual || ""))}</div>`;
@@ -121,6 +131,14 @@ function openModal(type, id = "", seed = {}) {
   if (type === "userRoles")
     h += `<div class="footnote wide">Phân công GVCN được quản lý trong mục Quản lý GVCN; vai trò GVCN hiện có không thể bị bỏ tại đây.</div>`;
   for (let [key, label, kind, required, options] of opts) {
+    if(type==='m02'&&['studentId','previousReview','goal'].includes(key)){
+      const titles={studentId:'1. Thông tin cuộc gặp',previousReview:'2. Chia sẻ & nhận xét',goal:'3. Mục tiêu & việc tiếp theo'};
+      h+=`<h3 class="wide meeting-section-title">${titles[key]}</h3>`;
+      if(key==='previousReview'){
+        const initial=meetingEditorValues(rec);
+        h+=`<details class="wide meeting-history"><summary>Tham khảo lần gặp trước</summary><div id="previousMeetingPanel">${previousMeetingPanel(c,rec.studentId,ui.month,id,initial.actualDateTime)}</div></details>`;
+      }
+    }
     let value = rec[key] ?? (kind === "boolean" ? false : "");
     let control = "";
     let req = required ? "required" : "";
