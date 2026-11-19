@@ -137,6 +137,7 @@ function handleMicrosoftLogoutStorage(event) {
 }
 
 function lockUi() {
+  clearAccountPhoto();
   ui.recovery=null;
   ui.tableFilters={};
   closeAccountMenu();

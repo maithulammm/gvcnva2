@@ -104,6 +104,7 @@ function renderSelectors() {
     .map((role) => ROLE_NAMES[role] || role)
     .join(" · ");
   $("identityLabel").textContent = accountDisplayName();
+  updateAccountPhoto();
   $("accountMenuButton").title = $("identityLabel").textContent;
   $("roleLabel").title = $("roleLabel").textContent;
   $("monthSel").innerHTML = MONTHS.map(

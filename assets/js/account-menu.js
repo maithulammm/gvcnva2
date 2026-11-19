@@ -1,5 +1,33 @@
 "use strict";
 
+const accountPhoto={owner:'',url:'',controller:null};
+function clearAccountPhoto(){
+  accountPhoto.controller?.abort();
+  if(accountPhoto.url)URL.revokeObjectURL(accountPhoto.url);
+  accountPhoto.owner='';accountPhoto.url='';accountPhoto.controller=null;
+  const img=$('accountPhoto');if(img){img.hidden=true;img.removeAttribute?.('src');}
+}
+async function updateAccountPhoto(){
+  const fallback=$('accountInitials'),img=$('accountPhoto');if(!fallback||!img)return;
+  fallback.textContent=accountDisplayName().split(/\s+/).slice(-2).map(s=>s[0]).join('').toUpperCase();
+  if(!auth.account||!auth.client?.acquireTokenSilent)return;
+  const owner=auth.email+'|'+(auth.account.homeAccountId||'');
+  if(accountPhoto.owner===owner)return;
+  clearAccountPhoto();accountPhoto.owner=owner;
+  const controller=accountPhoto.controller=new AbortController();
+  const current=()=>!controller.signal.aborted&&accountPhoto.owner===owner&&!!auth.account;
+  try{
+    const token=await auth.client.acquireTokenSilent({account:auth.account,scopes:['User.Read']});
+    if(!current()||!token.accessToken)return;
+    const response=await fetch('https://graph.microsoft.com/v1.0/me/photo/$value',{headers:{Authorization:'Bearer '+token.accessToken},signal:controller.signal});
+    if(!response.ok||!current())return;
+    const blob=await response.blob();if(!current()||!blob.type.startsWith('image/')||blob.size>5*1024*1024)return;
+    accountPhoto.url=URL.createObjectURL(blob);img.src=accountPhoto.url;
+    img.onload=()=>{if(current())img.hidden=false;};
+    img.onerror=()=>{img.hidden=true;};
+  }catch{/* Missing photo or consent must never interrupt sign-in. */}
+}
+
 function accountDisplayName() {
   const ownTeacher=Object.values(appData?.teachers||{}).find(t=>String(t.email||'').toLowerCase()===auth.email);
   const ownUser=(appData?.users||[]).find(u=>u.email===auth.email);

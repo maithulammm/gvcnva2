@@ -57,6 +57,7 @@ $("msLoginBtn").addEventListener("click", async () => {
     $("msLoginBtn").disabled = true;
     await auth.client.loginRedirect({
       scopes: ["openid", "profile", "email"],
+      extraScopesToConsent: ["User.Read"],
       prompt: "select_account",
     });
   } catch (e) {
