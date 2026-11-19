@@ -1,0 +1,23 @@
+#editor{overflow:hidden;max-height:calc(var(--visual-height,100dvh) - 24px);}
+#editor[open]{display:flex;flex-direction:column;}
+#editor .modal-h{position:static;flex:0 0 auto;min-width:0;}
+#editor #entryForm{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;max-width:100%;margin:0;overflow:hidden;}
+#editor #modalBody{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;contain:layout paint;}
+#editor .modal-f{position:static;flex:0 0 auto;min-width:0;flex-wrap:wrap;}
+#editor .modal-h h2{min-width:0;overflow-wrap:anywhere;}
+#editor .close{flex:0 0 44px;min-height:44px;}
+#editor .fieldgrid,#editor .field,#editor fieldset,#editor details{min-width:0;}
+#editorDraftStatus{flex:0 0 auto;}
+.app-dialog{overflow:hidden;}
+.app-dialog[open]{display:flex;flex-direction:column;}
+.app-dialog-header{flex:0 0 auto;}
+#appDialogForm{display:flex;flex-direction:column;min-height:0;overflow:hidden;margin:0;}
+.app-dialog-body{overflow:auto;min-height:0;overscroll-behavior:contain;}
+.app-dialog-actions{flex:0 0 auto;flex-wrap:wrap;}
+@media(max-width:600px),(max-height:500px) and (max-width:1100px){
+  #editor{height:var(--visual-height,100dvh);max-height:var(--visual-height,100dvh);}
+  #editor .modal-f{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
+  #editor .modal-f .btn{width:100%;min-width:0;min-height:44px;white-space:normal;line-height:1.25;}
+  #editor #modalSave{grid-column:auto;}
+  #editor #modalSaveNext{grid-column:1/-1;grid-row:2;}
+}
