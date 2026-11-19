@@ -72,7 +72,6 @@ function openModal(type, id = "", seed = {}) {
   if (type === 'm01') {
     const appointments=studentAppointments(c,ui.month,id);
     const selected=seed.addAppointment?undefined:appointments.find(a=>a.id===(seed.appointmentId||appointments[0]?.id));
-    if (!selected&&appointments.length>=3) {ui.editing=null;toast('Học sinh đã đủ 3 lịch hẹn.');return;}
     ui.editing.seed={...seed,appointmentId:selected?.id||'',addAppointment:!selected};
     rec=selected?{...selected}:{};
   }

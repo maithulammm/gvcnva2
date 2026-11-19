@@ -75,9 +75,6 @@ function openStudentAppointment(studentId,appointmentId='') {
   if (appointmentId&&!studentAppointments(cls(),ui.month,studentId).some(a=>a.id===appointmentId)) {
     toast('Lịch hẹn đã thay đổi. Hãy tải lại danh sách.');return;
   }
-  if (!appointmentId && studentAppointments(cls(),ui.month,studentId).length>=3) {
-    toast('Mỗi học sinh tối đa 3 lịch hẹn trong tháng. Có thể sửa lịch đã có.');return;
-  }
   openModal('m01',studentId,{appointmentId,addAppointment:!appointmentId});
 }
 
@@ -146,7 +143,6 @@ function buildScheduleRecord(c,month,id,record) {
   const old=mdata(c,month,false).schedule[id]||{}, appointments=studentAppointments(c,month,id);
   const appointmentId=ui.editing.seed.appointmentId, previous=appointments.find(a=>a.id===appointmentId);
   if(isExcludedMeetingDate(record.date,record.session)&&(!previous||previous.date!==record.date||previous.session!==record.session))throw Error('Ngày hoặc buổi đã chọn là lịch nghỉ. Hãy chọn lịch khác.');
-  if (!previous&&appointments.length>=3) throw Error('Mỗi học sinh tối đa 3 lịch hẹn trong tháng.');
   if (appointments.some(a=>a.id!==appointmentId&&scheduleSlot(a).date===record.date)) throw Error('Hai buổi trong ngày phải hẹn hai học sinh khác nhau.');
   const topics=MEETING_TOPICS.filter(t=>record.topics.includes(t));
   const legacyGoal=String(previous?.goal||(!appointments.length?old.goal:'')||"").split(" · ").filter(t=>!MEETING_TOPICS.includes(t));
@@ -193,7 +189,7 @@ function buildAutomaticSchedule(c=cls(),month=ui.month) {
     for (let attempt=0;attempt<students.length;attempt++) {
       const student=students[next];next=(next+1)%students.length;
       const appointments=studentAppointments(copy,month,student.id);
-      if (appointments.length>=3||!scheduleAvailable(date,session,student.id,copy,month,'')) continue;
+      if (!scheduleAvailable(date,session,student.id,copy,month,'')) continue;
       const info=MEETING_SESSIONS[session],appointment={id:newID(),date,session,topics:[],goal:'',note:'',
         planTime:`${date.slice(8)}/${date.slice(5,7)}/${date.slice(0,4)} · ${info.label} ${info.time}`};
       m.schedule[student.id]=appointmentRollup(m.schedule[student.id]||{},[...appointments,appointment]);
@@ -215,9 +211,9 @@ async function autoScheduleMonth() {
   }
   if (!cls().students.length) return toast('Cần nhập danh sách học sinh trước khi xếp lịch.');
   const c=cls(),result=buildAutomaticSchedule(c);
-  if (!result.added) return toast('Không còn khung giờ trống hoặc học sinh đã đủ 3 lịch hẹn.');
+  if (!result.added) return toast('Không còn khung giờ trống.');
   const belowTwo=c.students.filter(s=>studentAppointments(result.classData,ui.month,s.id).length<2).length;
-  if (!await appConfirm(`Xếp thêm ${result.added} lịch theo thứ tự danh sách, ngày và buổi. Giữ nguyên lịch đã có. Tối đa 3 lịch/HS.${belowTwo?`\n${belowTwo} học sinh chưa đủ 2 lượt vì tháng không đủ khung giờ phù hợp.`:''}\nCác lịch chỉ là dự kiến, chưa tính là đã gặp. Áp dụng?`)) return;
+  if (!await appConfirm(`Xếp thêm ${result.added} lịch theo thứ tự danh sách, ngày và buổi. Giữ nguyên lịch đã có.${belowTwo?`\n${belowTwo} học sinh chưa đủ 2 lượt vì tháng không đủ khung giờ phù hợp.`:''}\nCác lịch chỉ là dự kiến, chưa tính là đã gặp. Áp dụng?`)) return;
   const old=c.months[ui.month];c.months[ui.month]=result.classData.months[ui.month];
   if (!save()) {if(old)c.months[ui.month]=old;else delete c.months[ui.month];return;}
   render();toast(`Đã xếp thêm ${result.added} lịch dự kiến. Xem tại Mẫu 2.`);

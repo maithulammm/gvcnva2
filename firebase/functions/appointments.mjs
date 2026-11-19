@@ -21,7 +21,6 @@ export function validateAppointments(c,month,m,previous,requireValue) {
     const nested=Object.hasOwn(schedule,'appointments');
     requireValue(!nested||Array.isArray(schedule.appointments),'Danh sách lịch hẹn không hợp lệ.');
     const entries=appointmentEntries(m,studentId),oldEntries=appointmentEntries(previous?.months?.[month],studentId),days=new Map();
-    requireValue(entries.length<=3,'Mỗi học sinh tối đa 3 lịch hẹn trong tháng.');
     if(nested) requireValue(schedule.planTime===entries.map(a=>a.planTime).filter(Boolean).join('\n'),'Danh sách thời gian hẹn không khớp các lượt hẹn.');
     for(const appointment of entries) {
       requireValue(appointment&&typeof appointment==='object'&&!Array.isArray(appointment),'Lượt hẹn không hợp lệ.');

@@ -4,6 +4,9 @@
 .account-control { display:flex;flex:0 0 auto;align-items:center;min-width:0;width:100%;margin:0; }
 .sidebar { overflow:hidden; }
 .sidebar > #nav { flex:1;min-height:0;overflow-y:auto; }
+.nav,.admin-nav-links{grid-auto-rows:max-content;align-content:start;}
+.nav button,.admin-nav>summary{height:48px;min-height:48px;max-height:48px;box-sizing:border-box;flex-shrink:0;}
+.nav .nav-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .account-footer { flex:0 0 auto;margin-top:auto;padding-top:12px;min-width:0; }
 .account-footer #accountMenuButton { width:100%;justify-content:space-between; }
 .mobile-nav[open] { display:flex;flex-direction:column; }

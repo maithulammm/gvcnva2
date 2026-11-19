@@ -487,11 +487,11 @@ test('automatic scheduling follows roster order, weekdays and grade-12 Saturday 
   assert.equal(saturday.length,4);assert(saturday.every(a=>a.session==='morning'));
   assert(f.run(`monthlyAppointments(auto12.classData,ui.month).every(a=>new Date(a.date+'T12:00:00').getDay()!==0)`));
   f.run(`cls().students=cls().students.slice(0,8);globalThis.small=buildAutomaticSchedule()`);
-  assert.equal(f.run('small.added'),24);
-  assert(f.run(`small.classData.students.every(s=>studentAppointments(small.classData,ui.month,s.id).length===3)`));
+  assert.equal(f.run('small.added'),44);
+  assert(f.run(`small.classData.students.every(s=>studentAppointments(small.classData,ui.month,s.id).length>3)`));
 });
 
-test('manual multiple appointments preserve each visit and reject a fourth or a second same-day visit',async()=>{
+test('manual appointments allow more than three visits and reject a second same-day visit',async()=>{
   const f=frontend();await f.login();f.run(`cls().students=[{id:'S1',name:'Student',code:''}]`);
   for(const date of ['2026-11-18','2026-11-19','2026-11-20']) {
     f.run(`openStudentAppointment('S1')`);
@@ -499,7 +499,10 @@ test('manual multiple appointments preserve each visit and reject a fourth or a 
     await f.run('submitForm({preventDefault(){},currentTarget:appointment})');
   }
   assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1').length`),3);
-  f.run(`openStudentAppointment('S1')`);assert.equal(f.run('ui.editing'),null);
+  f.run(`openStudentAppointment('S1')`);assert(f.run('ui.editing'));
+  f.ctx.appointment={date:'2026-11-23',session:'morning',topics:[],note:'Fourth'};
+  await f.run('submitForm({preventDefault(){},currentTarget:appointment})');
+  assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1').length`),4);
   const first=f.run(`studentAppointments(cls(),ui.month,'S1')[0].id`);
   f.ctx.firstAppointmentId=first;f.run(`openStudentAppointment('S1',firstAppointmentId)`);
   f.ctx.appointment={date:'2026-11-19',session:'afternoon',topics:[],note:'Conflict'};
@@ -530,7 +533,7 @@ test('auto appointments appear in M02 without actual counts; confirmation links 
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
   await f.run(`cls().students=[{id:'S1',name:'Student 1',code:''},{id:'S2',name:'Student 2',code:''}];autoScheduleMonth()`);
   await f.run('flushCloud()');
-  assert.equal(f.run('monthlyAppointments().length'),6);
+  assert.equal(f.run('monthlyAppointments().length'),42);
   assert.equal(f.run('summarize(cls(),ui.month).meetings'),0);
   f.run(`navTo('m02')`);assert(f.el('view').innerHTML.includes('Lịch gặp dự kiến từ Mẫu 1'));
   const appointmentId=f.run(`studentAppointments(cls(),ui.month,'S1')[0].id`);
@@ -546,7 +549,7 @@ test('auto appointments appear in M02 without actual counts; confirmation links 
   f.run(`openScheduledMeeting('S1',appointmentId)`);
   await f.run('submitForm({preventDefault(){},currentTarget:completed})');
   assert.equal(f.run('mdata().meetings.length'),1);
-  assert.equal((f.run('renderPendingMeetings(cls(),mdata())').match(/Ghi nhận đã gặp/g)||[]).length,5);
+  assert.equal((f.run('renderPendingMeetings(cls(),mdata())').match(/Ghi nhận đã gặp/g)||[]).length,41);
 });
 test('M01 deletes only the edited appointment and persists remaining visits without changing actual meetings',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
@@ -584,12 +587,12 @@ test('M01 cancellation, storage failure, changed context and actual links protec
   assert.equal(f.run('JSON.stringify(mdata())'),original);assert(f.el('editor').open);
   f.run(`save=originalSave;mdata().meetings.push({id:'R1',studentId:'S1',appointmentId:target});globalThis.originalHasRole=hasAppRole;hasAppRole=role=>role==='admin'?false:role==='gvcn';auth.assignment.classId=ui.classId;openStudentAppointment('S1',target)`);
   assert(!f.el('modalBody').innerHTML.includes('id="deleteAppointmentButton"'));
-  await f.run('removeEditedAppointment()');assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1').length`),3);
+  await f.run('removeEditedAppointment()');assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1').length`),21);
   assert(f.alerts.some(s=>s.includes('không thể xóa')));
   f.run(`hasAppRole=originalHasRole;mdata().meetings=[];openStudentAppointment('S1',target)`);
   f.ctx.confirm=()=>{f.run(`ui.month='T12/2026'`);return true;};
   await f.run('removeEditedAppointment()');
-  assert.equal(f.run(`studentAppointments(cls(),'T11/2026','S1').length`),3);
+  assert.equal(f.run(`studentAppointments(cls(),'T11/2026','S1').length`),21);
 });
 
 test('Admin edits locked reports in any class and deletes linked schedules without deleting actual meetings',async()=>{

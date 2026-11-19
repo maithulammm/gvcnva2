@@ -84,7 +84,7 @@ test('GVCN can submit a complete report with linked M05 and parent contact witho
   assert.equal(result.classes['8C3'].months['T11/2026'].approval.state,'submitted');
 });
 
-test('API enforces weekdays, grade-12 Saturday morning, three appointments and unique actual links',async()=>{
+test('API enforces weekdays and unique actual links while allowing more than three appointments',async()=>{
   const {api}=await fixture();
   const make=(id,date,session='morning')=>({id,date,session,topics:[],note:'',goal:'',
     planTime:`${date.slice(8)}/${date.slice(5,7)}/${date.slice(0,4)} · ${session==='morning'?'Sáng 9:55–10:15':'Chiều 15:00–15:20'}`});
@@ -101,7 +101,8 @@ test('API enforces weekdays, grade-12 Saturday morning, three appointments and u
     set(c,[make('SAT','2026-11-21'),make('MON','2026-11-23'),make('TUE','2026-11-24')]);
     saved=await api.putClass(admin,classId,{revision:saved.revision,classData:c});c=saved.data;
     const bad=structuredClone(c);set(bad,[...c.months['T11/2026'].schedule.S1.appointments,make('WED','2026-11-25')]);
-    await assert.rejects(api.putClass(admin,classId,{revision:saved.revision,classData:bad}),e=>e.status===400);
+    saved=await api.putClass(admin,classId,{revision:saved.revision,classData:bad});c=saved.data;
+    assert.equal(c.months['T11/2026'].schedule.S1.appointments.length,4);
     const sameDay=structuredClone(c);set(sameDay,[make('A','2026-11-23'),make('B','2026-11-23','afternoon')]);
     await assert.rejects(api.putClass(admin,classId,{revision:saved.revision,classData:sameDay}),e=>e.status===409);
     c.months['T11/2026'].meetings=[{id:'R1',studentId:'S1',appointmentId:'SAT'}];
