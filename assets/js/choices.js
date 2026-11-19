@@ -20,6 +20,7 @@ function refreshButtonChoices(root=document) {
       });
     }
     host.classList.toggle('choice-row-five',select.dataset.choiceLayout==='row-five');
+    host.classList.toggle('choice-months-row',select.dataset.choiceLayout==='months-row');
     const label=select.getAttribute('aria-label')||select.closest('.field')?.querySelector('label')?.textContent||
       [...(select.closest('label')?.childNodes||[])].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim()||'Chọn giá trị';
     const options=[...select.options].filter(option=>!option.hidden);

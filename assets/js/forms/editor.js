@@ -147,14 +147,14 @@ function openModal(type, id = "", seed = {}) {
     } else if (kind === "profiles") {
       control = `<select name="${key}" onchange="updateMeetingFields()"><option value="">— Không liên kết —</option>${c.profiles.map((p) => `<option value="${p.id}" data-student="${p.studentId}" ${value === p.id ? "selected" : ""}>${esc(p.code)} · ${esc(studentName(c, p.studentId))}</option>`).join("")}</select>`;
     } else if (kind === "months") {
-      control = `<select name="${key}">${MONTHS.map((s) => `<option value="${s}" ${(value || ui.month) === s ? "selected" : ""}>${s}</option>`).join("")}</select>`;
+      control = `<select name="${key}" data-choice-layout="months-row">${MONTHS.map((s) => `<option value="${s}" ${(value || ui.month) === s ? "selected" : ""}>${s}</option>`).join("")}</select>`;
     } else if (kind === "select") {
       control = `<select name="${key}" ${type==='m03'&&key==='channel'||type==='profile'&&key==='result'?'data-choice-layout="row-five"':''} ${req} ${key==="needsCoop"?'onchange="updateMeetingFields()"':''}><option value="" ${!value ? "selected" : ""}>— Chọn —</option>${options.map((s) => `<option value="${esc(s)}" ${value === s ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>`;
     } else if (kind === "textarea") {
       control = `<textarea name="${key}" ${req} placeholder="${esc(label)}">${esc(value)}</textarea>`;
     } else
       control = `<input name="${key}" type="${kind}" value="${esc(value)}" ${req} placeholder="${esc(label)}">`;
-    const fieldHtml=`<div data-field="${key}" class="field ${kind === "textarea" || type==='m02'&&['actual','progressEvidence'].includes(key) || type==='m03'&&key==='channel' || type==='profile'&&key==='result' ? "wide" : ""}"><label>${esc(label)}${required ? " *" : ""}</label>${control}</div>`;
+    const fieldHtml=`<div data-field="${key}" class="field ${kind === "textarea" || kind === "months" || type==='m02'&&['actual','progressEvidence'].includes(key) || type==='m03'&&key==='channel' || type==='profile'&&key==='result' ? "wide" : ""}"><label>${esc(label)}${required ? " *" : ""}</label>${control}</div>`;
     if(type==='m02'&&['cooperation','needsCoop','profileId','profileProgress','profileNext'].includes(key))advanced+=fieldHtml;
     else h+=fieldHtml;
   }

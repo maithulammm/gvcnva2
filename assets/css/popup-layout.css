@@ -8,6 +8,9 @@
 #editor .close{flex:0 0 44px;min-height:44px;}
 #editor .fieldgrid,#editor .field,#editor fieldset,#editor details{min-width:0;}
 #editorDraftStatus{flex:0 0 auto;}
+#editor .choice-months-row .choice-buttons{display:flex;flex-wrap:nowrap;gap:6px;max-height:none;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding:3px;}
+#editor .choice-months-row .choice-buttons::-webkit-scrollbar{display:none;}
+#editor .choice-months-row .choice-buttons button{flex:1 0 70px;min-width:70px;min-height:44px;padding:8px 5px;white-space:nowrap;font-size:12px;}
 #editor .schedule-custom-time{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:12px;margin-top:12px;}
 #editor .schedule-custom-time>label{display:grid;grid-template-rows:auto 44px;gap:6px;min-width:0;font-size:12px;font-weight:600;color:var(--muted);}
 #editor .schedule-custom-time input{box-sizing:border-box;width:100%;min-width:0;height:44px;margin:0;padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);font-size:16px;font-variant-numeric:tabular-nums;}
