@@ -33,6 +33,10 @@ kết nối repository `maithulammm/gvcnva2` và chọn:
 | Build command | `npm run build` |
 | Deploy command | `npm run deploy:cloudflare` |
 
+`wrangler.jsonc` cũng khai báo `build.command = "npm run build"`, nên lệnh
+`npx wrangler deploy` vẫn tự tạo `dist/` khi mục Build command trên dashboard
+đang để None. Không cần đưa thư mục sinh tự động `dist/` lên GitHub.
+
 Tên Worker phải là `gvcnva2`, khớp `wrangler.jsonc`. File cấu hình này triển khai
 giao diện từ `dist/` và API từ `cloudflare/worker.mjs` cùng domain. Không dùng chế độ
 chỉ tải lên tài nguyên tĩnh vì chế độ đó không triển khai API. Mỗi lần push lên
