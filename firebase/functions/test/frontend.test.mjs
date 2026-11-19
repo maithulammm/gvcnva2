@@ -15,6 +15,19 @@ const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
 const source=entryHtml+'\n'+scripts.map(s=>s.code).join('\n');
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'11111111-1111-1111-1111-111111111111',name:'Admin'};
 
+test('MSAL popup and iframe callbacks leave auth response for the parent without starting nested login',async()=>{
+  for(const kind of ['popup','iframe']){
+    const f=frontend();let calls=0;
+    f.ctx.makeMsalClient=async()=>{calls++;throw Error('Unexpected nested initialization');};
+    f.ctx.location.hash='#code=test-code&state=test-state';
+    if(kind==='popup')f.ctx.window.opener={};else f.ctx.window.parent={};
+    const memory=[...f.memory.entries()];await f.run('initializeMsLogin()');
+    assert.equal(calls,0);assert.equal(f.ctx.document.body.hidden,true);
+    assert.equal(f.ctx.location.hash,'#code=test-code&state=test-state');
+    assert.deepEqual([...f.memory.entries()],memory);
+  }
+});
+
 test('form guides open per form, remember opt-out per account and reopen manually without changing reports',async()=>{
   const f=frontend();await f.login();f.run('mdata()');const before=f.run('JSON.stringify(appData)');
   for(const page of ['m01','m02','m03','m04','m05']){

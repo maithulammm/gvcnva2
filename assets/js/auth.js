@@ -295,6 +295,14 @@ async function makeMsalClient(config) {
 }
 
 async function initializeMsLogin() {
+  // MSAL 2.x's parent window consumes this response. Starting another client
+  // here would create nested authentication inside the popup/hidden iframe.
+  const authResponse=/(?:^|[#&])(code|error|id_token|access_token)=/.test(window.location?.hash||'');
+  const childContext=!!window.opener||!!window.parent&&window.parent!==window;
+  if(authResponse&&childContext){
+    document.body.hidden=true;
+    return;
+  }
   // Silent renewal loads this callback in an iframe; only the parent handles it.
   if(window.parent&&window.parent!==window)return;
   const release=beginPageLoading('Đang kiểm tra phiên đăng nhập…');
