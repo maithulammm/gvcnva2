@@ -17,6 +17,28 @@ function installMeetingSummaries(table){
   }
 }
 
+function installCompactList(table){
+  if(table.classList.contains('meeting-records-table'))return;
+  const headers=[...table.querySelectorAll('thead th')].map(th=>th.textContent.trim());
+  let primary=headers.findIndex(h=>/Học sinh|Họ.*tên/i.test(h));
+  if(primary<0)primary=headers.findIndex(h=>/^Lớp$/.test(h));
+  if(primary<0)primary=headers.findIndex(h=>/GVCN|Tên|Tiêu chí/i.test(h));
+  if(primary<0)primary=0;
+  const secondary=headers.findIndex((h,i)=>i!==primary&&/Ngày|Lịch|Thời|Trạng thái/.test(h));
+  table.classList.add('compact-list-table');
+  for(const row of table.querySelectorAll('tbody > tr')){
+    if(row.querySelector('.meeting-row-toggle')||row.querySelector('td[colspan]')||!row.cells[primary])continue;
+    const cell=row.cells[primary],name=cell.textContent.trim(),detail=secondary>=0?row.cells[secondary]?.textContent.trim()||'':'';
+    const button=document.createElement('button');button.type='button';button.className='meeting-row-toggle';
+    button.setAttribute('aria-expanded','false');button.setAttribute('aria-label','Xem chi tiết '+name);button.title=[name,detail].filter(Boolean).join(' · ');
+    button.innerHTML=`<span class="meeting-row-name">${esc(name)}</span>${detail?`<span class="compact-row-detail">${esc(detail)}</span>`:''}<span class="meeting-row-arrow" aria-hidden="true">▾</span>`;
+    const original=document.createElement('span');original.className='meeting-name-original';
+    while(cell.firstChild)original.append(cell.firstChild);
+    cell.append(original,button);cell.classList.add('meeting-name-cell');row.classList.add('meeting-collapsible');
+    button.addEventListener('click',()=>{const open=row.classList.toggle('meeting-expanded');button.setAttribute('aria-expanded',String(open));});
+  }
+}
+
 function openScheduledMeeting(studentId,appointmentId) {
   if (!editable()) return;
   const appointment=studentAppointments(cls(),ui.month,studentId).find(a=>a.id===appointmentId);
