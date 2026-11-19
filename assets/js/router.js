@@ -43,11 +43,12 @@ function renderRolePreview() {
   host.innerHTML = "";
   if (!assignmentRoles(auth.assignment).includes("admin")) return;
   const role = isRolePreview() ? ui.preview.role : "";
+  host.setAttribute('data-mode',role);
   const classId = ui.preview?.classId || ui.classId;
-  host.innerHTML = `<label>Admin · Xem thử vai trò <select data-choice-mode="dropdown" onchange="setRolePreview(this.value)">
+  host.innerHTML = `<label>Chế độ QTV <select aria-label="Chế độ QTV" data-choice-mode="dropdown" onchange="setRolePreview(this.value)">
     <option value="">Quyền thực tế</option>${["gvcn","lead","bgh","admin"].map(r=>`<option value="${r}" ${role===r?"selected":""}>${esc(ROLE_NAMES[r])}</option>`).join("")}</select></label>
-    ${role ? `<label>Lớp / khối mô phỏng <select data-choice-mode="dropdown" onchange="setRolePreview('${role}',this.value)">${CLASSES.map(id=>`<option value="${id}" ${id===classId?"selected":""}>${id} · Khối ${gradeText(id)}</option>`).join("")}</select></label>
-    <span role="status">${role==='gvcn'?'QTV đang chỉnh sửa lớp '+esc(classId)+' · Lưu dữ liệu thật.':'Đang xem thử '+esc(ROLE_NAMES[role])+' · Chỉ xem, không lưu thay đổi.'}</span>${btn("Thoát xem thử", "setRolePreview('')", "small")}` : ""}`;
+    ${role ? `<label>Lớp / khối <select aria-label="Lớp / khối của chế độ QTV" data-choice-mode="dropdown" onchange="setRolePreview('${role}',this.value)">${CLASSES.map(id=>`<option value="${id}" ${id===classId?"selected":""}>${id} · Khối ${gradeText(id)}</option>`).join("")}</select></label>
+    <span class="toolbar-mode-status" role="status" title="${role==='gvcn'?'QTV đang chỉnh sửa lớp '+esc(classId)+' · Lưu dữ liệu thật.':'Đang xem thử · Không lưu thay đổi.'}">${role==='gvcn'?'Lưu thật':'Chỉ xem'}</span><button type="button" class="btn small toolbar-exit" title="Thoát xem thử" aria-label="Thoát xem thử" onclick="setRolePreview('')">↩</button>` : ""}`;
 }
 
 function renderSelectors() {
