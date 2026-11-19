@@ -40,13 +40,22 @@ function meetingEditorValues(record) {
 
 function meetingTimeControls(record) {
   const v=meetingEditorValues(record),legacy=ui.editing.id&&!v.actualDateTime&&record.actual;
-  return `<div class="meeting-time"><div class="meeting-date-clock">
+  return `<div class="meeting-session-choices" role="group" aria-label="Chọn giờ gặp thực tế">${[['09:55','Sáng · 09:55'],['15:00','Chiều · 15:00'],['other','Giờ khác']].map(([key,label])=>`<button type="button" class="schedule-choice" data-actual-session="${key}" aria-pressed="${key==='other'?!['09:55','15:00'].includes(v.actualTime):v.actualTime===key}" onclick="chooseActualSession('${key}')">${label}</button>`).join('')}</div><div class="meeting-time"><div class="meeting-date-clock">
     <label>Ngày gặp<input type="date" name="actualDate" value="${esc(v.actualDate)}" onchange="updatePreviousMeetingPanel()" ${legacy?'':'required'}></label>
     <label>Giờ (24 giờ)<input type="text" name="actualTime" value="${esc(v.actualTime)}" onchange="updatePreviousMeetingPanel()" placeholder="HH:mm" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" maxlength="5" title="Nhập giờ 24 giờ, ví dụ 09:55 hoặc 15:00" ${legacy?'':'required'}></label></div>
     <label>Địa điểm<input type="text" name="actualLocation" value="${esc(v.actualLocation)}" required maxlength="200"></label></div>
     ${legacy?`<p class="help">Thời gian đã lưu: ${esc(displayDateText(record.actual))}. Để trống ngày giờ để giữ nguyên.</p>`:''}
     <input type="hidden" name="actualDateTime" value="${esc(v.actualDateTime)}">
     <input type="hidden" name="actual" value="${esc(record.actual||'')}">`;
+}
+
+function chooseActualSession(value){
+  if(ui.editing?.type!=='m02'||!editorContextCurrent()||!editable())return;
+  const input=$('entryForm').querySelector('[name="actualTime"]');
+  if(value==='other'){if(['09:55','15:00'].includes(input.value))input.value='';input.focus();}
+  else if(['09:55','15:00'].includes(value))input.value=value;else return;
+  for(const button of $('entryForm').querySelectorAll('[data-actual-session]'))button.setAttribute('aria-pressed',String(button.dataset.actualSession===value));
+  updatePreviousMeetingPanel();saveEditorDraft();
 }
 
 function meetingGoalControls(record) {
