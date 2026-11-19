@@ -4,10 +4,15 @@
 .m01-table td { padding:6px 10px;vertical-align:top; }
 .m01-table th:first-child { width:42px; }
 .m01-table th:nth-child(2) { width:20%; }
-.m01-table th:nth-child(3) { width:30%; }
-.m01-table th:last-child { width:300px; }
+.m01-table th:nth-child(3) { width:40%; }
+.m01-table th:last-child { width:70px; }
 .m01-entry { min-height:34px;padding:4px 0;line-height:1.4; }
 .m01-entry-label { display:none; }
+.m01-appointment-line{display:flex;align-items:center;gap:6px;}
+.m01-visit-label{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;white-space:nowrap;}
+.m01-table .m01-visit-label .schedule-icon{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;min-height:28px;padding:4px;border-radius:7px;margin:0;}
+.m01-visit-label .schedule-icon svg{width:15px;height:15px;}
+@media(pointer:coarse),(max-width:900px){.m01-table .m01-visit-label .schedule-icon{width:44px;height:44px;min-height:44px;}}
 .m01-actions { display:flex;flex-wrap:nowrap;align-items:center;gap:6px;max-width:100%;overflow-x:auto;padding:2px; }
 .m01-edit-list,.m01-edit-row { display:contents; }
 .m01-edit-list:empty { display:none; }
