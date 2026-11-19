@@ -1,6 +1,10 @@
 "use strict";
 
 // M02: actual student meetings.
+/**
+ * Thêm hàng tóm tắt tên/giờ có thể mở rộng trên điện thoại; giữ nguyên dữ liệu và thao tác của
+ * dòng đầy đủ.
+ */
 function installMeetingSummaries(table){
   if(!table.classList.contains('meeting-records-table'))return;
   for(const row of table.querySelectorAll('tbody > tr')){
@@ -16,7 +20,10 @@ function installMeetingSummaries(table){
     button.addEventListener('click',()=>{const open=row.classList.toggle('meeting-expanded');button.setAttribute('aria-expanded',String(open));});
   }
 }
-
+/**
+ * Biến bảng thành danh sách thu gọn trên điện thoại; không xóa ô nên vẫn xem, sửa và tìm toàn bộ
+ * nội dung.
+ */
 function installCompactList(table){
   if(table.classList.contains('meeting-records-table'))return;
   const headers=[...table.querySelectorAll('thead th')].map(th=>th.textContent.trim());
@@ -38,7 +45,10 @@ function installCompactList(table){
     button.addEventListener('click',()=>{const open=row.classList.toggle('meeting-expanded');button.setAttribute('aria-expanded',String(open));});
   }
 }
-
+/**
+ * Điền sẵn ngày, giờ và mục tiêu từ lịch dự kiến; appointmentId liên kết M02 với đúng một lần hẹn
+ * M01.
+ */
 function openScheduledMeeting(studentId,appointmentId) {
   if (!editable()) return;
   const appointment=studentAppointments(cls(),ui.month,studentId).find(a=>a.id===appointmentId);
@@ -49,7 +59,10 @@ function openScheduledMeeting(studentId,appointmentId) {
   openModal('m02','',{studentId,appointmentId,goal:appointment.goal||'',actual:'',
     actualDateTime:slot.date&&(MEETING_SESSIONS[slot.session]||slot.session==='other')?`${slot.date}T${time}`:'',actualLocation:`Phòng ${cls().id}`});
 }
-
+/**
+ * Chỉ hiển thị lịch chưa liên kết cuộc gặp thực tế; xếp lịch dự kiến không làm tăng chỉ tiêu đã
+ * gặp.
+ */
 function renderPendingMeetings(c,m) {
   const pending=monthlyAppointments(c).filter(a=>!m.meetings.some(r=>r.appointmentId===a.id));
   if (!pending.length) return '';
@@ -58,7 +71,9 @@ function renderPendingMeetings(c,m) {
     ${pending.map(a=>`<tr><td>${esc(displayDateText(a.planTime))}</td><td><b>${esc(studentName(c,a.studentId))}</b></td><td>${esc(a.goal||'—')}</td><td>${esc(a.note||'—')}</td><td>${editable()?btn('Ghi nhận đã gặp',`openScheduledMeeting('${a.studentId}','${a.id}')`,'small primary'):'Dự kiến'}</td></tr>`).join('')}
     </tbody></table></div></section>`;
 }
-
+/**
+ * Dựng danh sách lịch chờ và các cuộc gặp đã lưu, cùng các thao tác theo quyền hiện tại.
+ */
 function renderM02() {
   let c = cls(),
     m = mdata(),

@@ -5,16 +5,27 @@ const MEETING_SESSIONS = {
   afternoon:{label:"Chiều",time:"15:00–15:20"},
 };
 const MEETING_TOPICS = ["Mục tiêu","Vở ghi","Học sinh chia sẻ"];
+/**
+ * Trả về cặp [giờ bắt đầu, giờ kết thúc] 24 giờ; giờ tùy chọn được lưu riêng, không thêm vào hai
+ * ca tự động.
+ */
 function appointmentRange(a){return a.session==='other'?[a.startTime||'11:00',a.endTime||'11:20']:a.session==='afternoon'?['15:00','15:20']:['09:55','10:15'];}
+/**
+ * Giờ tùy chọn phải né cả ngày nghỉ và phần sáng/chiều bị cấm; mốc phân buổi là 12:00.
+ */
 function customHoliday(date,start,end){return isExcludedMeetingDate(date)||((schoolCalendar().excludedSessions||[]).some(s=>s.date===date&&(s.session==='morning'?start<'12:00':end>'12:00')));}
-
+/**
+ * Sinh ngày ISO thật của tháng, tự tính số ngày và năm nhuận.
+ */
 function scheduleMonthDates(month=ui.month) {
   const match=/^T(\d{2})\/(\d{4})$/.exec(month);
   if (!match) return [];
   const m=+match[1], year=+match[2], days=new Date(year,m,0).getDate();
   return Array.from({length:days},(_,i)=>`${year}-${match[1]}-${String(i+1).padStart(2,"0")}`);
 }
-
+/**
+ * Ưu tiên trường date/session; với lịch cũ chỉ đọc lại ngày và buổi khi nhận diện được rõ ràng.
+ */
 function scheduleSlot(record={}) {
   if (record.date && record.session) return {date:record.date,session:record.session};
   // Recognize dated legacy schedules where a fixed session is unambiguous.
@@ -23,18 +34,25 @@ function scheduleSlot(record={}) {
   const session=/\b0?9:55\b/.test(text)?"morning":/\b15:00\b/.test(text)?"afternoon":"";
   return {date,session};
 }
-
+/**
+ * Đọc danh sách lịch nhiều lần; bọc lịch cũ dạng đơn thành một phần tử để không mất dữ liệu cũ.
+ */
 function studentAppointments(c,month,studentId) {
   const record=mdata(c,month,false).schedule[studentId]||{};
   if (Array.isArray(record.appointments)) return record.appointments;
   return record.planTime ? [{...record,id:`legacy-${studentId}`}] : [];
 }
-
+/**
+ * Gom lịch của tất cả học sinh trong lớp và sắp theo ngày, giờ bắt đầu; không tạo lượt gặp thực
+ * tế.
+ */
 function monthlyAppointments(c=cls(),month=ui.month) {
   return c.students.flatMap(s=>studentAppointments(c,month,s.id).map(a=>({...a,studentId:s.id})))
     .sort((a,b)=>`${scheduleSlot(a).date}:${appointmentRange({...a,...scheduleSlot(a)})[0]}`.localeCompare(`${scheduleSlot(b).date}:${appointmentRange({...b,...scheduleSlot(b)})[0]}`));
 }
-
+/**
+ * Chỉ cho T2–T6; lớp 12 được sáng T7, kể cả giờ tùy chọn kết thúc không quá 12:00.
+ */
 function scheduleSessionAllowed(c,date,session) {
   const day=new Date(date+'T12:00:00').getDay();
   return day>=1&&day<=5 || Number(c.grade)===12&&day===6&&(session==='morning'||session==='other'&&(ui.editing?.schedule?.endTime||'11:20')<='12:00');
@@ -43,7 +61,10 @@ function changeCustomScheduleTime(key,value){
   if(!['startTime','endTime'].includes(key)||!editorContextCurrent()||!editable())return;
   ui.editing.schedule[key]=value;ui.editing.schedule.note=$('scheduleNote').value;renderScheduleEditor();saveEditorDraft();
 }
-
+/**
+ * Hai khoảng thời gian trùng khi start < otherEnd và end > otherStart; chạm đầu/cuối không tính
+ * trùng. Bỏ qua chính lịch đang sửa.
+ */
 function scheduleOccupant(date,session,studentId=ui.editing?.id,c=cls(),month=ui.month,appointmentId=ui.editing?.seed?.appointmentId) {
   const [start,end]=appointmentRange({...(session==='other'?ui.editing?.schedule:{}),session});
   return monthlyAppointments(c,month).find(a=>{
@@ -52,7 +73,10 @@ function scheduleOccupant(date,session,studentId=ui.editing?.id,c=cls(),month=ui
     return !(a.studentId===studentId&&a.id===appointmentId) && slot.date===date&&start<otherEnd&&end>otherStart;
   })?.studentId;
 }
-
+/**
+ * Một ô chỉ khả dụng nếu không nghỉ, đúng ngày học, không trùng giờ và học sinh chưa có lịch khác
+ * cùng ngày.
+ */
 function scheduleAvailable(date,session,studentId=ui.editing?.id,c=cls(),month=ui.month,appointmentId=ui.editing?.seed?.appointmentId) {
   if(session==='other'&&customHoliday(date,...appointmentRange({...ui.editing?.schedule,session})))return false;
   return !isExcludedMeetingDate(date,session) && scheduleSessionAllowed(c,date,session) && !scheduleOccupant(date,session,studentId,c,month,appointmentId) &&
@@ -71,7 +95,10 @@ async function rescheduleAppointment(studentId,appointmentId){
   openStudentAppointment(studentId,appointmentId);
   if(ui.editing?.seed?.appointmentId===appointmentId){ui.editing.seed.reschedule=true;$('modalTitle').textContent='Dời lịch · '+studentName(cls(),studentId);}
 }
-
+/**
+ * Giữ mảng appointments làm dữ liệu chi tiết, đồng thời cập nhật chuỗi tổng hợp cho màn hình/xuất
+ * cũ.
+ */
 function appointmentRollup(old,appointments) {
   const {date,session,topics,id,...base}=old;
   return {...base,appointments,planTime:appointments.map(a=>a.planTime).filter(Boolean).join('\n'),
@@ -142,7 +169,10 @@ function renderScheduleEditor() {
     <input type="hidden" name="date" value="${esc(date)}"><input type="hidden" name="session" value="${esc(session)}">
     ${topics.map(t=>`<input type="hidden" name="topics" value="${esc(t)}">`).join('')}</div>`;
 }
-
+/**
+ * Kiểm tra ngày, giờ, lịch nghỉ và xung đột trước khi tạo hoặc thay đúng một lần hẹn; giữ ID khi
+ * sửa.
+ */
 function buildScheduleRecord(c,month,id,record) {
   if (!scheduleMonthDates(month).includes(record.date)) throw Error("Hãy chọn ngày hợp lệ trong tháng đang mở.");
   if (!MEETING_SESSIONS[record.session]&&record.session!=='other') throw Error("Hãy chọn buổi sáng, buổi chiều hoặc giờ khác.");
@@ -170,7 +200,10 @@ async function removeEditedAppointment() {
   if(editor?.type!=='m01'||!editorContextCurrent())return;
   return removeAppointment(editor.id,editor.seed.appointmentId,editor);
 }
-
+/**
+ * Xóa đúng ID lịch sau xác nhận. Nếu Admin xóa lịch đã liên kết, chỉ bỏ liên kết, vẫn giữ cuộc gặp
+ * thực tế.
+ */
 async function removeAppointment(studentId,appointmentId,editor=null) {
   if (cloud.busy||!editable()||!appointmentId) return;
   const c=cls(),m=mdata(),old=m.schedule[studentId],month=ui.month,owner=auth.email,epoch=cloud.epoch;
@@ -190,7 +223,10 @@ async function removeAppointment(studentId,appointmentId,editor=null) {
   if(editor){clearEditorDraft();$('editor').close();ui.editing=null;}
   render();toast('Đã xóa đúng lịch hẹn được chọn.');
 }
-
+/**
+ * Xếp trên bản sao: duyệt ngày rồi sáng/chiều và quay vòng danh sách học sinh. Giữ lịch có sẵn,
+ * không áp trần số lần/tháng.
+ */
 function buildAutomaticSchedule(c=cls(),month=ui.month) {
   const copy=JSON.parse(JSON.stringify(c)), m=mdata(copy,month), students=copy.students;
   let next=0,added=0;
@@ -210,7 +246,10 @@ function buildAutomaticSchedule(c=cls(),month=ui.month) {
   }
   return {classData:copy,added};
 }
-
+/**
+ * Đọc lịch nghỉ mới nhất trước khi xếp, hỏi xác nhận rồi mới thay dữ liệu tháng; lưu lỗi thì trả
+ * lại bản cũ.
+ */
 async function autoScheduleMonth() {
   if (!editable()) return;
   const context={owner:auth.email,epoch:cloud.epoch,classId:ui.classId,month:ui.month};

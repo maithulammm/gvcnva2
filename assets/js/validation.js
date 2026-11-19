@@ -5,7 +5,9 @@
 function rows(m, key) {
   return m[key] || [];
 }
-
+/**
+ * Dùng Set để mỗi học sinh chỉ tính một lần trong số HS đã gặp, dù có nhiều cuộc gặp.
+ */
 function currentMeetingSidSet(m) {
   return new Set(
     rows(m, "meetings")
@@ -26,7 +28,10 @@ function plannedStudentIds(c, m) {
     })
     .map((s) => s.id);
 }
-
+/**
+ * Tính chỉ tiêu từ bản ghi đã lưu; nếu API chỉ cấp tổng hợp thì dùng số liệu máy chủ, không suy từ
+ * lớp đã che chi tiết.
+ */
 function summarize(c, month) {
   if (cloud.ready && cloud.summaries[c.id]?.[month])
     return cloud.summaries[c.id][month];
@@ -81,7 +86,10 @@ function summarize(c, month) {
     state: m.approval?.state || "draft",
   };
 }
-
+/**
+ * Kiểm tra lỗi bắt buộc và cảnh báo phục vụ gửi báo cáo; đọc dữ liệu, không tự bổ sung nội dung
+ * cho giáo viên.
+ */
 function validations(c, month) {
   if (cloud.ready && cloud.checks[c.id]?.[month])
     return cloud.checks[c.id][month];

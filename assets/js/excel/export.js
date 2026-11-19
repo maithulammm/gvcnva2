@@ -41,6 +41,10 @@ function retireWorkbookCodeFields(files) {
 }
 
 // Expand only the generated workbook; preserve the embedded original template.
+/**
+ * Mở rộng các hàng mẫu theo sĩ số thực, giữ cấu trúc biểu mẫu Excel thay vì cắt ở số hàng mẫu ban
+ * đầu.
+ */
 function expandRosterTemplate(files, count) {
   const baseSize = 28;
   if (count <= baseSize) return baseSize;
@@ -93,7 +97,10 @@ function expandRosterTemplate(files, count) {
   }
   return count;
 }
-
+/**
+ * Điền dữ liệu vào bản sao tệp mẫu Excel của lớp; tệp mẫu gốc nhúng trong source không bị thay
+ * đổi.
+ */
 async function exportClass() {
   try {
     let c = cls();
@@ -286,7 +293,10 @@ async function exportClass() {
     appAlert("Không xuất được Excel: " + e.message);
   }
 }
-
+/**
+ * Xuất số liệu tổng hợp trong phạm vi hiện tại, không đưa nội dung gặp cá nhân vào báo cáo tổng
+ * quan.
+ */
 function exportSchool() {
   let scope = scopedClasses();
   let head = [

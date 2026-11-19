@@ -4,7 +4,10 @@ import {deploymentStatus} from './health.mjs';
 import {DATABASE_URL,requireValue} from './model.mjs';
 
 const MAX_BODY_BYTES=5*1024*1024;
-
+/**
+ * Handler API dùng chung cho các nền tảng: kiểm tra origin, token, kích thước JSON rồi mới gọi
+ * service nghiệp vụ; CORS không thay thế xác thực.
+ */
 export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=process.env}) {
   let service;
   let verifyIdentity;

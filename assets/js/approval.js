@@ -1,7 +1,10 @@
 "use strict";
 
 // Report submission, review, approval and return.
-
+/**
+ * Chuyển trạng thái báo cáo: Firebase gọi API, chế độ cục bộ kiểm tra dữ liệu trước khi gửi. Không
+ * duyệt bằng vai trò mô phỏng.
+ */
 async function transition(classId, target) {
   if (isRolePreview()) return;
   if (cloud.ready) {
@@ -63,7 +66,10 @@ async function transition(classId, target) {
   toast("Đã cập nhật trạng thái bản demo.");
   render();
 }
-
+/**
+ * Đồng bộ thay đổi đang chờ trước khi chuyển trạng thái, gửi revision để báo cáo không bị duyệt
+ * trên dữ liệu cũ.
+ */
 async function cloudTransition(id, target) {
   if (isRolePreview()) return;
   if (cloud.busy) return;

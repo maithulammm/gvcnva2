@@ -3,7 +3,10 @@
 // Native modal stays above open editors and blocks repeated clicks.
 const pageLoading = {pending:new Map(),nextId:0};
 let databaseQueue=Promise.resolve();
-
+/**
+ * Trả hàm release chỉ có hiệu lực một lần. Đếm các tác vụ để tác vụ xong sớm không tắt màn chờ của
+ * tác vụ khác.
+ */
 function beginPageLoading(message='Đang tải dữ liệu…') {
   const id=++pageLoading.nextId;
   pageLoading.pending.set(id,message);
@@ -25,7 +28,10 @@ function renderPageLoading() {
     overlay.close();document.body.classList.remove('request-loading');
   }
 }
-
+/**
+ * Khoảng nghỉ giao diện theo cấu hình sau request; await fetch mới là thứ bảo đảm request đã trả
+ * về, không phải setTimeout.
+ */
 function waitAfterRequest() {
   return new Promise(resolve=>setTimeout(resolve,REQUEST_SETTLE_MS));
 }

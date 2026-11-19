@@ -86,11 +86,18 @@ function workStudentFlags(c,month,studentId,today=workToday(),drafts=[]) {
     today&&pending.some(a=>scheduleSlot(a).date&&scheduleSlot(a).date<today)&&'overdue',
     drafts.some(d=>d.context.studentId===studentId)&&'drafts'].filter(Boolean);
 }
-
+/**
+ * Chuyển đúng tháng của lịch trước khi mở ghi nhận, tránh ghi cuộc gặp hôm nay vào tháng đang xem
+ * khác.
+ */
 function openTodayMeeting(month,studentId,appointmentId){
   if(!MONTHS.includes(month))return;
   ui.month=month;render();openScheduledMeeting(studentId,appointmentId);
 }
+/**
+ * Dựng lịch hôm nay và thu các lịch cũ chưa ghi nhận vào details; dùng liên kết appointmentId để
+ * xác định đã thực hiện.
+ */
 function renderTodayWork(c,canEdit,month) {
   const today=month?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()):workToday();
   month ||= ui.month;

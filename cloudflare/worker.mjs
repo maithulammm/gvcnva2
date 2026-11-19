@@ -2,7 +2,10 @@ import {createApiHandler,MAX_BODY_BYTES} from '../firebase/functions/api.mjs';
 import {serviceAccountConfigured} from '../firebase/functions/health.mjs';
 import {createFirebaseRestDatabase} from './firebase-rest.mjs';
 import {createService} from '../firebase/functions/service.mjs';
-
+/**
+ * Tách tài nguyên giao diện và /api; chuyển Request của Workers sang handler dùng chung, còn
+ * scheduled chạy sao lưu định kỳ.
+ */
 export function createWorker({createDatabase=createFirebaseRestDatabase}={}) {
   const handlers=new WeakMap();
   return {async scheduled(event,env,ctx) {ctx.waitUntil(createService(createDatabase(env)).backupDaily());},async fetch(request,env) {

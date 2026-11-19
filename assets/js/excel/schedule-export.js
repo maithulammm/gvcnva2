@@ -37,7 +37,10 @@ function scheduleExportStyles() {
   const xf=(font,border,horizontal)=>`<xf numFmtId="0" fontId="${font}" fillId="0" borderId="${border}" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1">${align(horizontal)}</xf>`;
   return `<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="${S_NS}"><fonts count="3">${[0,1,2].map(i=>`<font>${i?'<b/>':''}<sz val="${i===2?14:12}"/><color rgb="FF000000"/><name val="Times New Roman"/></font>`).join('')}</fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border>${['left','right','top','bottom'].map(side=>`<${side} style="thin"><color rgb="FF000000"/></${side}>`).join('')}<diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="7">${xf(0,1,'left')}${xf(1,1,'center')}${xf(0,1,'center')}${xf(2,0,'center')}${xf(0,0,'center')}${xf(0,1,'left')}${xf(1,1,'center')}</cellXfs></styleSheet>`;
 }
-
+/**
+ * Tạo workbook lịch dự kiến: sheet trình bày theo học sinh và sheet chi tiết để giữ đủ các lần
+ * hẹn/mục tiêu/ghi chú.
+ */
 function buildScheduleWorkbook(c=cls(),month=ui.month) {
   const entries=scheduleExportEntries(c,month);
   if(!entries.length)throw Error('Chưa có lịch gặp dự kiến trong tháng này.');
@@ -48,7 +51,10 @@ function buildScheduleWorkbook(c=cls(),month=ui.month) {
     worksheetXml:(name,rows,index)=>index===0?scheduleExportSheet(c,month,entries):null,
   });
 }
-
+/**
+ * Tải file lịch của lớp/tháng đang chọn; xuất file không đánh dấu đã gặp và không sửa dữ liệu báo
+ * cáo.
+ */
 function exportSchedule() {
   try {
     const c=cls();

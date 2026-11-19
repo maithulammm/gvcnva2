@@ -7,11 +7,16 @@ const SCOPES='https://www.googleapis.com/auth/firebase.database https://www.goog
 
 // The existing service keeps its authorization, revision checks and storage path.
 // ETag conditional writes provide the transaction semantics used by that service.
+/**
+ * Adapter RTDB REST phía máy chủ. Service account chỉ nằm trong Secret; giao dịch dùng
+ * ETag/If-Match để tránh ghi đè đồng thời.
+ */
 export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.now(),maxAttempts=8}={}) {
   requireValue(serviceAccountConfigured(env),'Máy chủ chưa cấu hình FIREBASE_SERVICE_ACCOUNT cho Firebase.',503);
   const account=JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
   let cached,refreshing,key;
   const snapshot=value=>({val:()=>structuredClone(value)});
+  // Dùng chung Promise khi nhiều request cùng cần token; không gửi private_key ra trình duyệt.
   async function accessToken() {
     if(cached&&cached.until>clock()+60000)return cached.token;
     if(refreshing)return refreshing;
@@ -57,6 +62,7 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
           const value=await current.json(),next=update(structuredClone(value));
           if(next===undefined)return {committed:false,snapshot:snapshot(value)};
           const written=await request('PUT',{'If-Match':etag,'Content-Type':'application/json'},next);
+          // 412 nghĩa ETag đã đổi: đọc lại rồi chạy lại update, tuyệt đối không PUT mù.
           if(written.status===412) {await written.arrayBuffer();continue;}
           return {committed:true,snapshot:snapshot(await written.json())};
         }

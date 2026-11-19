@@ -1,5 +1,9 @@
 import {createRemoteJWKSet,jwtVerify} from 'jose';
 import {requireValue} from './model.mjs';
+/**
+ * Xác minh chữ ký RS256 bằng khóa công khai Microsoft, issuer/audience/hạn token rồi kiểm tra
+ * tenant/miền trường. Không tin payload chỉ giải mã.
+ */
 export function createIdentityVerifier({tenantId,clientId,keySet}) {
   const tenant=String(tenantId||'').toLowerCase().trim(),audience=String(clientId||'').trim();
   const guid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;

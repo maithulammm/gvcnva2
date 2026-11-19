@@ -1,12 +1,19 @@
 "use strict";
 
 const accountPhoto={owner:'',url:'',controller:null};
+/**
+ * Hủy request ảnh và thu hồi Blob URL để không hiện ảnh tài khoản cũ sau khi đổi phiên.
+ */
 function clearAccountPhoto(){
   accountPhoto.controller?.abort();
   if(accountPhoto.url)URL.revokeObjectURL(accountPhoto.url);
   accountPhoto.owner='';accountPhoto.url='';accountPhoto.controller=null;
   const img=$('accountPhoto');if(img){img.hidden=true;img.removeAttribute?.('src');}
 }
+/**
+ * Dùng Graph User.Read âm thầm lấy ảnh của tài khoản thật; kiểm tra owner sau mỗi await, thất bại
+ * thì giữ chữ viết tắt.
+ */
 async function updateAccountPhoto(){
   const fallback=$('accountInitials'),img=$('accountPhoto');if(!fallback||!img)return;
   fallback.textContent=accountDisplayName().split(/\s+/).slice(-2).map(s=>s[0]).join('').toUpperCase();
@@ -29,7 +36,9 @@ async function updateAccountPhoto(){
     img.src=accountPhoto.url;
   }catch{/* Keep initials when the account photo is unavailable. */}
 }
-
+/**
+ * Lấy tên chủ tài khoản thật, không lấy tên lớp/giáo viên đang mô phỏng.
+ */
 function accountDisplayName() {
   const ownTeacher=Object.values(appData?.teachers||{}).find(t=>String(t.email||'').toLowerCase()===auth.email);
   const ownUser=(appData?.users||[]).find(u=>u.email===auth.email);
@@ -40,6 +49,9 @@ function closeAccountMenu(restoreFocus=false) {
   $('accountMenu').hidden=true;$('accountMenuButton').setAttribute('aria-expanded','false');
   if(restoreFocus)$('accountMenuButton').focus();
 }
+/**
+ * Di chuyển cùng một cụm tài khoản giữa sidebar và menu điện thoại, tránh nhân đôi ID DOM.
+ */
 function placeAccountControl(inMobileMenu=false) {
   closeAccountMenu();
   const host=$(inMobileMenu?'mobileAccountFooter':'sidebarAccountFooter');

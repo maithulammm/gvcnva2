@@ -11,7 +11,10 @@ function markChanged() {
     );
   render();
 }
-
+/**
+ * Đóng hướng dẫn/menu cũ, đổi trang rồi mở hướng dẫn của mẫu nếu chưa chọn bỏ qua; không lưu thay
+ * đổi nghiệp vụ.
+ */
 function navTo(page) {
   closeFormHelp();
   closeMobileNavigation();
@@ -24,7 +27,10 @@ function navTo(page) {
   $('pageTitle').focus({preventScroll:true});
   openFormHelp(ui.page,true);
 }
-
+/**
+ * Chỉ Admin thật được đổi chế độ; đóng popup cũ, xóa trạng thái phục hồi và chuyển phạm vi mô
+ * phỏng.
+ */
 function setRolePreview(role, classId = ui.preview?.classId || ui.classId) {
   ui.recovery=null;
   if (!assignmentRoles(auth.assignment).includes("admin")) return;
@@ -52,7 +58,9 @@ function renderRolePreview() {
     ${role ? `<label>Lớp / khối <select aria-label="Lớp / khối của chế độ QTV" data-choice-mode="dropdown" onchange="setRolePreview('${role}',this.value)">${CLASSES.map(id=>`<option value="${id}" ${id===classId?"selected":""}>${id} · Khối ${gradeText(id)}</option>`).join("")}</select></label>
     <span class="toolbar-mode-status" role="status" title="${role==='gvcn'?'QTV đang chỉnh sửa lớp '+esc(classId)+' · Lưu dữ liệu thật.':'Đang xem thử · Không lưu thay đổi.'}">${role==='gvcn'?'Lưu thật':'Chỉ xem'}</span><button type="button" class="btn small toolbar-exit" title="Thoát xem thử" aria-label="Thoát xem thử" onclick="setRolePreview('')">↩</button>` : ""}`;
 }
-
+/**
+ * Dựng bộ chọn theo phạm vi quyền và cập nhật tên/ảnh của tài khoản thật.
+ */
 function renderSelectors() {
   const assignment = viewAssignment();
   if (!assignment || !auth.account) return;
@@ -114,7 +122,10 @@ function renderSelectors() {
   ).join("");
   $("monthSel").value = ui.month;
 }
-
+/**
+ * Điểm dựng giao diện trung tâm; chặn trang ngoài quyền trước khi hiển thị và gắn lại các tiện ích
+ * responsive.
+ */
 function render() {
   if (!auth.account || !appData) return;
   closeAccountMenu();

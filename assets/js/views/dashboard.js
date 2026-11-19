@@ -1,7 +1,10 @@
 "use strict";
 
 // Dashboard for assigned class, grade and school.
-
+/**
+ * GVCN xem lịch hôm nay và tiến độ lớp; các vai trò quản lý xem tổng hợp trong phạm vi phân công,
+ * không tự mở nội dung cá nhân.
+ */
 function renderDashboard() {
   let scope = scopedClasses();
   let results = scope.map((x) => summarize(cls(x), ui.month));

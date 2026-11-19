@@ -1,7 +1,10 @@
 "use strict";
 
 // Import Excel student rosters.
-
+/**
+ * Đọc Excel tại trình duyệt, giữ ngữ cảnh lớp trong lúc đọc file và từ chối danh sách làm mất học
+ * sinh đã có liên kết.
+ */
 async function importRoster(e) {
   let input = e.target,
     blob = input.files?.[0];
@@ -126,7 +129,10 @@ async function importRoster(e) {
     appAlert("Không thể nhập danh sách: " + err.message);
   }
 }
-
+/**
+ * Ghép học sinh bằng mã trước, tên sau; giữ ID cũ để bảo toàn liên kết và báo lỗi nếu tên/mã không
+ * đủ phân biệt.
+ */
 function reconcileRoster(existing, records) {
   const used = new Set(), codes = new Set();
   const names = new Map();

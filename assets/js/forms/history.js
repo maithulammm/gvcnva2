@@ -1,5 +1,8 @@
 "use strict";
-
+/**
+ * Tìm lần gặp trước thời điểm đang ghi, loại chính bản ghi đang sửa và các cuộc gặp tương lai; xét
+ * cả các tháng trước.
+ */
 function previousMeetingFor(c,studentId,month,editingId='',before='') {
   const limit=MONTHS.indexOf(month),candidates=[];
   for(const [key,value] of Object.entries(c.months)) {
@@ -22,7 +25,9 @@ function previousMeetingFor(c,studentId,month,editingId='',before='') {
   candidates.sort((a,b)=>b.sort.localeCompare(a.sort)||b.index-a.index);
   return candidates[0]||null;
 }
-
+/**
+ * Chỉ hiển thị tham khảo mục tiêu/việc cần kiểm tra; không tự chép nhận xét vào cuộc gặp mới.
+ */
 function previousMeetingPanel(c,studentId,month,editingId='',before='') {
   if(!studentId)return '<p class="help">Chọn học sinh để xem lần gặp trước.</p>';
   const previous=previousMeetingFor(c,studentId,month,editingId,before);
@@ -35,7 +40,10 @@ function previousMeetingPanel(c,studentId,month,editingId='',before='') {
     <details><summary>Xem nhận xét lần trước</summary><p>${esc(r.participation||'Chưa ghi')}</p>${r.profileProgress?`<p>${esc(r.profileProgress)}</p>`:''}</details>
     <small>Chỉ tham khảo; không tự chép nhận xét hoặc kết quả tiến bộ vào lần gặp mới.</small></section>`;
 }
-
+/**
+ * Đổi học sinh/ngày/giờ thì tính lại lịch sử; ô nhận xét lần trước chỉ hiện khi có căn cứ hoặc đã
+ * có nội dung.
+ */
 function updatePreviousMeetingPanel() {
   if(ui.editing?.type!=='m02'||!$('entryForm').querySelector)return;
   const form=$('entryForm'),student=form.querySelector('[name="studentId"]')?.value||'';

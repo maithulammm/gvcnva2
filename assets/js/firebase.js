@@ -5,7 +5,9 @@
 function readCloudConfig() {
   return { enabled: FIREBASE_ENABLED };
 }
-
+/**
+ * Tách bộ nhớ đệm theo định danh Microsoft để dữ liệu chờ đồng bộ không lẫn giữa các tài khoản.
+ */
 function cloudCacheKey() {
   return (
     "VA_GVCN_FIREBASE_CACHE_V1_" +
@@ -14,7 +16,10 @@ function cloudCacheKey() {
       auth.email)
   );
 }
-
+/**
+ * Giữ bản lớp đang sửa cùng revision gốc trên thiết bị; dùng để phục hồi khi mất mạng hoặc đóng
+ * trình duyệt.
+ */
 function storePendingDrafts() {
   const drafts = {
     ...cloud.unassignedDrafts,
@@ -37,7 +42,10 @@ function storePendingDrafts() {
     );
   else localStorage.removeItem(key);
 }
-
+/**
+ * Khôi phục bản chờ nhưng không tự ghi đè khi revision máy chủ đã khác. Bản thuộc phân công cũ
+ * được giữ riêng.
+ */
 function restorePendingDrafts(raw) {
   if (!raw) return;
   let drafts;
@@ -74,7 +82,9 @@ function restorePendingDrafts(raw) {
       "Máy chủ đã có cập nhật khác với bản đang sửa được khôi phục. Xuất JSON để giữ bản này rồi tải dữ liệu mới; hệ thống không tự ghi đè.";
   else if (cloud.pending.size) scheduleCloudSave();
 }
-
+/**
+ * Tăng epoch và hủy lịch polling/debounce; mọi kết quả bất đồng bộ mang epoch cũ phải bị bỏ qua.
+ */
 function resetCloud() {
   cloud.epoch++;
   clearTimeout(cloud.timer);
@@ -91,17 +101,24 @@ function resetCloud() {
   cloud.summaries = {};
   cloud.checks = {};
 }
-
+/**
+ * Đưa request vào một hàng đợi tuần tự. Nhánh catch giữ hàng đợi tiếp tục chạy sau khi một request
+ * lỗi.
+ */
 function databaseRequest(path, method = "GET", body, {silent=false} = {}) {
   const epoch=cloud.epoch,release=silent?()=>{}:beginPageLoading(method==='GET'?'Đang tải dữ liệu…':'Đang lưu dữ liệu…');
   const request=databaseQueue.then(()=>{
     if(epoch!==cloud.epoch)throw Error('Phiên làm việc đã thay đổi.');
     return performDatabaseRequest(path,method,body);
   }).finally(release);
+  // Nuốt lỗi chỉ ở đuôi hàng đợi; Promise request trả cho nơi gọi vẫn báo lỗi đầy đủ.
   databaseQueue=request.catch(()=>{});
   return request;
 }
-
+/**
+ * Gửi Bearer ID token đến API, giới hạn thời gian chờ và kiểm tra phiên trước/sau request; không
+ * truy cập RTDB trực tiếp từ trình duyệt.
+ */
 async function performDatabaseRequest(path, method = "GET", body) {
   const epoch = cloud.epoch;
   if (!auth.client || !auth.account)
@@ -150,7 +167,10 @@ async function performDatabaseRequest(path, method = "GET", body) {
     if(epoch!==cloud.epoch)throw Error('Phiên làm việc đã thay đổi.');
   }
 }
-
+/**
+ * Áp dụng dữ liệu đã được API giới hạn theo quyền; lưu revision và fingerprint làm mốc phát hiện
+ * thay đổi.
+ */
 function useBootstrap(data) {
   if (!data.assignment || data.year !== YEARS || !data.classes)
     throw Error("Dữ liệu máy chủ không đúng định dạng.");
@@ -198,7 +218,10 @@ function useBootstrap(data) {
     );
   }
 }
-
+/**
+ * Tải bootstrap rồi khôi phục bản chờ; chỉ polling khi không mở popup, không có thay đổi chờ và
+ * không có lỗi.
+ */
 async function connectCloud() {
   const draft = localStorage.getItem(cloudCacheKey() + "_PENDING");
   const data = await databaseRequest("/bootstrap");
@@ -218,7 +241,10 @@ async function connectCloud() {
     refreshCloud(true);
   }, 45000);
 }
-
+/**
+ * So fingerprint với mốc máy chủ để tìm lớp thực sự thay đổi; tránh gửi lại các lớp không được
+ * chỉnh sửa.
+ */
 function scanPendingClasses() {
   if (!cloud.ready || (!hasAppRole("admin") && !hasAppRole("gvcn")))
     return;
@@ -227,7 +253,10 @@ function scanPendingClasses() {
       cloud.pending.add(id);
   }
 }
-
+/**
+ * Debounce 700 ms để gom thay đổi liên tiếp; luôn giữ bản chờ trên thiết bị trước khi gửi lên
+ * mạng.
+ */
 function scheduleCloudSave() {
   scanPendingClasses();
   storePendingDrafts();
@@ -243,7 +272,9 @@ function scheduleCloudSave() {
       700,
     );
 }
-
+/**
+ * Chỉ cho một worker đồng bộ chạy. Mỗi lớp gửi kèm revision để API từ chối ghi đè dữ liệu mới hơn.
+ */
 async function flushCloud() {
   clearTimeout(cloud.timer);
   if (cloud.worker) return cloud.worker;
@@ -261,6 +292,7 @@ async function flushCloud() {
           revision: cloud.revisions[id] || 0,
         }, {silent:true});
         if (epoch !== cloud.epoch) return;
+        // Chỉ nâng revision sau xác nhận từ API; request thất bại phải giữ bản chờ.
         cloud.revisions[id] = result.revision;
         cloud.baselines[id] = classFingerprint(result.data);
         if (
@@ -269,6 +301,7 @@ async function flushCloud() {
         )
           // Keep the class reference used by an open, unsaved next-student form.
           Object.assign(appData.classes[id],result.data);
+        // Người dùng có thể nhập thêm trong lúc await; quét lại để không bỏ sót lần sửa mới.
         cloud.pending.delete(id);
         scanPendingClasses();
         storePendingDrafts();
@@ -300,7 +333,10 @@ async function retryCloud() {
     appAlert(error.message);
   }
 }
-
+/**
+ * Polling âm thầm không đè bản đang sửa; tải lại thủ công phải xác nhận nếu còn thay đổi chưa đồng
+ * bộ.
+ */
 async function refreshCloud(quiet = false) {
   if (!cloud.ready || cloud.busy) return;
   try {
@@ -342,7 +378,10 @@ async function refreshCloud(quiet = false) {
     updateStorageNotice();
   }
 }
-
+/**
+ * Hiện tích xanh, vòng xoay hoặc dấu lỗi; mô tả đầy đủ vẫn có qua title/aria-label và các nút phục
+ * hồi.
+ */
 function updateStorageNotice() {
   const message = !cloud.ready
     ? "Dữ liệu đang lưu cục bộ trên trình duyệt. Admin có thể quản lý GVCN và học sinh; bật Firebase sau khi triển khai API để dùng chung dữ liệu."

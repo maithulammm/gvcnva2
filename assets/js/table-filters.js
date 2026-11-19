@@ -1,9 +1,14 @@
 "use strict";
-
+/**
+ * Chuẩn hóa chữ thường và bỏ dấu để tìm tên/nội dung tiếng Việt thuận tiện.
+ */
 function tableFilterText(value){
   return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase().replace(/\s+/g,' ').trim();
 }
-
+/**
+ * Gắn tìm kiếm một lần cho mỗi bảng; lưu trạng thái theo phiên/lớp/tháng/trang và lọc cả nội dung
+ * đang thu gọn.
+ */
 function installTableFilters(table,index){
   if(table.dataset.filterReady)return;
   const headers=[...table.querySelectorAll('thead th')].map(th=>th.textContent.trim());

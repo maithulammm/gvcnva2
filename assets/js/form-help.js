@@ -47,7 +47,13 @@ const FORM_HELP={
   ],example:'Mốc đầu chuẩn bị đủ đồ dùng 2/5 ngày; sau hai tuần ghi nhận 4/5 ngày. Ghi rõ dữ liệu so sánh, kết quả và bước duy trì tiếp theo.'}
 };
 let activeFormHelp=null;
+/**
+ * Nhớ lựa chọn Không hiển thị lại riêng theo tài khoản và từng mẫu trên thiết bị này.
+ */
 function formHelpKey(page){return 'VA_GVCN_HELP_V1_'+encodeURIComponent(auth.email)+'_'+page;}
+/**
+ * Tự mở khi vào mẫu nếu chưa bỏ qua; nút ! luôn có thể mở lại thủ công.
+ */
 function openFormHelp(page=ui.page,automatic=false){
   if(!auth.account||!FORM_HELP[page]||ui.page!==page)return;
   let suppressed=false;try{suppressed=localStorage.getItem(formHelpKey(page))==='1';}catch{}
@@ -59,6 +65,10 @@ function openFormHelp(page=ui.page,automatic=false){
   if(!$('formHelp').open)$('formHelp').showModal();
   $('formHelpBody').scrollTop=0;$('formHelpClose').focus();
 }
+/**
+ * Đóng và ghi lựa chọn nếu cần; khi khóa phiên truyền remember=false để không ghi lựa chọn ngoài ý
+ * muốn.
+ */
 function closeFormHelp(remember=true){
   if(remember&&activeFormHelp?.owner===auth.email)try{
     if($('formHelpNever').checked)localStorage.setItem(formHelpKey(activeFormHelp.page),'1');else localStorage.removeItem(formHelpKey(activeFormHelp.page));

@@ -3,10 +3,16 @@ import {appointmentEntries} from './appointments.mjs';
 import {YEAR,GRADES,CLASSES,MONTHS,ROOT,emailKey,list,normalizeSchool,normalizeClass,encodeClass,blankClass,
   assignmentFor,scopeFor,checkScope,requireValue,validateClass,authorizeClassEdit,emptyMonth,validateReport,summary,
   USER_ROLES,rolesOf,gradesOf,hasRole,primaryRole,normalizeAssignment,gradeOf} from './model.mjs';
-
+/**
+ * Nghiệp vụ máy chủ: phân quyền, revision, transaction, lịch sử và khôi phục. Không lấy quyền từ
+ * vai trò gửi lên bởi trình duyệt.
+ */
 export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=()=>new Date()}={}) {
   const ref=db.ref(ROOT);
   const now=()=>clock().toISOString();
+  /**
+   * Chuẩn hóa nhiều vai trò và phạm vi khối; chỉ vai trò khối trưởng mới được nhận danh sách khối.
+   */
   function roleFields(roles,grades=[]) {
     requireValue(Array.isArray(roles)&&roles.length>0&&roles.length<=USER_ROLES.length,'Chọn ít nhất một vai trò hợp lệ.');
     requireValue(new Set(roles).size===roles.length&&roles.every(role=>USER_ROLES.includes(role)),'Danh sách vai trò không hợp lệ.');
@@ -16,6 +22,10 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     requireValue(roles.includes('lead')?normalizedGrades.length>0:normalizedGrades.length===0,'Vai trò khối trưởng cần một hoặc nhiều khối; vai trò khác không nhận khối.');
     return {roles:[...roles],role:primaryRole({roles}),grades:normalizedGrades,...(normalizedGrades.length===1?{grade:normalizedGrades[0]}:{grade:''})};
   }
+  /**
+   * Mọi thay đổi đi qua transaction: tải lại phân công thật, chạy nghiệp vụ và audit cùng một lần
+   * ghi nguyên tử; lỗi thì hủy.
+   */
   async function mutate(identity,action,operation,{bind=false}={}) {
     let error;
     // Warm the RTDB cache on cold starts: a transaction otherwise first receives null,
@@ -52,10 +62,16 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     assignmentFor(school,identity);
     return school;
   }
+  /**
+   * Giải mã dữ liệu lớp và revision hiện tại từ cấu trúc lưu RTDB.
+   */
   function entry(s,id) {
     const stored=s.classes[id];
     return {data:normalizeClass(id,stored?.data),revision:stored?.revision||0};
   }
+  /**
+   * So bản trước/sau để ghi audit từng bản ghi, giữ snapshot trước thay đổi rồi tăng revision lớp.
+   */
   function put(s,id,c,revision,identity) {
     const old=entry(s,id);
     const records=value=>{
@@ -79,6 +95,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     const snapshot={data:encodeClass(old.data),revision:old.revision,at:stamp,actor:identity.email};
     if(!history['day-'+day])history['day-'+day]={...snapshot,kind:'daily'};
     history['rev-'+revision]={...snapshot,kind:'revision'};
+    // Giới hạn dung lượng: giữ tối đa 30 snapshot ngày và 20 phiên bản gần nhất mỗi lớp.
     for(const kind of ['day-','rev-']){
       const keys=Object.keys(history).filter(k=>k.startsWith(kind)).sort((a,b)=>history[b].at.localeCompare(history[a].at)||history[b].revision-history[a].revision);
       for(const key of keys.slice(kind==='day-'?30:20))delete history[key];
@@ -86,6 +103,10 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     s.classes[id]={data:encodeClass(c),revision:revision+1,updatedAt:now(),updatedBy:identity.email};
   }
   function publicClass(s,id) { return entry(s,id); }
+  /**
+   * Chỉ trả chi tiết cho Admin/GVCN đúng lớp; BGH/khối trưởng nhận chỉ tiêu và lỗi đã bỏ nội dung
+   * nhận diện cá nhân.
+   */
   function publicBootstrap(s,identity) {
     const u=assignmentFor(s,identity),ids=scopeFor(u),classes={},revisions={},summaries={},checks={};
     for(const id of ids) {
@@ -113,6 +134,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       }):[],serverTime:now()};
   }
   return {
+    // Tác vụ lịch định kỳ phía máy chủ; khóa ngày snapshot hiện dùng ngày UTC của now().
     async backupDaily(){
       await ref.get();
       await ref.transaction(raw=>{
@@ -127,12 +149,14 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
         return s;
       },undefined,false);
     },
+    // Không trả snapshot/audit cho GVCN hoặc khối trưởng, kể cả có quyền xem tiến độ lớp.
     async recovery(identity,id){
       const s=normalizeSchool((await ref.get()).val());
       requireValue(hasRole(assignmentFor(s,identity),'admin'),'Chỉ Admin được xem bản sao lưu.',403);
       requireValue(CLASSES.includes(id),'Lớp không hợp lệ.');
       return {classId:id,revision:entry(s,id).revision,snapshots:s.recovery?.[id]||{},audit:Object.values(s.audit).filter(a=>a.action?.endsWith(':'+id)).sort((a,b)=>b.at.localeCompare(a.at)).slice(0,100)};
     },
+    // Khôi phục có kiểm tra revision, sao lưu trạng thái hiện tại và giữ phân công GVCN hiện hành.
     async restore(identity,id,body){
       const s=await mutate(identity,'restore-class:'+id,(school,u)=>{
         requireValue(hasRole(u,'admin'),'Chỉ Admin được khôi phục.',403);
@@ -194,6 +218,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       },{bind:true});
       return publicBootstrap(s,identity);
     },
+    // Quyền và revision được kiểm tra trong transaction, không tin kiểm tra ở giao diện.
     async putClass(identity,id,body,importMode=false) {
       const s=await mutate(identity,`${importMode?'import':'save'}-class:${id}`,(school,u)=>{
         checkScope(u,id);
@@ -381,6 +406,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       });
       return publicBootstrap(s,identity);
     },
+    // GVCN gửi trực tiếp BGH; khối trưởng không có bước duyệt hay quyền can thiệp nội dung.
     async transition(identity,id,body) {
       const s=await mutate(identity,`transition:${id}:${body.target}`,(school,u)=>{
         checkScope(u,id); requireValue(MONTHS.includes(body.month),'Tháng báo cáo không hợp lệ.');

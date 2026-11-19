@@ -2,6 +2,9 @@
 
 const SCHOOL_CALENDAR_MONTHS=[...MONTHS,'T06/2027','T07/2027','T08/2027'];
 function schoolCalendar(){return appData?.calendar||{excludedDates:[],excludedSessions:[],revision:0};}
+/**
+ * Ngày nghỉ cả ngày chặn mọi buổi; buổi nghỉ riêng chỉ chặn ca tương ứng.
+ */
 function isExcludedMeetingDate(date,session) {
   const calendar=schoolCalendar();
   return calendar.excludedDates.includes(date)||!!session&&(calendar.excludedSessions||[]).some(s=>s.date===date&&s.session===session);
@@ -14,6 +17,9 @@ function calendarDayLabel(draft,date) {
   const slots=calendarSessionsFor(draft.dates,draft.sessions,date);
   return slots.size===2?'Nghỉ cả ngày':slots.has('morning')?'Nghỉ sáng':slots.has('afternoon')?'Nghỉ chiều':'';
 }
+/**
+ * Giữ lựa chọn ngày nghỉ tạm riêng với lịch đã lưu, gắn với phiên và revision lịch.
+ */
 function calendarDraft() {
   const scope=auth.email+'|'+cloud.epoch;
   const draft=ui.calendarDraft,server=schoolCalendar();
@@ -48,6 +54,10 @@ async function resetCalendarDraft() {
   if(calendarDirty()&&!await appConfirm('Bỏ các ngày nghỉ vừa chọn nhưng chưa lưu?'))return;
   ui.calendarDraft=null;render();
 }
+/**
+ * Chỉ Admin lưu lịch nghỉ; gửi revision và kiểm tra khả năng API hỗ trợ nghỉ theo buổi trước khi
+ * ghi.
+ */
 async function saveSchoolCalendar() {
   if(!canEditSetup()||isRolePreview()||!calendarDirty())return;
   const draft=calendarDraft(),context={owner:auth.email,epoch:cloud.epoch},payload={excludedDates:[...draft.dates].sort(),excludedSessions:sortedSessions(draft.sessions),revision:draft.revision};

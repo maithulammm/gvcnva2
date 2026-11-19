@@ -40,7 +40,10 @@ function put32(v, n) {
   put16(v, n);
   put16(v, n >>> 16);
 }
-
+/**
+ * Đóng gói các phần XML thành ZIP không nén để tạo XLSX bằng API trình duyệt, không cần gọi dịch
+ * vụ ngoài.
+ */
 function zipStore(source) {
   let files = Object.entries(source).map(([name, data]) => ({
     name,
@@ -112,7 +115,9 @@ function zipStore(source) {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 }
-
+/**
+ * Đọc các phần bên trong XLSX/ZIP để nhập dữ liệu hoặc chỉnh bản sao biểu mẫu.
+ */
 async function readZip(buffer) {
   let b = new Uint8Array(buffer),
     dv = new DataView(buffer),
@@ -222,7 +227,9 @@ function getSheetNamePaths(files) {
   }
   return entries;
 }
-
+/**
+ * Thay giá trị ô trong XML sheet đồng thời giữ phần định dạng/cấu trúc không cần sửa.
+ */
 function changeCells(original, updates) {
   let doc = xmlparse(decoder.decode(original));
   let sheets = doc.getElementsByTagNameNS(S_NS, "sheetData");
@@ -344,7 +351,9 @@ function spreadsheetXml(rows) {
   );
   return out.join("");
 }
-
+/**
+ * Tạo XLSX từ các sheet XML, cho phép truyền kiểu dáng riêng cho lịch hẹn và báo cáo tổng hợp.
+ */
 function simpleWorkbook(sheetEntries, options = {}) {
   let files = {};
   files["[Content_Types].xml"] =

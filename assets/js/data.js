@@ -1,7 +1,9 @@
 "use strict";
 
 // Class/month data model and browser persistence.
-
+/**
+ * Tạo khung dữ liệu rỗng cho 32 lớp; không tạo học sinh hay lượt gặp giả.
+ */
 function defaultSchool() {
   return {
     schema: 2,
@@ -26,7 +28,9 @@ function defaultSchool() {
     created: new Date().toISOString(),
   };
 }
-
+/**
+ * Đọc dữ liệu cục bộ schema 2; dừng nếu dữ liệu lỗi/khác schema để không ghi đè bản gốc.
+ */
 function load() {
   if (!auth.account) throw Error("Chưa đăng nhập Microsoft.");
   try {
@@ -52,7 +56,10 @@ function load() {
   }
   appData = defaultSchool();
 }
-
+/**
+ * Lưu xuống thiết bị trước, sau đó xếp hàng đồng bộ nếu đã kết nối API. true chưa có nghĩa máy chủ
+ * đã xác nhận lưu.
+ */
 function save() {
   if (isRolePreview()&&!isAdminClassEditing()) return false;
   if (!auth.account) throw Error("Chưa đăng nhập Microsoft.");
@@ -70,7 +77,9 @@ function save() {
   }
   return true;
 }
-
+/**
+ * Lấy lớp đang chọn sau khi kiểm tra đăng nhập và phạm vi; không cho truy cập lớp ngoài phân công.
+ */
 function cls(id = ui.classId) {
   if (!auth.account || !auth.assignment || !appData)
     throw Error("Chưa có quyền truy cập dữ liệu.");
@@ -78,7 +87,9 @@ function cls(id = ui.classId) {
     throw Error("Không được xem lớp ngoài khối được phân công.");
   return appData.classes[id];
 }
-
+/**
+ * Lấy dữ liệu tháng. Truyền create=false khi chỉ đọc để việc xem trang không tự tạo tháng rỗng.
+ */
 function mdata(c = cls(), month = ui.month, create = true) {
   if (!c.months[month] && create)
     c.months[month] = {
@@ -119,7 +130,10 @@ function studentIdByName(c, n) {
 function gradeText(id) {
   return String(+id.match(/^\d+/)[0]);
 }
-
+/**
+ * Sắp khóa object trước khi JSON hóa để so nội dung ổn định; thứ tự mảng vẫn có ý nghĩa và được
+ * giữ nguyên.
+ */
 function stableString(value) {
   return JSON.stringify(value, (key, v) =>
     v && typeof v === "object" && !Array.isArray(v)
@@ -131,7 +145,9 @@ function stableString(value) {
       : v,
   );
 }
-
+/**
+ * Bỏ tháng hoàn toàn rỗng khỏi phép so sánh để chỉ mở một trang không bị coi là chỉnh sửa dữ liệu.
+ */
 function classFingerprint(c) {
   const months = Object.fromEntries(
     Object.entries(c.months || {}).filter(
@@ -147,7 +163,9 @@ function classFingerprint(c) {
   );
   return stableString({ ...c, months });
 }
-
+/**
+ * Kiểm tra liên kết ở mọi tháng và hồ sơ M05 trước khi cho xóa học sinh.
+ */
 function hasStudentReferences(c, id) {
   return (
     c.profiles.some((p) => p.studentId === id) ||

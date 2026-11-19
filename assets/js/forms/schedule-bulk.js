@@ -1,9 +1,15 @@
 "use strict";
+/**
+ * Tách tập học sinh được tích theo tài khoản/phiên/lớp/tháng và chế độ xem thử.
+ */
 function scheduleSelection(){
   const scope=[auth.email,cloud.epoch,ui.classId,ui.month,isRolePreview()].join('|');
   if(ui.scheduleSelection?.scope!==scope)ui.scheduleSelection={scope,ids:new Set()};
   return ui.scheduleSelection.ids;
 }
+/**
+ * Đồng bộ checkbox từng dòng, trạng thái tích một phần của ô tổng và khả năng bấm nút Xóa.
+ */
 function updateScheduleSelection(){
   const table=document.querySelector('.m01-table');if(!table)return;
   const ids=scheduleSelection(),boxes=[...table.querySelectorAll('[data-select-student]')];
@@ -14,6 +20,9 @@ function updateScheduleSelection(){
   const button=$('bulkScheduleDelete');if(button){button.disabled=!ids.size||!editable();button.classList.toggle('danger',!!ids.size);}
 }
 function selectScheduleStudent(id,checked){const ids=scheduleSelection();if(checked)ids.add(id);else ids.delete(id);updateScheduleSelection();}
+/**
+ * Tích tổng chỉ tác động các dòng đang hiện sau tìm kiếm, không chọn các học sinh bị ẩn.
+ */
 function selectAllScheduleStudents(checked){
   for(const box of document.querySelectorAll('.m01-table [data-select-student]'))if(!box.disabled&&!box.closest('tr').hidden){if(checked)scheduleSelection().add(box.dataset.selectStudent);else scheduleSelection().delete(box.dataset.selectStudent);}
   updateScheduleSelection();
@@ -25,6 +34,10 @@ function installScheduleBulk(table,panel){
   const master=document.createElement('label');master.className='mobile-bulk-select';master.innerHTML='<input type="checkbox" data-schedule-select-all onchange="selectAllScheduleStudents(this.checked)"> Tất cả';
   panel.querySelector('.table-filter-top').append(master);updateScheduleSelection();
 }
+/**
+ * Xóa hàng loạt lịch dự kiến đã chọn, không xóa học sinh/cuộc gặp thực tế. Kiểm tra lại ngữ cảnh
+ * sau khi chờ xác nhận.
+ */
 async function deleteSelectedSchedules(){
   if(!editable())return;
   const ids=[...scheduleSelection()],c=cls(),month=ui.month,context=dialogContext(),admin=hasAppRole('admin')||isAdminClassEditing();

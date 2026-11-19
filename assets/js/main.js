@@ -4,6 +4,7 @@
 
 $("entryForm").addEventListener("submit", submitForm);
 $("entryForm").addEventListener("invalid",event=>{
+  // Trường bắt buộc có thể nằm trong details đang đóng; mở các lớp cha để người dùng thấy lỗi.
   let panel=event.target.closest?.('details');
   while(panel){panel.open=true;panel=panel.parentElement?.closest('details');}
 },true);
@@ -57,6 +58,7 @@ $("msLoginBtn").addEventListener("click", async () => {
     $("msLoginBtn").disabled = true;
     await auth.client.loginRedirect({
       scopes: ["openid", "profile", "email"],
+      // Quyền đọc ảnh đại diện qua Microsoft Graph; dữ liệu báo cáo dùng ID token riêng.
       extraScopesToConsent: ["User.Read"],
       prompt: "select_account",
     });

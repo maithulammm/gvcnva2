@@ -7,14 +7,19 @@ function workToday() {
   const now=new Date(), month=`T${String(now.getMonth()+1).padStart(2,"0")}/${now.getFullYear()}`;
   return month===ui.month ? `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}` : "";
 }
-
+/**
+ * Chặn lưu khi người dùng đã đổi tài khoản, lớp, tháng hoặc bản ghi gốc trong lúc popup còn mở.
+ */
 function editorContextCurrent() {
   const e=ui.editing;
   return !!e && e.classId===ui.classId && e.month===ui.month && e.epoch===cloud.epoch &&
     e.owner===auth.email && e.classObject===appData?.classes[e.classId] &&
     e.baseline===stableString(lookup(e.type,e.id)||{});
 }
-
+/**
+ * Khóa bản nháp theo tài khoản/lớp/tháng/loại phiếu/lịch hẹn, tránh khôi phục nhầm sang phiếu
+ * khác.
+ */
 function editorDraftKey() {
   const e=ui.editing;
   if (!e || !DRAFT_TYPES.includes(e.type)) return null;
@@ -22,7 +27,10 @@ function editorDraftKey() {
   if(typeof e.seed?.draftKey==='string'&&e.seed.draftKey.startsWith(prefix))return e.seed.draftKey;
   return `VA_GVCN_FORM_DRAFT_V1_${encodeURIComponent(auth.email)}_${e.classId}_${e.month.replace('/','_')}_${e.type}_${e.id||e.seed?.studentId||'new'}_${e.seed?.sourcePlanId||e.seed?.appointmentId||''}`;
 }
-
+/**
+ * Chỉ phục hồi các trường thuộc schema và cùng baseline; không áp bản nháp lên bản ghi đã được
+ * người khác thay đổi.
+ */
 function restoreEditorDraft() {
   const key=editorDraftKey();
   if (!key || isRolePreview()&&!isAdminClassEditing()) return null;
@@ -36,7 +44,9 @@ function restoreEditorDraft() {
     return fields;
   } catch { return null; }
 }
-
+/**
+ * Giữ nội dung nhập trên thiết bị, chưa thêm vào danh sách báo cáo và chưa tăng số lượt gặp.
+ */
 function saveEditorDraft(form=$("entryForm")) {
   const key=editorDraftKey();
   if (!key || !editorContextCurrent() || !editable()) return;
@@ -55,7 +65,9 @@ function saveEditorDraft(form=$("entryForm")) {
     $("editorDraftStatus").textContent="Không giữ được bản nháp. Hãy lưu thông tin trước khi đóng.";
   }
 }
-
+/**
+ * Chỉ xóa bản nháp của popup hiện tại, không xóa bản ghi đã lưu.
+ */
 function clearEditorDraft() {
   const key=editorDraftKey();
   if (key) {
@@ -69,7 +81,10 @@ async function discardEditorDraft() {
   clearEditorDraft();
   openModal(type,id,seed);
 }
-
+/**
+ * Ẩn/vô hiệu hóa trường không liên quan để tránh gửi nhầm dữ liệu; khi cần thì bật lại kiểm tra
+ * bắt buộc.
+ */
 function updateMeetingFields() {
   if (ui.editing?.type!=="m02") return;
   const form=$("entryForm");

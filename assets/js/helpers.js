@@ -3,7 +3,10 @@
 // Shared DOM, formatting and UI helpers.
 
 const $ = (id) => document.getElementById(id);
-
+/**
+ * Định dạng phần hiển thị dd/mm/yyyy, giờ 24 giờ; timestamp có múi giờ được chuyển về Việt Nam,
+ * không thay định dạng dữ liệu lưu.
+ */
 function displayDateText(value){
   const text=String(value??'');
   if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}.*(?:Z|[+-]\d{2}:\d{2})$/.test(text)){

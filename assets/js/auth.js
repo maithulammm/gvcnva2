@@ -9,7 +9,10 @@ function loginStatus(message, error = false) {
   $("msLoginBtn").title = error ? message : "Đăng nhập với Microsoft";
   if(error)appAlert(message);
 }
-
+/**
+ * Tạo callback theo website đang mở, kể cả đường dẫn con của GitHub Pages. URI này phải được đăng
+ * ký chính xác trong Entra.
+ */
 function currentRedirectUri() {
   const { origin, pathname } = window.location;
   const directory = pathname.endsWith("/")
@@ -39,7 +42,10 @@ function safeAccountEmail(account) {
 function rememberedLogin() {
   try { return JSON.parse(localStorage.getItem(LOGIN_REMEMBER_KEY)); } catch { return null; }
 }
-
+/**
+ * Ghi nhớ đúng tài khoản trong thời hạn cấu hình; khôi phục phiên không tự kéo dài thời hạn còn
+ * hiệu lực. Đây không phải nơi lưu mật khẩu.
+ */
 function rememberMicrosoftAccount(account,fresh=false) {
   const email=safeAccountEmail(account),accountId=account.homeAccountId||account.localAccountId||email;
   const old=rememberedLogin(),now=Date.now();
@@ -50,7 +56,10 @@ function rememberMicrosoftAccount(account,fresh=false) {
     localStorage.removeItem(LOGIN_REAUTH_KEY);
   } catch { /* Authentication still works when browser storage is unavailable. */ }
 }
-
+/**
+ * Chỉ khôi phục tài khoản thuộc tenant/miền trường và còn thời hạn ghi nhớ; tôn trọng dấu đăng
+ * xuất của người dùng.
+ */
 function cachedMicrosoftAccount(client) {
   try {
     if(localStorage.getItem(LOGIN_SIGNED_OUT_KEY))return null;
@@ -65,7 +74,10 @@ function cachedMicrosoftAccount(client) {
     return accounts.find(a=>a.homeAccountId&&a.homeAccountId===active?.homeAccountId)||accounts[0]||null;
   } catch { return null; }
 }
-
+/**
+ * Đọc thời hạn token để biết khi nào cần làm mới. Việc đọc payload ở trình duyệt không thay thế
+ * xác minh chữ ký tại API.
+ */
 function microsoftTokenExpired(result) {
   let expiry=result?.idTokenClaims?.exp;
   if(!expiry&&result?.idToken?.split('.').length===3) {
@@ -73,7 +85,10 @@ function microsoftTokenExpired(result) {
   }
   return expiry!==undefined&&(!Number.isFinite(expiry)||expiry<=Date.now()/1000+60);
 }
-
+/**
+ * Lấy ID token âm thầm, thử làm mới nếu token cũ hết hạn. Kiểm tra epoch để kết quả của phiên cũ
+ * không đi vào phiên mới.
+ */
 async function acquireMicrosoftIdToken() {
   if(!auth.client||!auth.account)throw Object.assign(new Error('Cần đăng nhập Microsoft trước khi kết nối dữ liệu.'),{status:401});
   const client=auth.client,account=auth.account,epoch=cloud.epoch;
@@ -91,7 +106,10 @@ async function acquireMicrosoftIdToken() {
     throw Object.assign(new Error('Phiên Microsoft cần xác thực lại. Bấm “Đăng nhập với Microsoft” để tiếp tục.'),{status:401});
   }
 }
-
+/**
+ * Khôi phục đăng nhập bằng redirect khi silent renewal không đủ; mốc 60 giây tránh lặp chuyển
+ * hướng liên tục.
+ */
 async function recoverMicrosoftSession(account) {
   if(!auth.client?.acquireTokenRedirect)return false;
   try {
@@ -104,7 +122,9 @@ async function recoverMicrosoftSession(account) {
     return true;
   } catch {return false;}
 }
-
+/**
+ * Giữ bản nháp báo cáo, xóa ghi nhớ đăng nhập và khóa giao diện trước khi đăng xuất Microsoft.
+ */
 async function logoutMicrosoft() {
   const release=beginPageLoading('Đang đăng xuất…');
   const client=auth.client,account=auth.account;
@@ -127,7 +147,9 @@ async function logoutMicrosoft() {
     loginStatus('Đã đăng xuất khỏi ứng dụng và xóa ghi nhớ đăng nhập. Chưa kết nối được trang đăng xuất Microsoft.');
   } finally { await waitAfterRequest();$('msLoginBtn').disabled=false;release(); }
 }
-
+/**
+ * Đồng bộ việc đăng xuất sang tab khác qua sự kiện storage; không xóa dữ liệu báo cáo đã lưu.
+ */
 function handleMicrosoftLogoutStorage(event) {
   if(event.key!==LOGIN_SIGNED_OUT_KEY||!event.newValue)return;
   if($('editor').open)saveEditorDraft();
@@ -135,7 +157,10 @@ function handleMicrosoftLogoutStorage(event) {
   lockUi();
   loginStatus('Đã đăng xuất trên cửa sổ khác. Bấm đăng nhập để tiếp tục.');
 }
-
+/**
+ * Dọn dữ liệu hiển thị, bộ lọc và trạng thái phiên trong RAM; resetCloud làm các request cũ mất
+ * hiệu lực.
+ */
 function lockUi() {
   closeFormHelp(false);
   clearAccountPhoto();
@@ -157,7 +182,10 @@ function lockUi() {
   auth.assignment = null;
   appData = null;
 }
-
+/**
+ * Kiểm tra miền/tenant phía giao diện. Khi dùng Firebase, phân công phải lấy từ máy chủ, không tự
+ * cấp quyền từ email.
+ */
 function authorizeAccount(account) {
   const email = safeAccountEmail(account);
   if (!email.endsWith("@vietanhschool.edu.vn"))
@@ -202,7 +230,10 @@ function authorizeAccount(account) {
     return { error: "Cấu hình vai trò chưa hợp lệ." };
   return { email, assignment };
 }
-
+/**
+ * Sau xác thực Microsoft, tải phân công/dữ liệu rồi mới mở giao diện. Bất kỳ lỗi nào cũng khóa lại
+ * phần quản lý.
+ */
 async function authenticatedStart(account,{fresh=false,restoring=false}={}) {
   let result = authorizeAccount(account);
   if (result.error) {
@@ -264,7 +295,9 @@ async function authenticatedStart(account,{fresh=false,restoring=false}={}) {
     loginStatus("Không thể mở ứng dụng: " + e.message, true);
   }
 }
-
+/**
+ * Khởi tạo MSAL với cấu hình hiện có và cache localStorage; tắt ghi log thông tin cá nhân.
+ */
 async function makeMsalClient(config) {
   if (typeof msal === "undefined" || !msal.PublicClientApplication)
     throw Error(
@@ -293,10 +326,14 @@ async function makeMsalClient(config) {
     await instance.initialize();
   return instance;
 }
-
+/**
+ * Điểm khởi động xác thực: xử lý callback hoặc khôi phục tài khoản. Popup/iframe callback phải để
+ * cửa sổ cha xử lý, tránh đăng nhập lồng nhau.
+ */
 async function initializeMsLogin() {
   // MSAL 2.x's parent window consumes this response. Starting another client
   // here would create nested authentication inside the popup/hidden iframe.
+  // Không xóa hash tại đây: MSAL của cửa sổ cha cần nguyên phản hồi để hoàn tất đăng nhập.
   const authResponse=/(?:^|[#&])(code|error|id_token|access_token)=/.test(window.location?.hash||'');
   const childContext=!!window.opener||!!window.parent&&window.parent!==window;
   if(authResponse&&childContext){
@@ -347,7 +384,9 @@ async function initializeMsLogin() {
   }
   } finally {release();}
 }
-
+/**
+ * Đổi lỗi đăng nhập thành thông báo dễ hiểu; riêng AADSTS50011 chỉ rõ callback cần đăng ký.
+ */
 function microsoftErrorText(error) {
   const message = String(error.message || error);
   return /AADSTS50011|redirect_uri_mismatch/i.test(message)

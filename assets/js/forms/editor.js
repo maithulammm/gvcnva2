@@ -1,13 +1,18 @@
 "use strict";
 
 // Shared form editor and record mutations.
-
+/**
+ * Dựng thao tác theo quyền; M02 có thêm đường dẫn tạo phiếu liên quan để giảm nhập lại.
+ */
 function rowAction(type, id) {
   return editable()
     ? `${btn("Sửa", `openModal('${type}','${id}')`, "small")} ${btn("Xóa", `removeRecord('${type}','${id}')`, "small danger")}${type==='m02'?`<details class="meeting-followup"><summary>Tiếp theo</summary>${btn('Kết nối phụ huynh',`openMeetingFollowup('${id}','m03')`,'small')}${btn('Kế hoạch hỗ trợ',`openMeetingFollowup('${id}','plans')`,'small')}${btn('Theo dõi cá nhân',`openMeetingFollowup('${id}','profile')`,'small')}</details>`:''}`
     : "—";
 }
-
+/**
+ * Điền trước học sinh và nội dung phù hợp từ cuộc gặp; chỉ mở popup, chưa tự tạo hay lưu phiếu
+ * mới.
+ */
 function openMeetingFollowup(id,type){
   if(!editable()||!['m03','plans','profile'].includes(type))return;
   const record=lookup('m02',id);
@@ -17,19 +22,26 @@ function openMeetingFollowup(id,type){
   if(type==='profile')Object.assign(seed,{concern:record.concern||'',goal:record.goal||''});
   openModal(type,'',seed);
 }
-
+/**
+ * Tìm mã M05 chưa dùng theo lớp/tháng và số tăng dần; chỉ tạo mã mới, không sửa mã hồ sơ cũ.
+ */
 function nextProfileCode(c=cls(),month=ui.month){
   const prefix=c.id+'-'+month.replace(/^T/,'').replace('/','-')+'-CN-';
   const used=new Set(c.profiles.map(p=>p.code));let index=1;
   while(used.has(prefix+String(index).padStart(2,'0')))index++;
   return prefix+String(index).padStart(2,'0');
 }
+/**
+ * Cập nhật mã gợi ý khi đổi tháng bắt đầu của hồ sơ mới; hồ sơ đã lưu giữ nguyên mã.
+ */
 function updateProfileCode(){
   if(ui.editing?.type!=='profile'||ui.editing.id)return;
   const form=$('entryForm'),month=form.querySelector('[name="startMonth"]')?.value||ui.month;
   form.querySelector('[name="code"]').value=nextProfileCode(cls(),month);
 }
-
+/**
+ * Ánh xạ loại popup đến bản ghi trong lớp/tháng hoặc danh mục Admin.
+ */
 function lookup(type, id) {
   if (type === "teacherAccount") return (appData.teachers || {})[id];
   if (type === "userRoles")
@@ -48,7 +60,10 @@ function lookup(type, id) {
     (x) => x.id === id,
   );
 }
-
+/**
+ * Kiểm tra quyền, chụp ngữ cảnh chỉnh sửa rồi ghép dữ liệu gốc/seed/bản nháp. FIELDS quyết định
+ * các trường được dựng.
+ */
 function openModal(type, id = "", seed = {}) {
   if (type === "teacher") {
     openClassTeacher();
@@ -104,6 +119,7 @@ function openModal(type, id = "", seed = {}) {
   if (!id && type === "m03") rec.date ||= workToday();
   if (type==='m02') ui.editing.meetingInitial=meetingEditorValues(rec);
   if(type==='profile'&&!id)rec.code=nextProfileCode(c,rec.startMonth||ui.month);
+  // Bản nháp chỉ được áp khi còn cùng baseline; ưu tiên nội dung giáo viên chưa lưu.
   const restored = restoreEditorDraft();
   if (restored) Object.assign(rec, restored);
   if(type==='profile'&&!id)rec.code=nextProfileCode(c,rec.startMonth||ui.month);
@@ -122,6 +138,7 @@ function openModal(type, id = "", seed = {}) {
   }
   let h = "",advanced="";
   if(type==='m02') {
+    // Chỉ đổi thứ tự hiển thị; không sửa FIELDS hay cấu trúc bản ghi lưu/xuất báo cáo.
     const order=['studentId','actual','previousReview','concern','participation','progressEvidence','goal','action'];
     opts=[...opts].sort((a,b)=>(order.includes(a[0])?order.indexOf(a[0]):99)-(order.includes(b[0])?order.indexOf(b[0]):99));
   }
@@ -199,7 +216,10 @@ function openModal(type, id = "", seed = {}) {
   $("editor").showModal();
   $("modalBody").scrollTop=0;
 }
-
+/**
+ * Kiểm tra lại ngữ cảnh, chuyển FormData sang bản ghi nghiệp vụ và lưu. Chỉ đóng/xóa bản nháp sau
+ * khi lưu cục bộ thành công.
+ */
 async function submitForm(e) {
   e.preventDefault();
   if (!ui.editing) return;
@@ -370,7 +390,10 @@ async function submitForm(e) {
   toast(cloud.ready ? "Đã lưu, đang đồng bộ dữ liệu…" : "Đã lưu thông tin.");
   if(nextStudent)openNextMeeting(nextStudent);
 }
-
+/**
+ * Xác nhận trước khi xóa và bảo vệ các liên kết nghiệp vụ; hoàn tác thay đổi trong RAM nếu lưu
+ * thất bại.
+ */
 async function removeRecord(type, id) {
   if (cloud.busy) return;
   if (!editable() && type !== "student") return;
