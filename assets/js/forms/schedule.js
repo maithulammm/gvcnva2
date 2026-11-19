@@ -98,6 +98,8 @@ function renderScheduleEditor() {
   const [year,month]=dates[0].split('-').map(Number), offset=(new Date(year,month-1,1).getDay()+6)%7;
   const old=studentAppointments(cls(),ui.month,ui.editing.id).find(a=>a.id===ui.editing.seed.appointmentId)||{}, legacyGoal=String(old.goal||"").split(" · ").filter(t=>!MEETING_TOPICS.includes(t)).join(" · ");
   const selected=dates.includes(date)?`${date.slice(8)}/${date.slice(5,7)}/${date.slice(0,4)}`:"Chưa chọn ngày";
+  const appointmentIndex=studentAppointments(cls(),ui.month,ui.editing.id).findIndex(a=>a.id===ui.editing.seed.appointmentId);
+  const linked=old.id&&mdata().meetings.some(r=>r.appointmentId===old.id);
   $("modalBody").innerHTML = `<div class="schedule-editor">
     <div class="schedule-student"><b>${esc(studentName(cls(),ui.editing.id))}</b><span>${esc(ui.month)}</span></div>
     <fieldset><legend>Thời gian gặp</legend><div class="schedule-sessions">${Object.entries(MEETING_SESSIONS).map(([key,value])=>{
@@ -117,6 +119,7 @@ function renderScheduleEditor() {
     <fieldset><legend>Mục tiêu cuộc gặp · Có thể chọn nhiều</legend><div class="schedule-topics">${MEETING_TOPICS.map(t=>`<button type="button" class="schedule-choice" aria-pressed="${topics.includes(t)}" onclick="selectSchedulePart('topic','${t}')">${t}</button>`).join('')}</div>
       ${legacyGoal?`<p class="help">Nội dung đã có được giữ lại: ${esc(legacyGoal)}</p>`:''}</fieldset>
     <label class="field"><b>Ghi chú</b><textarea id="scheduleNote" name="note" rows="3">${esc(note)}</textarea></label>
+    ${appointmentIndex>=0?`<div class="schedule-delete">${linked?'<p class="help">Lịch này đã ghi nhận cuộc gặp thực tế nên không thể xóa.</p>':`<button type="button" class="btn danger" id="deleteAppointmentButton" onclick="removeEditedAppointment()">Xóa lịch lần ${appointmentIndex+1}</button>`}</div>`:''}
     <input type="hidden" name="date" value="${esc(date)}"><input type="hidden" name="session" value="${esc(session)}">
     ${topics.map(t=>`<input type="hidden" name="topics" value="${esc(t)}">`).join('')}</div>`;
 }
@@ -140,14 +143,28 @@ function buildScheduleRecord(c,month,id,record) {
   return appointmentRollup(old,previous?appointments.map(a=>a.id===appointmentId?appointment:a):[...appointments,appointment]);
 }
 
-async function removeAppointment(studentId,appointmentId) {
-  if (!editable()) return;
-  if (mdata().meetings.some(r=>r.appointmentId===appointmentId)) return appAlert('Lịch đã liên kết cuộc gặp thực tế, không thể xóa.');
-  if (!await appConfirm('Xóa lịch hẹn dự kiến này?')) return;
-  const c=cls(),m=mdata(),old=m.schedule[studentId];
-  if (!old||!studentAppointments(c,ui.month,studentId).some(a=>a.id===appointmentId)) return;
-  m.schedule[studentId]=appointmentRollup(old,studentAppointments(c,ui.month,studentId).filter(a=>a.id!==appointmentId));
-  if (!save()) {m.schedule[studentId]=old;return;}render();
+async function removeEditedAppointment() {
+  const editor=ui.editing;
+  if(editor?.type!=='m01'||!editorContextCurrent())return;
+  return removeAppointment(editor.id,editor.seed.appointmentId,editor);
+}
+
+async function removeAppointment(studentId,appointmentId,editor=null) {
+  if (cloud.busy||!editable()||!appointmentId) return;
+  const c=cls(),m=mdata(),old=m.schedule[studentId],month=ui.month,owner=auth.email,epoch=cloud.epoch;
+  const appointments=studentAppointments(c,month,studentId),index=appointments.findIndex(a=>a.id===appointmentId);
+  if(index<0)return;
+  const baseline=stableString(old),appointment=appointments[index];
+  if (m.meetings.some(r=>r.appointmentId===appointmentId)) return appAlert('Lịch đã liên kết cuộc gặp thực tế, không thể xóa.');
+  if (!await appConfirm(`Xóa lịch lần ${index+1} của ${studentName(c,studentId)} · ${appointment.planTime}? Các lần gặp khác được giữ nguyên.`)) return;
+  if(cloud.busy||!editable()||auth.email!==owner||cloud.epoch!==epoch||ui.month!==month||cls()!==c||
+    stableString(mdata().schedule[studentId])!==baseline||
+    editor&&(ui.editing!==editor||!editorContextCurrent()))return;
+  if(mdata().meetings.some(r=>r.appointmentId===appointmentId))return appAlert('Lịch đã liên kết cuộc gặp thực tế, không thể xóa.');
+  m.schedule[studentId]=appointmentRollup(old,appointments.filter(a=>a.id!==appointmentId));
+  if (!save()) {m.schedule[studentId]=old;return;}
+  if(editor){clearEditorDraft();$('editor').close();ui.editing=null;}
+  render();toast('Đã xóa đúng lịch hẹn được chọn.');
 }
 
 function buildAutomaticSchedule(c=cls(),month=ui.month) {

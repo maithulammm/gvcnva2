@@ -532,6 +532,50 @@ test('auto appointments appear in M02 without actual counts; confirmation links 
   assert.equal(f.run('mdata().meetings.length'),1);
   assert.equal((f.run('renderPendingMeetings(cls(),mdata())').match(/Ghi nhận đã gặp/g)||[]).length,5);
 });
+test('M01 deletes only the edited appointment and persists remaining visits without changing actual meetings',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  await f.run(`cls().students=[{id:'S1',name:'Student 1',code:''},{id:'S2',name:'Student 2',code:''}];autoScheduleMonth();flushCloud()`);
+  const before=JSON.parse(f.run('JSON.stringify(mdata())'));
+  const visits=before.schedule.S1.appointments;
+  f.ctx.appointmentId=visits[1].id;
+  f.run(`openStudentAppointment('S1',appointmentId)`);
+  assert(f.el('modalBody').innerHTML.includes('Xóa lịch lần 2'));
+  assert(!f.run('renderM01()').includes('removeAppointment('));
+  await f.run('removeEditedAppointment();');await f.run('flushCloud()');
+  assert.equal(f.run('ui.editing'),null);assert.equal(f.el('editor').open,false);
+  const after=(await api.bootstrap(admin)).classes['6A1'].months['T11/2026'];
+  assert.deepEqual(after.schedule.S1.appointments,visits.filter(a=>a.id!==visits[1].id));
+  assert.deepEqual(after.schedule.S2,before.schedule.S2);
+  assert.deepEqual(after.meetings,before.meetings);
+  assert.equal(after.schedule.S1.planTime,after.schedule.S1.appointments.map(a=>a.planTime).join('\n'));
+  for(const a of after.schedule.S1.appointments){
+    f.ctx.appointmentId=a.id;
+    f.run(`openStudentAppointment('S1',appointmentId)`);await f.run('removeEditedAppointment()');await f.run('flushCloud()');
+  }
+  assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1').length`),0);
+  assert.equal((await api.bootstrap(admin)).classes['6A1'].months['T11/2026'].schedule.S1.planTime,'');
+});
+
+test('M01 cancellation, storage failure, changed context and actual links protect appointment data',async()=>{
+  const f=frontend();await f.login();
+  await f.run(`cls().students=[{id:'S1',name:'Student 1',code:''}];autoScheduleMonth()`);
+  const original=f.run('JSON.stringify(mdata())');
+  f.run(`globalThis.target=studentAppointments(cls(),ui.month,'S1')[1].id;openStudentAppointment('S1',target)`);
+  f.ctx.confirm=()=>false;await f.run('removeEditedAppointment()');
+  assert.equal(f.run('JSON.stringify(mdata())'),original);assert(f.el('editor').open);
+  f.ctx.confirm=()=>true;
+  f.run('globalThis.originalSave=save;save=()=>false');await f.run('removeEditedAppointment()');
+  assert.equal(f.run('JSON.stringify(mdata())'),original);assert(f.el('editor').open);
+  f.run(`save=originalSave;mdata().meetings.push({id:'R1',studentId:'S1',appointmentId:target});openStudentAppointment('S1',target)`);
+  assert(!f.el('modalBody').innerHTML.includes('id="deleteAppointmentButton"'));
+  await f.run('removeEditedAppointment()');assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1').length`),3);
+  assert(f.alerts.some(s=>s.includes('không thể xóa')));
+  f.run(`mdata().meetings=[];openStudentAppointment('S1',target)`);
+  f.ctx.confirm=()=>{f.run(`ui.month='T12/2026'`);return true;};
+  await f.run('removeEditedAppointment()');
+  assert.equal(f.run(`studentAppointments(cls(),'T11/2026','S1').length`),3);
+});
+
 test('M01 uses the real monthly calendar and click choices, preserving legacy data and draft topics',async()=>{
   const f=frontend();await f.login();
   f.run(`cls().students=[{id:'S1',name:'Student',code:''},{id:'S2',name:'Other',code:''}];
