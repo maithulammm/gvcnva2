@@ -45,7 +45,7 @@ function statusTag(txt) {
         ? "bad"
         : txt === "CHÚ Ý" ||
             txt === "Hẹn lại" ||
-            txt === "Chờ khối trưởng"
+            txt === "Chờ BGH xem xét"
           ? "warn"
           : "info";
   return `<span class="status ${k}">${esc(txt)}</span>`;
@@ -55,7 +55,7 @@ function stageName(s) {
   return (
     {
       draft: "Nháp",
-      submitted: "Chờ khối trưởng",
+      submitted: "Chờ BGH xem xét",
       reviewed: "Chờ BGH",
       approved: "Đã xem xét",
       returned: "Cần bổ sung",

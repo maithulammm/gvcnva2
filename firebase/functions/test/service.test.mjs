@@ -186,10 +186,27 @@ test('BGH combined roles receive personal data only within their detailed scope'
   }
   const result=await api.bootstrap(teacher);
   assert.equal(result.classes['8C3'].students.length,1);
-  assert.equal(result.classes['8C2'].students.length,1);
+  assert.equal(result.classes['8C2'].students.length,0);
+  assert(!JSON.stringify(result).includes('PRIVATE-8C2'));
   assert.equal(result.classes['6A1'].students.length,0);
   assert(!JSON.stringify(result).includes('PRIVATE-6A1'));
   assert(result.summaries['6A1']);
+});
+
+test('lead-only bootstrap exposes grade aggregates but no student meeting content or editing access',async()=>{
+  const {api}=await fixture();
+  const lead={email:'lead@vietanhschool.edu.vn',oid:'lead-oid',name:'Lead'};
+  await api.saveUserRoles(admin,{...lead,roles:['lead'],grades:['8'],active:true});
+  const boot=await api.bootstrap(admin),c=boot.classes['8C3'];
+  c.students=[{id:'PRIVATEID',name:'PRIVATE NAME',code:''}];
+  c.months['T11/2026']={...emptyMonth(),meetings:[{id:'R1',studentId:'PRIVATEID',concern:'SECRET CONCERN',participation:'SECRET NOTES'}]};
+  await api.putClass(admin,'8C3',{classData:c,revision:boot.revisions['8C3']});
+  const visible=await api.bootstrap(lead);
+  assert(Object.keys(visible.classes).every(id=>id.startsWith('8')));
+  assert.equal(visible.summaries['8C3']['T11/2026'].meetings,1);
+  assert(!JSON.stringify(visible).includes('PRIVATE'));assert(!JSON.stringify(visible).includes('SECRET'));
+  await assert.rejects(api.putClass(lead,'8C3',{classData:c,revision:visible.revisions['8C3']}),{status:403});
+  await assert.rejects(api.recovery(lead,'8C3'),{status:403});
 });
 
 test('first Admin binds once, creates 32 empty classes and denies an unassigned identity',async()=>{
@@ -243,7 +260,7 @@ test('GVCN can also lead multiple grades while keeping edits limited to their ow
   await assert.rejects(api.putClass(leadIdentity,'12C2',{classData:peer,revision:boot.revisions['12C2']}),e=>e.status===403);
 });
 
-test('a combined GVCN and lead cannot review its own submission but can review another class',async()=>{
+test('lead cannot review or return any class; BGH can act directly on submitted reports',async()=>{
   const {api}=await fixture();
   let boot=await api.saveTeacher(admin,{...teacherInput,roles:['gvcn','lead'],grades:['8']});
   const other={email:'other@vietanhschool.edu.vn',oid:'other-oid',name:'Other teacher'};
@@ -266,8 +283,13 @@ test('a combined GVCN and lead cannot review its own submission but can review a
   let submitted=await api.transition(teacher,'8C3',{month:'T11/2026',target:'submitted',revision:saved8C3.revision});
   await assert.rejects(api.transition(teacher,'8C3',{month:'T11/2026',target:'reviewed',revision:submitted.revisions['8C3']}),e=>e.status===403);
   submitted=await api.transition(other,'8C2',{month:'T11/2026',target:'submitted',revision:submitted.revisions['8C2']});
-  const reviewed=await api.transition(teacher,'8C2',{month:'T11/2026',target:'reviewed',revision:submitted.revisions['8C2']});
-  assert.equal(reviewed.classes['8C2'].months['T11/2026'].approval.state,'reviewed');
+  await assert.rejects(api.transition(teacher,'8C2',{month:'T11/2026',target:'reviewed',revision:submitted.revisions['8C2']}),{status:403});
+  await assert.rejects(api.transition(teacher,'8C2',{month:'T11/2026',target:'returned',note:'No',revision:submitted.revisions['8C2']}),{status:403});
+  const bgh={email:'manager@vietanhschool.edu.vn',oid:'manager-oid',name:'Manager'};
+  await api.saveUserRoles(admin,{...bgh,roles:['bgh'],grades:[],active:true});
+  await api.bootstrap(bgh);
+  const approved=await api.transition(bgh,'8C2',{month:'T11/2026',target:'approved',revision:submitted.revisions['8C2']});
+  assert.equal(approved.classes['8C2'].months['T11/2026'].approval.state,'approved');
 });
 
 test('Admin can atomically import teacher assignments and management roles without replacing class data',async()=>{

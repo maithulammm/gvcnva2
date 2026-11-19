@@ -16,29 +16,8 @@ async function transition(classId, target) {
     (!hasAppRole("gvcn") || viewAssignment()?.classId !== classId)
   )
     return;
-  if (
-    target === "reviewed" &&
-    (!hasAppRole("lead") ||
-      prev !== "submitted" ||
-      m.approval.history?.some(
-        (event) => event.state === "submitted" && event.actor === auth.email,
-      ))
-  )
-    return;
-  if (target === "approved" && (!hasAppRole("bgh") || prev !== "reviewed"))
-    return;
-  if (
-    target === "returned" &&
-    !(
-      (hasAppRole("lead") &&
-        prev === "submitted" &&
-        !m.approval.history?.some(
-          (event) => event.state === "submitted" && event.actor === auth.email,
-        )) ||
-      (hasAppRole("bgh") && prev === "reviewed")
-    )
-  )
-    return;
+  if(target==='reviewed')return;
+  if(['approved','returned'].includes(target)&&(!hasAppRole('bgh')||!['submitted','reviewed'].includes(prev)))return;
   if (target === "submitted") {
     let v = validations(c, ui.month);
     if (!v.hasData) {

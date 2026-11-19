@@ -889,7 +889,7 @@ test('Admin previews roles with scoped navigation and can edit the selected GVCN
   assert.equal(f.run('JSON.stringify(appData)'),before);
   f.run(`setRolePreview('lead','12C1')`);
   assert(f.run(`getScope().every(id=>gradeText(id)==='12')`));
-  assert(f.el('nav').innerHTML.includes("navTo('m01')"));
+  assert(!f.el('nav').innerHTML.includes("navTo('m01')"));
   f.run(`setRolePreview('bgh')`);
   assert.equal(f.run('getScope().length'),32);
   assert(!f.el('nav').innerHTML.includes("navTo('students')"));

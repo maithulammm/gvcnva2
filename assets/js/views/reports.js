@@ -10,31 +10,8 @@ function renderCheck() {
         let c = cls(id),
           m = mdata(c, ui.month),
           v = validations(c, ui.month);
-        let action =
-          hasAppRole("lead") &&
-          m.approval.state === "submitted" &&
-          !m.approval.history?.some(
-            (event) => event.state === "submitted" && event.actor === auth.email,
-          )
-            ? btn(
-                "Đã rà soát",
-                `transition('${id}','reviewed')`,
-                "small success",
-              )
-            : hasAppRole("bgh") && m.approval.state === "reviewed"
-              ? btn(
-                  "Đã xem xét",
-                  `transition('${id}','approved')`,
-                  "small success",
-                )
-              : "";
-        const canReturn =
-          (hasAppRole("lead") &&
-            m.approval.state === "submitted" &&
-            !m.approval.history?.some(
-              (event) => event.state === "submitted" && event.actor === auth.email,
-            )) ||
-          (hasAppRole("bgh") && m.approval.state === "reviewed");
+        const canReturn=hasAppRole("bgh")&&["submitted","reviewed"].includes(m.approval.state);
+        const action=canReturn?btn("Đã xem xét", `transition('${id}','approved')`,"small success"):"";
         const canSubmit =
           hasAppRole("gvcn") &&
           viewAssignment()?.classId === id &&
@@ -86,7 +63,7 @@ function renderCheck() {
     )
     .join(
       "",
-    )}</div></div><section class="card"><h2>Cảnh báo và thiếu thông tin</h2><div class="stack marg-top">${[...v.errors, ...v.warnings].map((x) => `<div class="readonly"><b>${esc(x.key)}</b> · ${esc(x.message)}</div>`).join("") || '<div class="readonly">Không phát hiện lỗi trong phạm vi kiểm tra.</div>'}</div><div class="section-head"><h2>Quy trình xác nhận</h2></div><div class="timeline">${(m.approval?.history || []).map((x) => `<div class="tl"><b>${esc(stageName(x.state))}</b><div>${esc(x.actor)} · ${esc(displayDateText(x.at))}</div><small>${esc(x.note || "")}</small></div>`).join("") || '<p class="help">Chưa có lượt xác nhận.</p>'}</div><div class="marg-top">${hasAppRole("gvcn") && viewAssignment()?.classId === c.id && (state === "draft" || state === "returned") ? btn("Gửi khối trưởng rà soát", `transition('${c.id}','submitted')`, "primary") : ""}</div><p class="help">Báo cáo đã gửi chỉ sửa được khi khối trưởng/BGH trả lại.</p></section></div>`;
+    )}</div></div><section class="card"><h2>Cảnh báo và thiếu thông tin</h2><div class="stack marg-top">${[...v.errors, ...v.warnings].map((x) => `<div class="readonly"><b>${esc(x.key)}</b> · ${esc(x.message)}</div>`).join("") || '<div class="readonly">Không phát hiện lỗi trong phạm vi kiểm tra.</div>'}</div><div class="section-head"><h2>Quy trình xác nhận</h2></div><div class="timeline">${(m.approval?.history || []).map((x) => `<div class="tl"><b>${esc(stageName(x.state))}</b><div>${esc(x.actor)} · ${esc(displayDateText(x.at))}</div><small>${esc(x.note || "")}</small></div>`).join("") || '<p class="help">Chưa có lượt xác nhận.</p>'}</div><div class="marg-top">${hasAppRole("gvcn") && viewAssignment()?.classId === c.id && (state === "draft" || state === "returned") ? btn("Gửi BGH xem xét", `transition('${c.id}','submitted')`, "primary") : ""}</div><p class="help">Báo cáo đã gửi chỉ sửa được khi BGH trả lại.</p></section></div>`;
 }
 
 function renderExport() {

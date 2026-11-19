@@ -119,11 +119,11 @@ function render() {
   ui.role = viewAssignment()?.role;
   renderRolePreview();
   renderSelectors();
-  let allowed = canViewPersonal() || ui.role === "lead";
+  let allowed = canViewPersonal();
   let permitted = VIEW_LIST.filter(([k]) =>
     ["students", "teachers", "database", "users", "export", "calendar"].includes(k)
       ? hasAppRole("admin")
-      : allowed || ["dashboard", "check"].includes(k),
+      : allowed || k==="dashboard" || k==="check"&&hasAppRole("bgh"),
   );
   const adminPages=['students','teachers','users','database','export','calendar'];
   if (!permitted.some((x) => x[0] === ui.page)) ui.page = "dashboard";

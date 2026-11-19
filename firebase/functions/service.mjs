@@ -90,8 +90,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     const u=assignmentFor(s,identity),ids=scopeFor(u),classes={},revisions={},summaries={},checks={};
     for(const id of ids) {
       const {data:c,revision}=entry(s,id); revisions[id]=revision;
-      const detailAllowed=hasRole(u,'admin') || (hasRole(u,'gvcn')&&u.classId===id) ||
-        (hasRole(u,'lead')&&gradesOf(u).includes(String(gradeOf(id))));
+      const detailAllowed=hasRole(u,'admin') || (hasRole(u,'gvcn')&&u.classId===id);
       if(detailAllowed) { classes[id]=c; continue; }
       classes[id]={...blankClass(id),teacher:c.teacher,months:{}}; summaries[id]={}; checks[id]={};
       for(const month of MONTHS) {
@@ -388,8 +387,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
         requireValue(body.revision===old.revision,'Báo cáo đã thay đổi. Tải lại trước khi xác nhận.',409);
         const m=c.months[body.month]||emptyMonth(),prev=m.approval.state,target=body.target;
         const allowed=(hasRole(u,'gvcn')&&target==='submitted'&&id===u.classId&&['draft','returned'].includes(prev)) ||
-          (hasRole(u,'lead')&&prev==='submitted'&&['reviewed','returned'].includes(target)&&!m.approval.history.some(event=>event.state==='submitted'&&event.actor===identity.email)) ||
-          (hasRole(u,'bgh')&&prev==='reviewed'&&['approved','returned'].includes(target));
+          (hasRole(u,'bgh')&&['submitted','reviewed'].includes(prev)&&['approved','returned'].includes(target));
         requireValue(allowed,'Không có quyền chuyển trạng thái báo cáo này.',403);
         if(target==='submitted') { const v=validateReport(c,body.month); requireValue(v.hasData&&!v.errors.length,'Báo cáo trống hoặc còn lỗi bắt buộc.',409); }
         const note=String(body.note||'').trim().slice(0,2000);

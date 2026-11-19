@@ -80,7 +80,7 @@ function canEditSetup() {
 }
 
 function canViewPersonal() {
-  return hasAppRole("gvcn") || hasAppRole("admin");
+  return hasAppRole("admin") || hasAppRole("gvcn")&&viewAssignment()?.classId===ui.classId;
 }
 
 function scopedClasses() {
