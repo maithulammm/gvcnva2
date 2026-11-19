@@ -368,6 +368,25 @@ test('month keys round trip and report state is enforced server-side',async()=>{
   await assert.rejects(api.transition(teacher,'8C3',{month:'T11/2026',target:'submitted',revision:boot.revisions['8C3']}),e=>e.status===403);
 });
 
+test('Admin can add edit and delete all five form types in approved reports across classes',async()=>{
+  const {api}=await fixture();
+  for(const id of ['6A1','8C3','12C3']){
+    const c=blankClass(id);c.students=[{id:'S1',name:'Student',code:''}];
+    c.months['T11/2026']={...emptyMonth(),approval:{state:'approved',history:[]}};
+    let saved=await api.putClass(admin,id,{classData:c,revision:0},true);
+    let data=structuredClone(saved.data),m=data.months['T11/2026'];
+    m.schedule.S1={planTime:'Tuần 3',goal:'Mục tiêu'};
+    m.meetings=[{id:'R1',studentId:'S1'}];m.connections=[{id:'C1',studentId:'S1'}];m.plans=[{id:'P1',studentId:'S1'}];
+    data.profiles=[{id:'F1',studentId:'S1',code:'F1',startMonth:'T11/2026',goal:'Goal'}];
+    saved=await api.putClass(admin,id,{classData:data,revision:saved.revision});
+    data=structuredClone(saved.data);data.months['T11/2026'].meetings[0].concern='Updated';data.profiles[0].goal='Updated';
+    saved=await api.putClass(admin,id,{classData:data,revision:saved.revision});
+    data=structuredClone(saved.data);m=data.months['T11/2026'];m.schedule={};m.meetings=[];m.connections=[];m.plans=[];data.profiles=[];
+    saved=await api.putClass(admin,id,{classData:data,revision:saved.revision});
+    assert.equal(saved.data.months['T11/2026'].approval.state,'approved');assert.equal(saved.data.profiles.length,0);
+  }
+});
+
 test('legacy import preserves history, leaves source untouched and refuses occupied classes',async()=>{
   const {api}=await fixture();const c=blankClass('6A1');
   c.students=[{id:'S1',name:'Dữ liệu cũ',code:''}];c.teacher='GVCN cũ';c.email='old@vietanhschool.edu.vn';

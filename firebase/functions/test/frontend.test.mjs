@@ -582,14 +582,26 @@ test('M01 cancellation, storage failure, changed context and actual links protec
   f.ctx.confirm=()=>true;
   f.run('globalThis.originalSave=save;save=()=>false');await f.run('removeEditedAppointment()');
   assert.equal(f.run('JSON.stringify(mdata())'),original);assert(f.el('editor').open);
-  f.run(`save=originalSave;mdata().meetings.push({id:'R1',studentId:'S1',appointmentId:target});openStudentAppointment('S1',target)`);
+  f.run(`save=originalSave;mdata().meetings.push({id:'R1',studentId:'S1',appointmentId:target});globalThis.originalHasRole=hasAppRole;hasAppRole=role=>role==='admin'?false:role==='gvcn';auth.assignment.classId=ui.classId;openStudentAppointment('S1',target)`);
   assert(!f.el('modalBody').innerHTML.includes('id="deleteAppointmentButton"'));
   await f.run('removeEditedAppointment()');assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1').length`),3);
   assert(f.alerts.some(s=>s.includes('không thể xóa')));
-  f.run(`mdata().meetings=[];openStudentAppointment('S1',target)`);
+  f.run(`hasAppRole=originalHasRole;mdata().meetings=[];openStudentAppointment('S1',target)`);
   f.ctx.confirm=()=>{f.run(`ui.month='T12/2026'`);return true;};
   await f.run('removeEditedAppointment()');
   assert.equal(f.run(`studentAppointments(cls(),'T11/2026','S1').length`),3);
+});
+
+test('Admin edits locked reports in any class and deletes linked schedules without deleting actual meetings',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`ui.classId='8C3';cls().students=[{id:'S1',name:'Student',code:''}];mdata().schedule.S1={appointments:[{id:'A1',date:'2026-11-02',session:'morning',planTime:'02/11/2026 · Sáng 9:55–10:15'}]};
+    mdata().meetings=[{id:'R1',studentId:'S1',appointmentId:'A1'}];mdata().approval.state='approved';`);
+  assert.equal(f.run('editable()'),true);
+  f.run(`openStudentAppointment('S1','A1')`);assert(f.el('modalBody').innerHTML.includes('id="deleteAppointmentButton"'));
+  await f.run('removeEditedAppointment()');
+  assert.equal(f.run('mdata().meetings.length'),1);assert.equal(f.run('mdata().meetings[0].appointmentId'),undefined);
+  assert.equal(f.run(`studentAppointments(cls(),ui.month,'S1').length`),0);
+  assert.equal(f.run(`mdata().approval.state`),'approved');
 });
 
 test('M01 uses the real monthly calendar and click choices, preserving legacy data and draft topics',async()=>{

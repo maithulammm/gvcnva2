@@ -24,6 +24,7 @@ function navTo(page) {
 }
 
 function setRolePreview(role, classId = ui.preview?.classId || ui.classId) {
+  ui.recovery=null;
   if (!assignmentRoles(auth.assignment).includes("admin")) return;
   if (!["", "admin", "gvcn", "lead", "bgh"].includes(role) || !CLASSES.includes(classId)) return;
   $("editor").close();

@@ -351,6 +351,7 @@ async function removeRecord(type, id) {
     )
   )
     return;
+  const beforeDelete=JSON.parse(JSON.stringify(c));
   if (type === "student") {
     if (hasStudentReferences(c, id)) {
       appAlert(
@@ -362,7 +363,7 @@ async function removeRecord(type, id) {
     delete m.schedule[id];
   } else if (type === "profile") {
     if (
-      Object.values(c.months).some((mm) =>
+      !hasAppRole('admin') && Object.values(c.months).some((mm) =>
         (mm.meetings || []).some((x) => x.profileId === id),
       )
     ) {
@@ -370,10 +371,14 @@ async function removeRecord(type, id) {
       return;
     }
     c.profiles = c.profiles.filter((x) => x.id !== id);
+    if(hasAppRole('admin'))for(const mm of Object.values(c.months))for(const meeting of mm.meetings||[])if(meeting.profileId===id){
+      delete meeting.profileId;
+    }
     ui.profileId = "";
   } else {
     let key = { m02: "meetings", m03: "connections" }[type] || type;
     m[key] = m[key].filter((x) => x.id !== id);
   }
-  markChanged();
+  if(!save()){Object.assign(c,beforeDelete);return;}
+  render();toast('Đã xóa dữ liệu.');
 }
