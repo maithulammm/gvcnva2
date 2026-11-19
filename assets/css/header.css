@@ -30,9 +30,6 @@
 .account-dropdown { position:fixed;z-index:1000;padding:6px;border:1px solid #dce7e7;border-radius:10px;background:#fff;box-shadow:0 10px 30px #133c4926; }
 .account-dropdown button { display:block;width:100%;min-height:44px;padding:10px 12px;border:0;border-radius:6px;background:#fff;color:#a73720;font:inherit;text-align:left;cursor:pointer; }
 .account-dropdown button:hover,.account-dropdown button:focus-visible { background:#fff1ec; }
-.account-dropdown #refreshAccountPhotoButton{color:var(--primary);}
-#accountPhotoStatus{font-size:11px;line-height:1.4;margin:4px 6px 8px;color:var(--muted);overflow-wrap:anywhere;}
-#accountPhotoStatus:empty{display:none;}
 #accountMenuButton:focus-visible { outline:3px solid #9cccca;outline-offset:2px; }
 @media(min-width:901px) and (max-width:1250px){.sidebar #accountMenuButton{font-size:11px;padding:10px 4px;gap:2px}}
 .topline.app-toolbar {
