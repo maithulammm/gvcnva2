@@ -76,7 +76,7 @@ window.addEventListener?.('resize',()=>closeAccountMenu());
 window.addEventListener?.('scroll',()=>closeAccountMenu(),true);
 window.addEventListener?.("storage", handleMicrosoftLogoutStorage);
 $("requestOverlay").addEventListener("cancel",e=>e.preventDefault());
-$("mobileNav").addEventListener("close",()=>$("mobileMenuButton").setAttribute("aria-expanded","false"));
+$("mobileNav").addEventListener("close",()=>{if($('mobileNav').open)return;placeAccountControl(false);$("mobileMenuButton").setAttribute("aria-expanded","false");});
 $("editor").addEventListener("close",()=>{if(ui.editing&&auth.account&&appData&&ui.page==='m02')render();});
 window.addEventListener?.("resize",updateVisualViewport);
 window.visualViewport?.addEventListener("resize",updateVisualViewport);

@@ -3,11 +3,13 @@
 function openMobileNavigation() {
   if(!auth.account||window.innerWidth>900)return;
   const menu=$('mobileNav');
+  placeAccountControl(true);
   if(!menu.open)menu.showModal();
   $('mobileMenuButton').setAttribute('aria-expanded','true');
 }
 
 function closeMobileNavigation() {
+  placeAccountControl(false);
   $('mobileNav').close();
   $('mobileMenuButton').setAttribute('aria-expanded','false');
 }

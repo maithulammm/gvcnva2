@@ -10,6 +10,11 @@ function closeAccountMenu(restoreFocus=false) {
   $('accountMenu').hidden=true;$('accountMenuButton').setAttribute('aria-expanded','false');
   if(restoreFocus)$('accountMenuButton').focus();
 }
+function placeAccountControl(inMobileMenu=false) {
+  closeAccountMenu();
+  const host=$(inMobileMenu?'mobileAccountFooter':'sidebarAccountFooter');
+  host?.append?.($('identityBox'),$('accountMenu'));
+}
 function toggleAccountMenu() {
   if(!auth.account)return;
   const menu=$('accountMenu');
@@ -17,7 +22,7 @@ function toggleAccountMenu() {
   const anchor=$('accountMenuButton').getBoundingClientRect();
   const width=Math.min(200,window.innerWidth-24);
   menu.style.width=width+'px';
-  menu.style.left=Math.max(12,Math.min(anchor.right-width,window.innerWidth-width-12))+'px';
-  menu.style.top=Math.min(anchor.bottom+6,window.innerHeight-64)+'px';
+  menu.style.left=Math.max(12,Math.min(anchor.left,window.innerWidth-width-12))+'px';
+  menu.style.top=Math.max(8,anchor.top-68)+'px';
   menu.hidden=false;$('accountMenuButton').setAttribute('aria-expanded','true');$('msLogoutBtn').focus();
 }
