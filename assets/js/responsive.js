@@ -24,7 +24,9 @@ function renderResponsiveNavigation(permitted) {
 function adaptResponsiveTables() {
   const host=$('view');
   if(!host.querySelectorAll)return;
+  let tableIndex=0;
   for(const table of host.querySelectorAll('table')) {
+    installTableFilters(table,tableIndex++);
     const headers=[...table.querySelectorAll('thead th')].map(th=>th.textContent.trim());
     if(!headers.length)continue;
     table.classList.add('responsive-records');

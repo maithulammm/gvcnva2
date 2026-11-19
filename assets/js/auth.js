@@ -138,6 +138,7 @@ function handleMicrosoftLogoutStorage(event) {
 
 function lockUi() {
   ui.recovery=null;
+  ui.tableFilters={};
   closeAccountMenu();
   cancelAppDialogs();
   closeMobileNavigation();
