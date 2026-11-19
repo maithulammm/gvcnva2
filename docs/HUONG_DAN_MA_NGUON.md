@@ -29,6 +29,7 @@ Các script giao diện hiện dùng hàm/biến chung, chưa phải ES module. 
 | Mẫu 2: danh sách và điều khiển nhập | `assets/js/forms/m02.js`, `assets/js/forms/meeting.js` |
 | Lần gặp trước, bản nháp | `assets/js/forms/history.js`, `assets/js/forms/drafts.js` |
 | Mẫu 3, 4, 5 | `assets/js/forms/m03.js`, `m04.js`, `m05.js` |
+| Ảnh minh chứng: chọn ảnh, thumbnail, xem lớn và API | `assets/js/forms/evidence.js`, `evidence-api.js`, `firebase/functions/evidence-store.mjs` |
 | Hướng dẫn từng mẫu | `assets/js/form-help.js` |
 | Lịch nghỉ cả ngày/sáng/chiều | `assets/js/views/calendar.js` |
 | Kiểm tra chỉ tiêu, gửi BGH | `assets/js/validation.js`, `assets/js/approval.js` |

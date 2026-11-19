@@ -16,6 +16,7 @@ function markChanged() {
  * đổi nghiệp vụ.
  */
 function navTo(page) {
+  clearEvidenceImages();
   closeFormHelp();
   closeMobileNavigation();
   ui.page = page==='work'?'m02':page;
@@ -127,6 +128,8 @@ function renderSelectors() {
  * responsive.
  */
 function render() {
+  const imageScope=[auth.email,cloud.epoch,ui.classId,ui.month,ui.preview?.role||''].join('|');
+  if(ui.evidenceImageScope!==imageScope){clearEvidenceImages();ui.evidenceImageScope=imageScope;}
   if (!auth.account || !appData) return;
   closeAccountMenu();
   ui.role = viewAssignment()?.role;
@@ -170,6 +173,7 @@ function render() {
   }[ui.page]();
   renderResponsiveNavigation(permitted);
   adaptResponsiveTables();
+  hydrateEvidenceImages($('view'));
   updateStorageNotice();
   refreshButtonChoices();
 }

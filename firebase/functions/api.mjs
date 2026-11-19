@@ -2,6 +2,8 @@ import {createIdentityVerifier} from './identity.mjs';
 import {createService} from './service.mjs';
 import {deploymentStatus} from './health.mjs';
 import {DATABASE_URL,requireValue} from './model.mjs';
+import {createHash} from 'node:crypto';
+import {createEvidenceStore} from './evidence-store.mjs';
 
 const MAX_BODY_BYTES=5*1024*1024;
 /**
@@ -11,6 +13,7 @@ const MAX_BODY_BYTES=5*1024*1024;
 export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=process.env}) {
   let service;
   let verifyIdentity;
+  let evidenceStore;
   return async function handle({method,path,origin,authorization,rawBodyLength=0,body={},bodyError}) {
     const headers={'Cache-Control':'no-store',Vary:'Origin','X-Content-Type-Options':'nosniff'};
     const respond=(status,result)=>({status,headers,body:result});
@@ -34,7 +37,25 @@ export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=pr
       requireValue(rawBodyLength<=MAX_BODY_BYTES,'Dữ liệu gửi lên vượt giới hạn 5 MB.',413);
       service ||= createService(getDatabase(),{adminEmail:(env.GVCN_ADMIN_EMAIL||'lammt@vietanhschool.edu.vn').toLowerCase().trim()});
       let result;
-      if(method==='GET'&&route==='/bootstrap') result=await service.bootstrap(identity);
+      if(method==='POST'&&/^\/evidence\/[A-Za-z0-9]+\/upload$/.test(route)){
+        const id=route.split('/')[2];
+        requireValue(typeof body.uploadId==='string'&&/^[A-Za-z0-9_-]{1,100}$/.test(body.uploadId),'Mã ảnh không hợp lệ.');
+        await service.evidenceScope(identity,id,body.month,body.studentId);
+        evidenceStore ||= createEvidenceStore(env);
+        const key=createHash('sha256').update([id,body.month,body.studentId,body.uploadId].join('|')).digest('hex');
+        const item=await evidenceStore.upload({id:key,classId:id,month:body.month,contentBase64:body.contentBase64});
+        result=await service.registerEvidence(identity,id,body,item);
+      }
+      else if(method==='GET'&&/^\/evidence\/[A-Za-z0-9]+\/[a-f0-9]{64}$/.test(route)){
+        const [, ,id,key]=route.split('/'),item=await service.evidenceItem(identity,id,key);
+        evidenceStore ||= createEvidenceStore(env);result=await evidenceStore.read(item);
+      }
+      else if(method==='GET'&&/^\/evidence\/[A-Za-z0-9]+\/legacy\/T\d{2}-\d{4}\/[A-Za-z0-9_-]+\/[a-f0-9]{64}$/.test(route)){
+        const [, ,id,,monthKey,recordId,key]=route.split('/'),month=monthKey.replace('-','/');
+        const item=await service.legacyEvidence(identity,id,month,recordId,key);
+        evidenceStore ||= createEvidenceStore(env);result=await evidenceStore.read(item,{legacy:true,classId:id,month});
+      }
+      else if(method==='GET'&&route==='/bootstrap') result=await service.bootstrap(identity);
       else if(method==='GET'&&/^\/recovery\/[A-Za-z0-9]+$/.test(route)) result=await service.recovery(identity,route.split('/')[2]);
       else if(method==='POST'&&/^\/recovery\/[A-Za-z0-9]+$/.test(route)) result=await service.restore(identity,route.split('/')[2],body);
       else if(method==='PUT'&&route==='/calendar') result=await service.saveCalendar(identity,body);

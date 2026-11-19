@@ -162,6 +162,7 @@ function handleMicrosoftLogoutStorage(event) {
  * hiệu lực.
  */
 function lockUi() {
+  clearEvidenceImages();
   resetEvidenceEditor();
   closeFormHelp(false);
   clearAccountPhoto();

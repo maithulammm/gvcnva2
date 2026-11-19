@@ -1,0 +1,68 @@
+import {requireValue,YEAR} from './model.mjs';
+
+const MAX_IMAGE_BYTES=2*1024*1024;
+export function centralEvidenceConfigured(env){return ['EVIDENCE_CLIENT_ID','EVIDENCE_CLIENT_SECRET','EVIDENCE_DRIVE_ID','EVIDENCE_ROOT_ID'].every(k=>String(env[k]||'').trim());}
+/** Graph chỉ chạy phía máy chủ; ứng dụng được cấp quyền write riêng trên thư mục kho ảnh. */
+export function createEvidenceStore(env,{fetchImpl=fetch,clock=()=>Date.now()}={}){
+  requireValue(centralEvidenceConfigured(env),'Kho ảnh chưa được quản trị viên cấu hình.',503);
+  let cached,refreshing;
+  const drive=encodeURIComponent(env.EVIDENCE_DRIVE_ID),root=env.EVIDENCE_ROOT_ID;
+  async function token(){
+    if(cached?.until>clock()+60000)return cached.value;
+    if(refreshing)return refreshing;
+    refreshing=(async()=>{
+      const response=await fetchImpl('https://login.microsoftonline.com/'+encodeURIComponent(env.MICROSOFT_TENANT_ID)+'/oauth2/v2.0/token',{
+        method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:env.EVIDENCE_CLIENT_ID,client_secret:env.EVIDENCE_CLIENT_SECRET,grant_type:'client_credentials',scope:'https://graph.microsoft.com/.default'})});
+      requireValue(response.ok,'Kho ảnh chưa được cấp quyền kết nối.',503);
+      const data=await response.json();requireValue(data.access_token&&Number(data.expires_in)>60,'Kho ảnh chưa sẵn sàng.',503);
+      cached={value:data.access_token,until:clock()+Math.min(Number(data.expires_in),3600)*1000};return cached.value;
+    })();try{return await refreshing;}finally{refreshing=null;}
+  }
+  async function graph(path,options={}){
+    const response=await fetchImpl('https://graph.microsoft.com/v1.0/drives/'+drive+path,{...options,headers:{Authorization:'Bearer '+await token(),...options.headers},signal:AbortSignal.timeout(45000)});
+    requireValue(response.ok,'Không thể truy cập kho ảnh. Vui lòng thử lại hoặc liên hệ quản trị viên.',response.status===404?404:response.status===409?409:503);
+    return response.json();
+  }
+  async function folder(parent,name){
+    const item='/items/'+encodeURIComponent(parent);
+    try{const found=await graph(item+':/'+encodeURIComponent(name));requireValue(found.folder,'Cấu trúc kho ảnh không hợp lệ.',503);return found.id;}
+    catch(error){if(error.status!==404)throw error;
+      try{return (await graph(item+'/children',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,folder:{},'@microsoft.graph.conflictBehavior':'fail'})})).id;}
+      catch(conflict){if(conflict.status!==409)throw conflict;const found=await graph(item+':/'+encodeURIComponent(name));requireValue(found.folder,'Cấu trúc kho ảnh không hợp lệ.',503);return found.id;}
+    }
+  }
+  return {
+    async upload({id,classId,month,contentBase64}){
+      requireValue(typeof contentBase64==='string'&&contentBase64.length<=Math.ceil(MAX_IMAGE_BYTES/3)*4&&/^[A-Za-z0-9+/]+={0,2}$/.test(contentBase64),'Ảnh không hợp lệ hoặc vượt 2 MB.');
+      const bytes=Buffer.from(contentBase64,'base64');requireValue(bytes.length>3&&bytes.length<=MAX_IMAGE_BYTES&&bytes[0]===255&&bytes[1]===216&&bytes[2]===255,'Chỉ nhận ảnh JPEG hợp lệ, tối đa 2 MB.');
+      let parent=root;for(const name of [YEAR,classId,month.replace('/','-')])parent=await folder(parent,name);
+      const file=await graph('/items/'+encodeURIComponent(parent)+':/'+id+'.jpg:/content',{method:'PUT',headers:{'Content-Type':'image/jpeg'},body:bytes});
+      requireValue(file.id&&file.parentReference?.driveId===env.EVIDENCE_DRIVE_ID,'Kho ảnh trả kết quả chưa hợp lệ.',503);
+      return {itemId:file.id,driveId:env.EVIDENCE_DRIVE_ID,size:bytes.length,mimeType:'image/jpeg'};
+    },
+    async read(item,{legacy=false,classId,month}={}){
+      requireValue(item.driveId===env.EVIDENCE_DRIVE_ID,'Ảnh cũ chưa có trong kho ảnh tập trung.',404);
+      const path='/items/'+encodeURIComponent(item.itemId);
+      if(legacy){
+        // Ảnh cũ chỉ được đọc nếu thực sự nằm trong thư mục năm/lớp/tháng của bản ghi.
+        let node=await graph(path+'?$select=id,parentReference');
+        for(const name of [month.replace('/','-'),classId,YEAR]){
+          requireValue(node.parentReference?.id,'Ảnh cũ chưa có trong kho chung.',404);
+          node=await graph('/items/'+encodeURIComponent(node.parentReference.id)+'?$select=id,name,parentReference');
+          requireValue(node.name===name,'Ảnh không thuộc thư mục của lớp.',403);
+        }
+        requireValue(node.parentReference?.id===root,'Ảnh không thuộc kho chung.',403);
+      }
+      const meta=await graph(path+'?$select=id,file,size,@microsoft.graph.downloadUrl');
+      requireValue(['image/jpeg','image/png','image/webp'].includes(meta.file?.mimeType)&&meta.size<=5*1024*1024,'Ảnh không hợp lệ.',400);
+      const url=new URL(meta['@microsoft.graph.downloadUrl']);
+      requireValue(url.protocol==='https:'&&(url.hostname.endsWith('.sharepoint.com')||url.hostname.endsWith('.1drv.com')),'Kho ảnh trả địa chỉ không hợp lệ.',503);
+      // URL tải có chữ ký chỉ được dùng trong server; không gửi Location hay token xuống web.
+      const response=await fetchImpl(url,{signal:AbortSignal.timeout(45000),redirect:'error'});
+      requireValue(response.ok,'Không đọc được ảnh.',503);
+      const chunks=[];let length=0;const reader=response.body.getReader();
+      try{while(true){const {done,value}=await reader.read();if(done)break;length+=value.length;if(length>5*1024*1024){await reader.cancel();throw Object.assign(Error('Ảnh vượt dung lượng cho phép.'),{status:413});}chunks.push(Buffer.from(value));}}finally{reader.releaseLock();}
+      return {mimeType:meta.file.mimeType,contentBase64:Buffer.concat(chunks).toString('base64')};
+    }
+  };
+}

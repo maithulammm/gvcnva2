@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID,createHash } from 'node:crypto';
 import {appointmentEntries} from './appointments.mjs';
 import {YEAR,GRADES,CLASSES,MONTHS,ROOT,emailKey,list,normalizeSchool,normalizeClass,encodeClass,blankClass,
   assignmentFor,scopeFor,checkScope,requireValue,validateClass,authorizeClassEdit,emptyMonth,validateReport,summary,
@@ -10,6 +10,23 @@ import {YEAR,GRADES,CLASSES,MONTHS,ROOT,emailKey,list,normalizeSchool,normalizeC
 export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=()=>new Date()}={}) {
   const ref=db.ref(ROOT);
   const now=()=>clock().toISOString();
+  const legacyId=image=>createHash('sha256').update(JSON.stringify(image)).digest('hex');
+  function publicData(c){
+    const copy=structuredClone(c);
+    for(const m of Object.values(copy.months))for(const row of m.connections)
+      if(Array.isArray(row.evidenceImages))row.evidenceImages=row.evidenceImages.map(image=>image.provider==='onedrive'?{provider:'legacy',id:legacyId(image)}:image);
+    return copy;
+  }
+  function evidenceAccess(s,identity,id,month,studentId,write=false){
+    const u=assignmentFor(s,identity);checkScope(u,id);
+    requireValue(hasRole(u,'admin')||hasRole(u,'gvcn')&&u.classId===id,'Không có quyền xem ảnh lớp này.',403);
+    if(month){
+      requireValue(MONTHS.includes(month),'Tháng không hợp lệ.');
+      const c=entry(s,id).data;
+      if(studentId)requireValue(c.students.some(st=>st.id===studentId),'Học sinh không thuộc lớp này.');
+      if(write)requireValue(hasRole(u,'admin')||['draft','returned'].includes(c.months[month]?.approval.state||'draft'),'Báo cáo đã khóa.',403);
+    }
+  }
   /**
    * Chuẩn hóa nhiều vai trò và phạm vi khối; chỉ vai trò khối trưởng mới được nhận danh sách khối.
    */
@@ -102,7 +119,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     }
     s.classes[id]={data:encodeClass(c),revision:revision+1,updatedAt:now(),updatedBy:identity.email};
   }
-  function publicClass(s,id) { return entry(s,id); }
+  function publicClass(s,id) {const value=entry(s,id);return {...value,data:publicData(value.data)};}
   /**
    * Chỉ trả chi tiết cho Admin/GVCN đúng lớp; BGH/khối trưởng nhận chỉ tiêu và lỗi đã bỏ nội dung
    * nhận diện cá nhân.
@@ -112,7 +129,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     for(const id of ids) {
       const {data:c,revision}=entry(s,id); revisions[id]=revision;
       const detailAllowed=hasRole(u,'admin') || (hasRole(u,'gvcn')&&u.classId===id);
-      if(detailAllowed) { classes[id]=c; continue; }
+      if(detailAllowed) { classes[id]=publicData(c); continue; }
       classes[id]={...blankClass(id),teacher:c.teacher,months:{}}; summaries[id]={}; checks[id]={};
       for(const month of MONTHS) {
         summaries[id][month]=summary(c,month);
@@ -134,6 +151,28 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       }):[],serverTime:now()};
   }
   return {
+    async evidenceScope(identity,id,month,studentId){
+      requireValue(MONTHS.includes(month)&&typeof studentId==='string'&&studentId,'Chọn học sinh và tháng hợp lệ.');
+      const s=normalizeSchool((await ref.get()).val());evidenceAccess(s,identity,id,month,studentId,true);
+    },
+    async registerEvidence(identity,id,body,item){
+      const key=createHash('sha256').update([id,body.month,body.studentId,body.uploadId].join('|')).digest('hex');
+      const s=await mutate(identity,'evidence:'+id,(school)=>{
+        evidenceAccess(school,identity,id,body.month,body.studentId,true);school.evidence ||= {};
+        school.evidence[key]={...item,id:key,classId:id,month:body.month,studentId:body.studentId,createdBy:identity.email,createdAt:now()};
+      });
+      const saved=s.evidence[key];return {provider:'school',id:key,size:saved.size,mimeType:saved.mimeType};
+    },
+    async evidenceItem(identity,id,key){
+      const s=normalizeSchool((await ref.get()).val());evidenceAccess(s,identity,id);
+      const item=s.evidence?.[key];requireValue(item&&item.classId===id,'Không tìm thấy ảnh.',404);return item;
+    },
+    async legacyEvidence(identity,id,month,recordId,key){
+      const s=normalizeSchool((await ref.get()).val());evidenceAccess(s,identity,id,month);
+      const row=entry(s,id).data.months[month]?.connections.find(r=>r.id===recordId);
+      const image=row?.evidenceImages?.find(image=>image.provider==='onedrive'&&legacyId(image)===key);
+      requireValue(image,'Không tìm thấy ảnh cũ.',404);return image;
+    },
     // Tác vụ lịch định kỳ phía máy chủ; khóa ngày snapshot hiện dùng ngày UTC của now().
     async backupDaily(){
       await ref.get();
@@ -228,6 +267,25 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
         requireValue(Array.isArray(body.classData.students),'Danh sách học sinh phải là một mảng.');
         requireValue(!body.classData.profiles || Array.isArray(body.classData.profiles),'Danh sách M05 không đúng định dạng.');
         const c=normalizeClass(id,body.classData);
+        for(const [month,m]of Object.entries(c.months))for(const row of m.connections){
+          if(row.evidenceImages===undefined)continue;
+          requireValue(Array.isArray(row.evidenceImages)&&row.evidenceImages.length<=5,'Tối đa 5 ảnh minh chứng.');
+          row.evidenceImages=row.evidenceImages.map(image=>{
+            requireValue(image&&typeof image==='object','Ảnh minh chứng không hợp lệ.');
+            if(image.provider==='school'){
+              const stored=school.evidence?.[image.id];
+              requireValue(stored&&stored.classId===id&&stored.month===month&&stored.studentId===row.studentId,'Ảnh không thuộc học sinh/lớp/tháng này.',403);
+              return {provider:'school',id:stored.id,size:stored.size,mimeType:stored.mimeType};
+            }
+            if(image.provider==='legacy'){
+              const prior=old.data.months[month]?.connections.find(r=>r.id===row.id&&r.studentId===row.studentId);
+              const original=prior?.evidenceImages?.find(a=>legacyId(a)===image.id);
+              requireValue(original,'Liên kết ảnh cũ đã thay đổi.',409);return original;
+            }
+            // Tương thích bản cũ: metadata OneDrive hiện có vẫn được giữ, không tạo link công khai.
+            return image;
+          });
+        }
         if(importMode) {
           requireValue(hasRole(u,'admin'),'Chỉ Admin được chuyển dữ liệu cũ lên Firebase.',403);
           requireValue(!old.data.students.length&&!old.data.profiles.length&&!Object.keys(old.data.months).length,'Chỉ nhập dữ liệu cũ vào lớp còn trống; không ghi đè lớp đang có dữ liệu.',409);

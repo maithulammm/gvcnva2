@@ -22,11 +22,41 @@ test('M03 OneDrive metadata survives class save and bootstrap without exposing f
     webUrl:'https://school-my.sharepoint.com/private-photo',size:5000,mimeType:'image/jpeg',uploadedBy:teacher.email,uploadedAt:'2026-11-20T01:00:00.000Z'};
   c.months['T11/2026']={...emptyMonth(),connections:[{id:'R1',studentId:'S1',date:'2026-11-20',channel:'Email',message:'Positive update',recipient:'Mẹ',reply:'Sent',evidenceImages:[proof]}]};
   await api.putClass(teacher,'8C3',{classData:c,revision:boot.revisions['8C3']});
-  boot=await api.bootstrap(teacher);assert.deepEqual(boot.classes['8C3'].months['T11/2026'].connections[0].evidenceImages,[proof]);
+  boot=await api.bootstrap(teacher);
+  const masked=boot.classes['8C3'].months['T11/2026'].connections[0].evidenceImages[0];
+  assert.equal(masked.provider,'legacy');assert(!JSON.stringify(boot).includes('private-photo'));
+  assert.deepEqual(await api.legacyEvidence(teacher,'8C3','T11/2026','R1',masked.id),proof);
+  await api.putClass(teacher,'8C3',{classData:boot.classes['8C3'],revision:boot.revisions['8C3']});
+  assert.deepEqual(await api.legacyEvidence(teacher,'8C3','T11/2026','R1',masked.id),proof);
   assert.equal(boot.summaries?.['8C3'],undefined);
   await api.saveUserRoles(admin,{email:'leader@vietanhschool.edu.vn',name:'Lead',roles:['lead'],grades:['8'],active:true});
   const aggregate=await api.bootstrap({email:'leader@vietanhschool.edu.vn',oid:'leader-oid',name:'Lead'});
   assert(!JSON.stringify(aggregate).includes('private-photo'));assert.equal(aggregate.summaries['8C3']['T11/2026'].connections,1);
+});
+
+test('central evidence enforces real class assignment, closed reports and attachment ownership',async()=>{
+  const {api,db}=await fixture();await api.saveTeacher(admin,teacherInput);
+  let boot=await api.bootstrap(admin),c=boot.classes['8C3'];c.students=[{id:'S1',name:'Student',code:''}];
+  await api.putClass(admin,'8C3',{classData:c,revision:boot.revisions['8C3']});await api.bootstrap(teacher);
+  const body={month:'T11/2026',studentId:'S1',uploadId:'first'};
+  await api.evidenceScope(teacher,'8C3',body.month,'S1');
+  await assert.rejects(api.evidenceScope(teacher,'8C4',body.month,'S1'),{status:403});
+  const meta=await api.registerEvidence(teacher,'8C3',body,{itemId:'private-file',driveId:'private-drive',size:123,mimeType:'image/jpeg'});
+  assert.equal(meta.provider,'school');assert(!JSON.stringify(meta).includes('private'));
+  assert.equal((await api.evidenceItem(teacher,'8C3',meta.id)).itemId,'private-file');
+  await assert.rejects(api.evidenceItem(teacher,'8C4',meta.id),{status:403});
+  boot=await api.bootstrap(teacher);c=boot.classes['8C3'];c.months[body.month]={...emptyMonth(),connections:[{id:'C1',studentId:'S1',evidenceImages:[meta]}]};
+  await api.putClass(teacher,'8C3',{classData:c,revision:boot.revisions['8C3']});
+  boot=await api.bootstrap(admin);c=boot.classes['8C3'];c.months[body.month].connections[0].evidenceImages=[{provider:'school',id:'f'.repeat(64)}];
+  await assert.rejects(api.putClass(admin,'8C3',{classData:c,revision:boot.revisions['8C3']}),{status:403});
+  await db.ref(ROOT).transaction(raw=>{raw.classes['8C3'].data.months['T11_2026'].approval.state='submitted';return raw;});
+  await assert.rejects(api.evidenceScope(teacher,'8C3',body.month,'S1'),{status:403});
+  assert.equal((await api.evidenceItem(teacher,'8C3',meta.id)).itemId,'private-file','Read remains allowed in a locked month');
+  await api.saveUserRoles(admin,{email:'lead@vietanhschool.edu.vn',name:'Lead',roles:['lead'],grades:['8'],active:true});
+  const lead={email:'lead@vietanhschool.edu.vn',oid:'lead',name:'Lead'};await api.bootstrap(lead);
+  await assert.rejects(api.evidenceItem(lead,'8C3',meta.id),{status:403});
+  await api.deleteTeacher(admin,Object.values((await api.bootstrap(admin)).teachers)[0].id);
+  await assert.rejects(api.evidenceItem(teacher,'8C3',meta.id),{status:403});
 });
 
 test('recovery stores server-side revisions and daily snapshots, denies teachers and restores with concurrency checks',async()=>{
