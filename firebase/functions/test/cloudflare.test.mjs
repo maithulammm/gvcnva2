@@ -156,7 +156,7 @@ test('Scoped photo reads fetch one evidence item and no school/class archive',as
   const state=fixture.state(),key='a'.repeat(64);state.evidence={[key]:{id:key,classId:'8C3',driveId:'drive',itemId:'item'}};
   const reads=restFixture(state),api=createService(createFirebaseRestDatabase(configured,{fetchImpl:reads.fetch}));
   assert.equal((await api.evidenceItem(admin,'8C3',key)).itemId,'item');
-  assert.deepEqual(reads.trace.map(r=>r.path).sort(),['calendar','evidence/'+key,'users/'+Buffer.from(admin.email).toString('base64url')].sort());
+  assert.deepEqual(reads.trace.map(r=>r.path).sort(),['calendar','evidence/'+key,'classes/8C3/deletedEvidence/'+key,'classes/8C3/pendingEvidenceDeletes/'+key,'users/'+Buffer.from(admin.email).toString('base64url')].sort());
 });
 
 test('Paged reads reject data/revision pairs changed during loading',async()=>{
@@ -186,4 +186,28 @@ test('Scoped transactions preserve teacher scope and locked report rules',async(
   c=result.data;c.months['T11/2026'].approval.state='submitted';
   await assert.rejects(api.putClass(teacher,'8C3',{classData:c,revision:result.revision}),{status:403});
   await assert.rejects(api.bootstrap(teacher,{ids:['8C4']}),{status:403});
+});
+
+test('Hourly Worker maintenance retries a queued image within the Free subrequest budget',async()=>{
+  const key='a'.repeat(64),fixture=restFixture({classes:{'8C3':{revision:1,data:{months:{}},pendingEvidenceDeletes:{[key]:{
+    key,ref:{provider:'onedrive'},item:{driveId:'drive',itemId:'file'},month:'T11/2026',attempts:0,nextAttemptAt:0,
+  }}}}}),worker=createWorker({createDatabase:()=>createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch})});
+  const env={...configured,EVIDENCE_AUTH_MODE:'application',EVIDENCE_CLIENT_ID:'storage',EVIDENCE_CLIENT_SECRET:'test-secret',EVIDENCE_DRIVE_ID:'drive',EVIDENCE_ROOT_ID:'root'};
+  const originalFetch=globalThis.fetch;let graphCalls=0,deletes=0;
+  globalThis.fetch=async(url,options={})=>{
+    url=String(url);graphCalls++;
+    if(url.includes('/token'))return Response.json({access_token:'GRAPH',expires_in:3600});
+    if(url.endsWith('/permanentDelete')){assert.equal(options.method,'POST');deletes++;return new Response(null,{status:204});}
+    if(url.includes('/items/file?'))return Response.json({file:{mimeType:'image/jpeg'},name:'legacy.jpg',parentReference:{id:'month'}});
+    if(url.includes('/items/month?'))return Response.json({name:'T11-2026',parentReference:{id:'class'}});
+    if(url.includes('/items/class?'))return Response.json({name:'8C3',parentReference:{id:'year'}});
+    if(url.includes('/items/year?'))return Response.json({name:'2026-2027',parentReference:{id:'root'}});
+    throw Error('Unexpected maintenance request');
+  };
+  try{
+    let pending;await worker.scheduled({cron:'15 * * * *',scheduledTime:2*3600000},env,{waitUntil:value=>pending=value});await pending;
+  }finally{globalThis.fetch=originalFetch;}
+  assert.equal(deletes,1);assert.equal(Object.keys(fixture.state().classes['8C3'].pendingEvidenceDeletes||{}).length,0);
+  assert(fixture.state().classes['8C3'].deletedEvidence[key]);
+  const counts=fixture.counts();assert(counts.reads+counts.writes+counts.tokens+graphCalls<50);
 });

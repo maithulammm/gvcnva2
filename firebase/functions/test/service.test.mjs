@@ -12,6 +12,64 @@ async function fixture() {
 }
 const teacherInput={name:'Giáo viên A',email:teacher.email,classId:'8C3',active:true};
 
+async function photosFixture({shared=false}={}){
+  const {db,api}=await fixture();await api.saveTeacher(admin,teacherInput);
+  let boot=await api.bootstrap(admin),c=boot.classes['8C3'];c.students=[{id:'S1',name:'Student'}];
+  await api.putClass(admin,'8C3',{classData:c,revision:boot.revisions['8C3']});await api.bootstrap(teacher);
+  const photos=[];for(const uploadId of ['one','two'])photos.push(await api.registerEvidence(teacher,'8C3',{month:'T11/2026',studentId:'S1',uploadId},{driveId:'drive',itemId:uploadId,size:10,mimeType:'image/jpeg'}));
+  boot=await api.bootstrap(teacher);c=boot.classes['8C3'];
+  c.months['T11/2026']={...emptyMonth(),connections:[{id:'R1',studentId:'S1',date:'2026-11-20',channel:'Tin nhắn',recipient:'Mẹ',evidenceImages:photos}]};
+  if(shared)c.months['T11/2026'].connections.push({id:'R2',studentId:'S1',evidenceImages:[photos[0]]});
+  const saved=await api.putClass(teacher,'8C3',{classData:c,revision:boot.revisions['8C3']});
+  return {api,db,photos,saved};
+}
+
+test('Photo removal queues only after a successful save and restore cannot resurrect deleted images',async()=>{
+  const {api,db,photos,saved}=await photosFixture();const c=structuredClone(saved.data);
+  c.months['T11/2026'].connections[0].evidenceImages.shift();
+  await assert.rejects(api.putClass(teacher,'8C3',{classData:c,revision:saved.revision-1}),{status:409});
+  assert.equal(Object.keys(db.state().classes['8C3'].pendingEvidenceDeletes||{}).length,0);
+  const next=await api.putClass(teacher,'8C3',{classData:c,revision:saved.revision});assert.equal(next.cleanupPending,1);
+  await assert.rejects(api.evidenceItem(teacher,'8C3',photos[0].id),{status:404});
+  const removed=[];const result=await api.cleanupEvidence(teacher,'8C3',async(item,scope)=>{removed.push(item.itemId);assert.equal(scope.classId,'8C3');});
+  assert.deepEqual(result,{deleted:1,pending:0});assert.deepEqual(removed,['one']);
+  assert.equal((await api.evidenceItem(teacher,'8C3',photos[1].id)).itemId,'two');
+  const restored=await api.restore(admin,'8C3',{key:'rev-'+saved.revision,revision:next.revision});
+  assert.deepEqual(restored.classes['8C3'].months['T11/2026'].connections[0].evidenceImages.map(p=>p.id),[photos[1].id]);
+  const latest=restored.classes['8C3'];latest.months['T11/2026'].connections[0].evidenceImages.push(photos[0]);
+  await assert.rejects(api.putClass(teacher,'8C3',{classData:latest,revision:restored.revisions['8C3']}),{status:409});
+});
+
+test('Deleting a connection deletes all unused photos, preserves shared images and denies another class',async()=>{
+  const {api,saved,photos}=await photosFixture({shared:true}),c=structuredClone(saved.data);
+  c.months['T11/2026'].connections.shift();
+  await api.putClass(teacher,'8C3',{classData:c,revision:saved.revision});
+  const removed=[];await assert.rejects(api.cleanupEvidence(teacher,'8C4',async()=>removed.push('forbidden')),{status:403});
+  await api.cleanupEvidence(teacher,'8C3',async item=>removed.push(item.itemId));assert.deepEqual(removed,['two']);
+  assert.equal((await api.evidenceItem(teacher,'8C3',photos[0].id)).itemId,'one');
+});
+
+test('Failed photo deletes persist and back off before retrying both files',async()=>{
+  const {db,saved}=await photosFixture(),c=structuredClone(saved.data);let millis=Date.parse('2026-11-20T04:00:00Z');
+  const api=createService(db,{clock:()=>new Date(millis)});c.months['T11/2026'].connections=[];
+  await api.putClass(teacher,'8C3',{classData:c,revision:saved.revision});let attempts=0;
+  const fail=async()=>{attempts++;throw Object.assign(Error('busy'),{status:503,retryAfter:300});};
+  assert.deepEqual(await api.cleanupEvidence(teacher,'8C3',fail),{deleted:0,pending:2});
+  await api.cleanupEvidence(teacher,'8C3',fail);assert.equal(attempts,2);
+  millis+=301000;const deleted=[];assert((await api.pendingEvidenceClasses()).includes('8C3'));
+  assert.deepEqual(await api.cleanupEvidence(teacher,'8C3',async item=>deleted.push(item.itemId)),{deleted:2,pending:0});
+  assert.deepEqual(deleted.sort(),['one','two']);
+});
+
+test('Concurrent cleanup cannot claim the same photo twice',async()=>{
+  const {api,saved}=await photosFixture(),c=structuredClone(saved.data);c.months['T11/2026'].connections[0].evidenceImages.shift();
+  await api.putClass(teacher,'8C3',{classData:c,revision:saved.revision});
+  let entered,release;const started=new Promise(resolve=>entered=resolve),gate=new Promise(resolve=>release=resolve);let calls=0;
+  const first=api.cleanupEvidence(teacher,'8C3',async()=>{calls++;entered();await gate;});
+  await started;await api.cleanupEvidence(teacher,'8C3',async()=>{calls++;});assert.equal(calls,1);
+  release();await first;assert.equal(calls,1);
+});
+
 test('M03 caps new attachments at two while retaining or reducing older three-photo records',async()=>{
   const {db}=await fixture(),state=db.state();
   const c=blankClass('8C3');c.students=[{id:'S1',name:'Student'}];

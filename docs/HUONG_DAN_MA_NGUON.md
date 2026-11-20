@@ -81,7 +81,7 @@ CSS được nạp theo nhiều lớp. Quy tắc phía sau có thể ghi đè qu
 - Bootstrap chia nhóm tối đa 8 lớp, chỉ đọc `data` và `revision`, không tải kho ảnh, token, audit hay snapshot riêng. `/changes` chỉ đọc phân công, lịch, revision và danh mục quản trị cần thiết; khi phiên bản không đổi, trình duyệt bỏ qua tải lại báo cáo. Chỉ áp dụng cả bootstrap sau khi mọi nhóm hoàn tất.
 - Ảnh được đọc riêng theo mã; ảnh cũ đọc theo lớp/tháng. Làm mới token OneDrive chỉ giao dịch trên `storageAuth`.
 - Snapshot mới `format: 2` giữ metadata lớp và `monthRefs`; nội dung tháng lưu một lần theo SHA-256 trong `recoveryBlobs`. Lịch sử giao dịch lớp được giữ nguyên tử với bản lớp, sau đó tác vụ sao lưu hằng ngày gom về kho lịch sử riêng. `recovery()` và `restore()` giải tham chiếu, vẫn đọc được snapshot định dạng cũ. Không rollback về backend cũ không hiểu `monthRefs` để khôi phục dữ liệu.
-- M03 cho thêm tối đa **2 ảnh** mỗi lần kết nối ở cả giao diện và máy chủ. Bản cũ có hơn 2 ảnh được giữ hoặc giảm số ảnh; không tự xóa ảnh gốc. Ảnh không bắt buộc.
+- M03 cho thêm tối đa **2 ảnh** mỗi lần kết nối ở cả giao diện và máy chủ. Bản cũ có hơn 2 ảnh được giữ nguyên nếu không sửa ảnh. Gỡ ảnh rồi lưu hoặc xóa lần kết nối sẽ xóa vĩnh viễn ảnh không còn được dùng; `evidence-cleanup.mjs` tạo hàng đợi, kiểm tra tham chiếu và chặn khôi phục liên kết tới ảnh đã xóa. Xem chi tiết trong `KHO_ANH_TAP_TRUNG.md`. Ảnh không bắt buộc.
 
 ```powershell
 npm.cmd test

@@ -174,6 +174,7 @@ function render() {
   renderResponsiveNavigation(permitted);
   adaptResponsiveTables();
   hydrateEvidenceImages($('view'));
+  if(ui.page==='m03')scheduleEvidenceCleanup(ui.classId);
   updateStorageNotice();
   refreshButtonChoices();
   if(ui.page==='database'&&!ui.storageStatus&&!ui.storageStatusLoading)loadStorageStatus();

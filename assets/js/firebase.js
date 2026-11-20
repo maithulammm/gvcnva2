@@ -181,6 +181,7 @@ function useBootstrap(data) {
   cloud.summaries = data.summaries || {};
   cloud.checks = data.checks || {};
   cloud.scopedSync=!!data.scopedSync;
+  cloud.evidenceCleanup=!!data.evidenceCleanup;
   const defaults = defaultSchool();
   appData = {
     ...defaults,
@@ -322,6 +323,7 @@ async function flushCloud() {
         cloud.pending.delete(id);
         scanPendingClasses();
         storePendingDrafts();
+        if(result.cleanupPending)scheduleEvidenceCleanup(id,true);
       }
       if (epoch !== cloud.epoch) return;
       localStorage.setItem(cloudCacheKey(), JSON.stringify(appData));

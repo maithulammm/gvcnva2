@@ -1,5 +1,6 @@
 import { randomUUID,createHash } from 'node:crypto';
 import {appointmentEntries} from './appointments.mjs';
+import {evidenceReferences,evidenceStillUsed,queueRemovedEvidence,assertEvidenceNotRetired,stripRetiredEvidence} from './evidence-cleanup.mjs';
 import {YEAR,GRADES,CLASSES,MONTHS,ROOT,emailKey,list,normalizeSchool,normalizeClass,encodeClass,blankClass,
   assignmentFor,scopeFor,checkScope,requireValue,validateClass,authorizeClassEdit,emptyMonth,validateReport,summary,
   USER_ROLES,rolesOf,gradesOf,hasRole,primaryRole,normalizeAssignment,gradeOf} from './model.mjs';
@@ -53,6 +54,19 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     if(failure)throw failure;
     requireValue(result.committed,'Lớp đã thay đổi. Vui lòng tải lại.',409);
     return normalizeSchool({...base,classes:{[id]:result.snapshot.val()}});
+  }
+  /** Cập nhật trạng thái xóa riêng tư; không đổi revision của báo cáo khi chạy lại tác vụ. */
+  async function updateEvidenceState(id,operation){
+    const target=db.scoped?db.ref(ROOT+'/classes/'+id):ref;let value;
+    if(!db.scoped)await target.get();
+    await target.transaction(raw=>{
+      value=undefined;if(!raw)return undefined;
+      const stored=db.scoped?raw:raw.classes?.[id];if(!stored)return undefined;
+      value=operation(stored);
+      if(value===undefined)return undefined;
+      return raw;
+    },undefined,false);
+    return value;
   }
   function publicData(c){
     const copy=structuredClone(c);
@@ -156,6 +170,8 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
    */
   function put(s,id,c,revision,identity) {
     const old=entry(s,id);
+    assertEvidenceNotRetired(c,s.classes[id],s.evidence);
+    const pendingEvidenceDeletes=queueRemovedEvidence(s.classes[id]||{},old.data,c,now(),identity.email);
     const records=value=>{
       const result={};
       for(const st of value.students)result['student:'+st.id]=st;
@@ -183,9 +199,9 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       for(const key of keys.slice(kind==='day-'?30:20))delete history[key];
     }
     pruneSnapshotBlobs(s,id);
-    s.classes[id]={...s.classes[id],data:encodeClass(c),revision:revision+1,updatedAt:now(),updatedBy:identity.email};
+    s.classes[id]={...s.classes[id],pendingEvidenceDeletes,data:encodeClass(c),revision:revision+1,updatedAt:now(),updatedBy:identity.email};
   }
-  function publicClass(s,id) {const value=entry(s,id);return {...value,data:publicData(value.data)};}
+  function publicClass(s,id) {const value=entry(s,id);return {...value,data:publicData(value.data),cleanupPending:Object.keys(s.classes[id]?.pendingEvidenceDeletes||{}).length};}
   /**
    * Chỉ trả chi tiết cho Admin/GVCN đúng lớp; BGH/khối trưởng nhận chỉ tiêu và lỗi đã bỏ nội dung
    * nhận diện cá nhân.
@@ -208,7 +224,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
         classes[id].months[month]={...emptyMonth(),approval:{state:c.months[month]?.approval.state||'draft',history:[]}};
       }
     }
-    return {schema:2,year:YEAR,assignment:{role:u.role,roles:u.roles,classId:u.classId||'',grade:u.grade||'',grades:u.grades,display:u.name||identity.email},
+    return {schema:2,year:YEAR,evidenceCleanup:true,assignment:{role:u.role,roles:u.roles,classId:u.classId||'',grade:u.grade||'',grades:u.grades,display:u.name||identity.email},
       classes,revisions,summaries,checks,teachers:hasRole(u,'admin')?s.teachers:{},
       calendar:s.calendar,
       users:hasRole(u,'admin')?Object.values(s.users).map(user=>{
@@ -218,6 +234,68 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       }):[],serverTime:now()};
   }
   return {
+    /** Chỉ hàng đợi do máy chủ tạo mới có thể gọi xóa; không nhận itemId từ trình duyệt. */
+    async cleanupEvidence(identity,id,remove,{limit=2}={}){
+      requireValue(CLASSES.includes(id),'Lớp không hợp lệ.');
+      if(identity){const s=db.scoped?await context(identity):normalizeSchool((await ref.get()).val());evidenceAccess(s,identity,id);}
+      const pending=db.scoped?await read('classes/'+id+'/pendingEvidenceDeletes'):
+        (await ref.get()).val()?.classes?.[id]?.pendingEvidenceDeletes;
+      let deleted=0;
+      for(const key of Object.keys(pending||{}).filter(key=>!(pending[key].nextAttemptAt>clock().getTime())&&!(pending[key].leaseUntil>clock().getTime())).slice(0,Math.min(limit,2))){
+        const claim=randomUUID(),stamp=clock().getTime();
+        let task=await updateEvidenceState(id,stored=>{
+          const task=stored.pendingEvidenceDeletes?.[key];
+          if(!task||task.nextAttemptAt>stamp||task.leaseUntil>stamp)return;
+          if(evidenceStillUsed(normalizeClass(id,stored.data),task)){
+            delete stored.pendingEvidenceDeletes[key];return {cancelled:true};
+          }
+          Object.assign(task,{claim,leaseUntil:stamp+300000});return structuredClone(task);
+        });
+        if(!task||task.cancelled)continue;
+        try{
+          const item=task.item||(db.scoped?await read('evidence/'+task.ref.id):(await ref.get()).val()?.evidence?.[task.ref.id]);
+          requireValue(item?.driveId&&item.itemId,'Chưa xác định được tệp ảnh cần xóa.',503);
+          if(task.ref.provider==='school')requireValue(item.classId===id&&item.month===task.month,'Ảnh không thuộc lớp/tháng cần xóa.',403);
+          // Kiểm tra lại sau khi tra chỉ mục; giữ ảnh nếu một bản ghi khác còn dùng tệp này.
+          const ready=await updateEvidenceState(id,stored=>{
+            const current=stored.pendingEvidenceDeletes?.[key];if(current?.claim!==claim)return;
+            if(evidenceStillUsed(normalizeClass(id,stored.data),current,item)){
+              delete stored.pendingEvidenceDeletes[key];return false;
+            }
+            current.item={driveId:item.driveId,itemId:item.itemId,classId:id,month:task.month};
+            return {protectedImageIds:evidenceReferences(normalizeClass(id,stored.data)).filter(ref=>ref.image.provider==='school').map(ref=>ref.key)};
+          });
+          if(!ready)continue;
+          const outcome=await remove(item,{classId:id,month:task.month,key,legacy:task.ref.provider==='onedrive',...ready});
+          await updateEvidenceState(id,stored=>{
+            const current=stored.pendingEvidenceDeletes?.[key];if(current?.claim!==claim)return;
+            if(!outcome?.retained){
+              stored.deletedEvidence ||= {};stored.deletedEvidence[key]={item:current.item,deletedAt:now(),requestedBy:current.requestedBy||'system'};
+              stored.events ||= {};stored.events[randomUUID()]={action:'evidence-delete:'+id,actor:current.requestedBy||identity?.email||'system',at:now(),evidenceId:key};
+            }
+            delete stored.pendingEvidenceDeletes[key];return true;
+          });if(!outcome?.retained)deleted++;
+        }catch(error){
+          await updateEvidenceState(id,stored=>{
+            const current=stored.pendingEvidenceDeletes?.[key];if(current?.claim!==claim)return;
+            current.attempts=(current.attempts||0)+1;current.leaseUntil=0;delete current.claim;
+            current.nextAttemptAt=clock().getTime()+Math.min(86400,Math.max(Number(error.retryAfter)||0,60*2**Math.min(current.attempts,8)))*1000;
+            current.lastError=String(error.status||503);return true;
+          });
+        }
+      }
+      const remaining=db.scoped?await read('classes/'+id+'/pendingEvidenceDeletes'):
+        (await ref.get()).val()?.classes?.[id]?.pendingEvidenceDeletes;
+      return {deleted,pending:Object.keys(remaining||{}).length};
+    },
+    async pendingEvidenceClasses(ids=CLASSES){
+      requireValue(ids.every(id=>CLASSES.includes(id)),'Lớp không hợp lệ.');
+      const entries=db.scoped?await Promise.all(ids.map(async id=>[id,await read('classes/'+id+'/pendingEvidenceDeletes')])):
+        Object.entries((await ref.get()).val()?.classes||{}).map(([id,c])=>[id,c.pendingEvidenceDeletes]);
+      const at=clock().getTime();
+      return entries.map(([id,tasks])=>({id,next:Math.min(...Object.values(tasks||{}).filter(t=>!(t.leaseUntil>at)).map(t=>t.nextAttemptAt||0))}))
+        .filter(c=>c.next<=at).sort((a,b)=>a.next-b.next||a.id.localeCompare(b.id)).map(c=>c.id);
+    },
     async changes(identity){
       if(!db.scoped)return {supported:false};
       const s=await context(identity),u=assignmentFor(s,identity),ids=scopeFor(u);
@@ -296,6 +374,9 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     },
     async evidenceItem(identity,id,key){
       const s=db.scoped?await imageContext(identity,id):normalizeSchool((await ref.get()).val());evidenceAccess(s,identity,id);
+      const retired=db.scoped?await read('classes/'+id+'/deletedEvidence/'+key):s.classes[id]?.deletedEvidence?.[key];
+      const pending=db.scoped?await read('classes/'+id+'/pendingEvidenceDeletes/'+key):s.classes[id]?.pendingEvidenceDeletes?.[key];
+      requireValue(!retired&&!pending,'Ảnh đã được xóa.',404);
       const item=db.scoped?await read('evidence/'+key):s.evidence?.[key];requireValue(item&&item.classId===id,'Không tìm thấy ảnh.',404);return item;
     },
     async legacyEvidence(identity,id,month,recordId,key){
@@ -354,7 +435,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
         requireValue(CLASSES.includes(id),'Lớp không hợp lệ.');
         const old=entry(school,id),saved=school.classes[id]?.recovery?.[body.key]||school.recovery?.[id]?.[body.key];
         requireValue(saved&&body.revision===old.revision,'Bản sao không tồn tại hoặc dữ liệu đã thay đổi.',409);
-        const c=normalizeClass(id,snapshotData(school,id,saved));c.teacher=old.data.teacher;c.email=old.data.email;
+        const c=stripRetiredEvidence(normalizeClass(id,snapshotData(school,id,saved)),school.classes[id]);c.teacher=old.data.teacher;c.email=old.data.email;
         validateClass(c,old.data);put(school,id,c,old.revision,identity);
       });return publicBootstrap(s,identity);
     },

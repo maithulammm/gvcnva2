@@ -3,6 +3,48 @@ import assert from 'node:assert/strict';
 import {createEvidenceStore,centralEvidenceConfigured} from '../evidence-store.mjs';
 const env={EVIDENCE_AUTH_MODE:'application',MICROSOFT_TENANT_ID:'tenant',EVIDENCE_CLIENT_ID:'storage-app',EVIDENCE_CLIENT_SECRET:'server-only',EVIDENCE_DRIVE_ID:'drive',EVIDENCE_ROOT_ID:'root'};
 const bytes=Buffer.from([255,216,255,217]);
+
+function deletionStore(mode='ok'){
+  const calls=[],key='a'.repeat(64);
+  const store=createEvidenceStore(env,{fetchImpl:async(url,options={})=>{
+    url=String(url);calls.push({url,method:options.method||'GET'});
+    if(url.includes('oauth2'))return Response.json({access_token:'SERVER',expires_in:3600});
+    assert.equal(options.headers.Authorization,'Bearer SERVER');
+    if(url.endsWith('/permanentDelete'))return mode==='busy'?Response.json({}, {status:429,headers:{'retry-after':'120'}}):new Response(null,{status:204});
+    if(url.includes('/items/file?')){
+      if(mode==='missing')return Response.json({}, {status:404});
+      return Response.json({id:'file',name:mode==='name'?'unrelated.jpg':key+'.jpg',...(mode==='folder'?{folder:{}}:{file:{mimeType:'image/jpeg'}}),parentReference:{id:'month'}});
+    }
+    if(url.includes('/items/month?'))return Response.json({id:'month',name:'T11-2026',parentReference:{id:'class'}});
+    if(url.includes('/items/class?'))return Response.json({id:'class',name:mode==='class'?'8C4':'8C3',parentReference:{id:'year'}});
+    if(url.includes('/items/year?'))return Response.json({id:'year',name:'2026-2027',parentReference:{id:'root'}});
+    throw Error('Unexpected deletion request');
+  }});
+  return {store,calls,scope:{classId:'8C3',month:'T11/2026',key},item:{driveId:'drive',itemId:'file'}};
+}
+
+test('Photo deletion validates ancestry and permanently deletes one file with an empty 204 response',async()=>{
+  const f=deletionStore();await f.store.remove(f.item,f.scope);
+  assert.deepEqual(f.calls.filter(c=>c.url.endsWith('/permanentDelete')).map(c=>[c.method,c.url]),[['POST','https://graph.microsoft.com/v1.0/drives/drive/items/file/permanentDelete']]);
+  const missing=deletionStore('missing');await missing.store.remove(missing.item,missing.scope);
+  assert(!missing.calls.some(c=>c.url.endsWith('/permanentDelete')));
+});
+
+test('Photo deletion refuses folders, wrong names/classes/drives and preserves a currently used filename',async()=>{
+  for(const mode of ['folder','name','class']){
+    const f=deletionStore(mode);await assert.rejects(f.store.remove(f.item,f.scope),{status:403});
+    assert(!f.calls.some(c=>c.url.endsWith('/permanentDelete')));
+  }
+  const f=deletionStore();await assert.rejects(f.store.remove({...f.item,driveId:'other'},f.scope),{status:403});
+  assert.deepEqual(await f.store.remove(f.item,{...f.scope,legacy:true,protectedImageIds:[f.scope.key]}),{retained:true});
+  assert(!f.calls.some(c=>c.url.endsWith('/permanentDelete')));
+});
+
+test('Permanent deletion reports throttling delay without retrying immediately',async()=>{
+  const f=deletionStore('busy');
+  await assert.rejects(f.store.remove(f.item,f.scope),error=>error.status===503&&error.retryAfter===120);
+  assert.equal(f.calls.filter(c=>c.url.endsWith('/permanentDelete')).length,1);
+});
 test('central store keeps credentials server-side, uploads below configured root and proxies image bytes',async()=>{
   const calls=[];let tokenCalls=0;
   const store=createEvidenceStore(env,{fetchImpl:async(url,options={})=>{

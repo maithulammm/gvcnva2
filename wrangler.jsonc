@@ -5,7 +5,7 @@
   "compatibility_date": "2026-11-18",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
-  "triggers": { "crons": ["0 18 * * *"] },
+  "triggers": { "crons": ["0 18 * * *", "15 * * * *"] },
   "build": {
     "command": "npm run build"
   },

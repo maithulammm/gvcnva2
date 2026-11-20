@@ -85,7 +85,7 @@ function pasteEvidenceImages(event){
 async function removeEvidenceImage(index){
   const editor=ui.editing,state=editor?.evidence,item=state?.entries[index];
   if(!item||state.busy||!evidenceCurrent(editor))return;
-  if(item.meta&&!await appConfirm('Gỡ ảnh khỏi lần kết nối này? Ảnh gốc vẫn được giữ trong kho lưu trữ.'))return;
+  if(item.meta&&!await appConfirm('Gỡ ảnh này? Khi bấm Lưu thông tin, ảnh không còn được sử dụng sẽ bị xóa vĩnh viễn khỏi kho ảnh.'))return;
   if(!evidenceCurrent(editor)||state.entries[index]!==item)return;
   if(item.preview)URL.revokeObjectURL(item.preview);
   state.entries.splice(index,1);saveEditorDraft();renderEvidenceEditor();

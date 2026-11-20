@@ -31,8 +31,9 @@ export function createEvidenceStore(env,{fetchImpl=fetch,clock=()=>Date.now(),lo
       const accessToken=await token();
       const response=await fetchImpl('https://graph.microsoft.com/v1.0/drives/'+encodeURIComponent(driveId())+path,{...options,headers:{Authorization:'Bearer '+accessToken,...options.headers},signal:AbortSignal.timeout(45000)});
       if(delegated&&attempt===0&&[401,403].includes(response.status)){cached=null;await response.arrayBuffer();continue;}
+      if([429,503].includes(response.status))throw Object.assign(Error('Kho ảnh đang bận. Tác vụ sẽ được thử lại.'),{status:503,retryAfter:Number(response.headers.get('retry-after'))||60});
       requireValue(response.ok,'Không thể truy cập kho ảnh. Vui lòng thử lại hoặc liên hệ quản trị viên.',response.status===404?404:response.status===409?409:503);
-      return response.json();
+      return response.status===204?null:response.json();
     }
   }
   async function folder(parent,name){
@@ -67,6 +68,25 @@ export function createEvidenceStore(env,{fetchImpl=fetch,clock=()=>Date.now(),lo
     throw Object.assign(Error('Kho ảnh chuyển tiếp quá nhiều lần. Vui lòng thử lại.'),{status:503});
   }
   return {
+    /** Xóa vĩnh viễn đúng một ảnh trong kho/lớp/tháng; tuyệt đối không xóa thư mục. */
+    async remove(item,{classId,month,key,legacy=false,protectedImageIds=[]}){
+      await token();
+      requireValue(item.driveId===driveId()&&item.itemId!==rootId(),'Ảnh không thuộc kho đang kết nối.',403);
+      const path='/items/'+encodeURIComponent(item.itemId);let node;
+      try{node=await graph(path+'?$select=id,name,file,parentReference');}
+      catch(error){if(error.status===404)return;throw error;}
+      requireValue(['image/jpeg','image/png','image/webp'].includes(node.file?.mimeType),'Chỉ được xóa tệp ảnh minh chứng.',403);
+      if(protectedImageIds.some(id=>node.name===id+'.jpg'))return {retained:true};
+      if(!legacy)requireValue(node.name===key+'.jpg','Tên ảnh không khớp chỉ mục minh chứng.',403);
+      for(const name of [month.replace('/','-'),classId,YEAR]){
+        requireValue(node.parentReference?.id,'Ảnh không thuộc thư mục minh chứng.',403);
+        node=await graph('/items/'+encodeURIComponent(node.parentReference.id)+'?$select=id,name,parentReference');
+        requireValue(node.name===name,'Ảnh không thuộc lớp/tháng cần xóa.',403);
+      }
+      requireValue(node.parentReference?.id===rootId(),'Ảnh không thuộc thư mục kho.',403);
+      try{await graph(path+'/permanentDelete',{method:'POST'});}
+      catch(error){if(error.status!==404)throw error;}
+    },
     async upload({id,classId,month,contentBase64}){
       requireValue(typeof contentBase64==='string'&&contentBase64.length<=Math.ceil(MAX_IMAGE_BYTES/3)*4&&/^[A-Za-z0-9+/]+={0,2}$/.test(contentBase64),'Ảnh không hợp lệ hoặc vượt 2 MB.');
       const bytes=Buffer.from(contentBase64,'base64');requireValue(bytes.length>3&&bytes.length<=MAX_IMAGE_BYTES&&bytes[0]===255&&bytes[1]===216&&bytes[2]===255,'Chỉ nhận ảnh JPEG hợp lệ, tối đa 2 MB.');

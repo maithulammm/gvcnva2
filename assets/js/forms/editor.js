@@ -428,7 +428,7 @@ async function removeRecord(type, id) {
   let name = r.studentId ? studentName(c, r.studentId) : r.name || r.code;
   if (
     !await appConfirm(
-      `Xóa mục "${name}"? Thao tác này không thể hoàn tác nếu chưa có bản sao lưu.`,
+      type==='m03'&&r.evidenceImages?.length?`Xóa lần kết nối của "${name}" và các ảnh minh chứng? Ảnh không còn được sử dụng sẽ bị xóa vĩnh viễn; bản sao lưu không khôi phục được ảnh.`:`Xóa mục "${name}"? Thao tác này không thể hoàn tác nếu chưa có bản sao lưu.`,
     )
   )
     return;

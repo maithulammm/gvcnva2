@@ -81,6 +81,20 @@ test('Paged bootstrap combines all authorized classes before applying data',asyn
   const data=await f.run('loadCloudBootstrap()');assert.equal(Object.keys(data.classes).length,ids.length);
 });
 
+test('Photo cleanup runs through the protected class endpoint and failures do not undo a saved revision',async()=>{
+  const f=frontend();await f.login();f.run("cloud.ready=true;cloud.evidenceCleanup=true;cloud.revisions={'8C3':7};ui.classId='8C3';ui.page='m02'");
+  let calls=0;
+  f.ctx.fetch=async(url,options)=>{
+    calls++;assert(new URL(url).pathname.endsWith('/classes/8C3/evidence/cleanup'));assert.equal(options.method,'POST');
+    assert.deepEqual(JSON.parse(options.body),{});assert(options.headers.Authorization.startsWith('Bearer '));
+    return {ok:true,json:async()=>({deleted:1,pending:0})};
+  };
+  await f.run("scheduleEvidenceCleanup('8C3',true)");assert.equal(calls,1);
+  f.ctx.fetch=async()=>({ok:false,status:503,json:async()=>({error:'Temporary failure'})});
+  await f.run("scheduleEvidenceCleanup('8C3',true)");
+  assert.equal(f.run('cloud.revisions["8C3"]'),7);assert.equal(f.run('cloud.error'),'');
+});
+
 test('M03 central upload retries missing images without requesting teacher Graph permissions',async()=>{
   const f=frontend();await f.login();f.run(`cls().students=[{id:'S1',name:'Student',code:''}];openModal('m03');
     ui.editing.evidence.entries=[{file:new Blob(['one']),uploadId:'one'},{file:new Blob(['two']),uploadId:'two'}];`);

@@ -2,13 +2,27 @@ import {createApiHandler,MAX_BODY_BYTES} from '../firebase/functions/api.mjs';
 import {serviceAccountConfigured} from '../firebase/functions/health.mjs';
 import {createFirebaseRestDatabase} from './firebase-rest.mjs';
 import {createService} from '../firebase/functions/service.mjs';
+import {CLASSES} from '../firebase/functions/model.mjs';
+import {createEvidenceStore,centralEvidenceConfigured} from '../firebase/functions/evidence-store.mjs';
+import {createEvidenceOAuth} from '../firebase/functions/evidence-oauth.mjs';
 /**
  * Tách tài nguyên giao diện và /api; chuyển Request của Workers sang handler dùng chung, còn
  * scheduled chạy sao lưu định kỳ.
  */
 export function createWorker({createDatabase=createFirebaseRestDatabase}={}) {
   const handlers=new WeakMap();
-  return {async scheduled(event,env,ctx) {ctx.waitUntil(createService(createDatabase(env)).backupDaily());},async fetch(request,env) {
+  return {async scheduled(event,env,ctx) {
+    ctx.waitUntil((async()=>{
+      const service=createService(createDatabase(env));
+      if(event.cron==='0 18 * * *'){await service.backupDaily();return;}
+      if(!centralEvidenceConfigured(env))return;
+      // Luân phiên 16 lớp mỗi giờ, xóa một tệp/lượt để giữ dưới hạn mức request con Free.
+      const offset=(Math.floor((event.scheduledTime||Date.now())/3600000)%2)*16;
+      const [id]=await service.pendingEvidenceClasses(CLASSES.slice(offset,offset+16));if(!id)return;
+      const oauth=createEvidenceOAuth(env,service),store=createEvidenceStore(env,{loadConnection:()=>oauth.load(),saveConnection:value=>oauth.save(value)});
+      await service.cleanupEvidence(null,id,(item,scope)=>store.remove(item,scope),{limit:1});
+    })());
+  },async fetch(request,env) {
     const path=new URL(request.url).pathname;
     if(path!=='/api'&&!path.startsWith('/api/')) {
       if(path==='/') {

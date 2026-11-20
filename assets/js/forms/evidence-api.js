@@ -1,6 +1,32 @@
 "use strict";
 
 const evidenceImageCache=new Map(),evidenceRequests=new Set();let evidenceGeneration=0;
+const evidenceCleanupJobs=new Map(),evidenceCleanupTimes=new Map();
+/** Xóa tệp sau khi báo cáo đã được máy chủ xác nhận; lỗi xóa không biến lần lưu thành thất bại. */
+function scheduleEvidenceCleanup(classId,notify=false){
+  if(!cloud.ready||!cloud.evidenceCleanup||!auth.account||!canViewPersonal())return;
+  const owner=auth.email,epoch=cloud.epoch,key=owner+'|'+epoch+'|'+classId;
+  if(evidenceCleanupJobs.has(key)||!notify&&Date.now()-(evidenceCleanupTimes.get(key)||0)<60000)return;
+  evidenceCleanupTimes.set(key,Date.now());
+  const job=(async()=>{
+    let removed=0,pending=0;
+    try{
+      for(let batch=0;batch<6&&owner===auth.email&&epoch===cloud.epoch;batch++){
+        const result=await databaseRequest('/classes/'+classId+'/evidence/cleanup','POST',{}, {silent:true});
+        removed+=result.deleted||0;pending=result.pending||0;
+        if(!pending||!result.deleted)break;
+      }
+      if(notify&&pending&&owner===auth.email&&epoch===cloud.epoch)toast('Đã lưu dữ liệu. Ảnh còn chờ xóa sẽ được tự động thử lại.');
+    }catch{
+      if(notify&&owner===auth.email&&epoch===cloud.epoch)toast('Đã lưu dữ liệu. Tác vụ xóa ảnh sẽ được thử lại.');
+    }finally{
+      if(removed&&owner===auth.email&&epoch===cloud.epoch&&ui.classId===classId){clearEvidenceImages();if(ui.page==='m03')render();}
+      evidenceCleanupJobs.delete(key);
+    }
+  })();
+  evidenceCleanupJobs.set(key,job);
+  return job;
+}
 /** Thu hồi URL ảnh khi rời trang/đăng xuất; không dùng cache của người trước cho phiên sau. */
 function clearEvidenceImages(){
   evidenceObserver?.disconnect();
