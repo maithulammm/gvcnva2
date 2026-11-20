@@ -74,6 +74,15 @@ CSS được nạp theo nhiều lớp. Quy tắc phía sau có thể ghi đè qu
 
 ## Kiểm tra sau khi sửa
 
+### Đồng bộ theo lớp và tháng (Workers)
+
+- Adapter REST hỗ trợ đường dẫn con dưới `ROOT`. Lưu biểu mẫu thường xuyên dùng transaction tại `classes/{classId}`, giữ revision và các liên kết M02–M05 nhất quán. Trình duyệt gửi `partialMonths: true` và chỉ các tháng thay đổi; máy chủ ghép với tháng hiện có. Không dùng PATCH không có điều kiện hoặc ghi đè từ một bản lớp đã cũ.
+- Giao dịch vẫn đọc/ghi **một lớp**, gồm các tháng của lớp đó, để kiểm tra liên kết xuyên tháng. Chưa phải transaction độc lập tại từng nút tháng. Các thao tác quản trị danh sách, đổi quyền, duyệt/khôi phục và sao lưu định kỳ vẫn có thể cần giao dịch toàn trường.
+- Bootstrap chia nhóm tối đa 8 lớp, chỉ đọc `data` và `revision`, không tải kho ảnh, token, audit hay snapshot riêng. `/changes` chỉ đọc phân công, lịch, revision và danh mục quản trị cần thiết; khi phiên bản không đổi, trình duyệt bỏ qua tải lại báo cáo. Chỉ áp dụng cả bootstrap sau khi mọi nhóm hoàn tất.
+- Ảnh được đọc riêng theo mã; ảnh cũ đọc theo lớp/tháng. Làm mới token OneDrive chỉ giao dịch trên `storageAuth`.
+- Snapshot mới `format: 2` giữ metadata lớp và `monthRefs`; nội dung tháng lưu một lần theo SHA-256 trong `recoveryBlobs`. Lịch sử giao dịch lớp được giữ nguyên tử với bản lớp, sau đó tác vụ sao lưu hằng ngày gom về kho lịch sử riêng. `recovery()` và `restore()` giải tham chiếu, vẫn đọc được snapshot định dạng cũ. Không rollback về backend cũ không hiểu `monthRefs` để khôi phục dữ liệu.
+- M03 cho thêm tối đa **2 ảnh** mỗi lần kết nối ở cả giao diện và máy chủ. Bản cũ có hơn 2 ảnh được giữ hoặc giảm số ảnh; không tự xóa ảnh gốc. Ảnh không bắt buộc.
+
 ```powershell
 npm.cmd test
 npm.cmd run build

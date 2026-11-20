@@ -15,8 +15,8 @@ const configured={MICROSOFT_TENANT_ID:'22215a7f-b9e3-4b53-bd27-3a317311e6ca',
 
 function restFixture(initial=null,{conflicts=0,missingETag=false,deny=false}={}) {
   let state=structuredClone(initial),revision=0,tokens=0,writes=0,reads=0;
-  const assertions=[];
-  return {state:()=>structuredClone(state),counts:()=>({tokens,writes,reads}),assertions,
+  const assertions=[],trace=[];
+  return {state:()=>structuredClone(state),counts:()=>({tokens,writes,reads}),assertions,trace,
     async fetch(url,options={}) {
       if(url==='https://oauth2.googleapis.com/token') {
         tokens++;
@@ -26,12 +26,15 @@ function restFixture(initial=null,{conflicts=0,missingETag=false,deny=false}={})
         assertions.push(payload);
         return Response.json({access_token:'GOOGLE_SERVER_TOKEN',expires_in:3600});
       }
-      assert.equal(url,`${DATABASE_URL}/${ROOT}.json`);
+      assert(url.startsWith(`${DATABASE_URL}/${ROOT}`)&&url.endsWith('.json'));
+      const parts=url.slice(`${DATABASE_URL}/${ROOT}`.length,-5).split('/').filter(Boolean);
+      trace.push({path:parts.join('/'),method:options.method});
+      const value=()=>parts.reduce((node,key)=>node?.[key],state)??null;
       assert.equal(options.headers.Authorization,'Bearer GOOGLE_SERVER_TOKEN');
       if(deny)return Response.json({error:'PRIVATE_DATABASE_ERROR'},{status:403});
       if(options.method==='GET') {
         reads++;
-        return Response.json(state,{headers:missingETag?{}:{ETag:`"${revision}"`}});
+        return Response.json(value(),{headers:missingETag?{}:{ETag:`"${revision}"`}});
       }
       assert.equal(options.method,'PUT');writes++;
       if(conflicts-->0) {
@@ -39,8 +42,11 @@ function restFixture(initial=null,{conflicts=0,missingETag=false,deny=false}={})
         return Response.json(state,{status:412,headers:{ETag:`"${revision}"`}});
       }
       if(options.headers['If-Match']!==`"${revision}"`)return Response.json(state,{status:412});
-      state=JSON.parse(options.body);revision++;
-      return Response.json(state);
+      const next=JSON.parse(options.body);
+      if(parts.length){state ||= {};let node=state;for(const key of parts.slice(0,-1))node=node[key] ||= {};node[parts.at(-1)]=next;}
+      else state=next;
+      revision++;
+      return Response.json(next);
     }};
 }
 
@@ -101,4 +107,83 @@ test('Cloudflare database adapter retains existing school identity, rosters and 
   await assert.rejects(second.putClass(admin,'8C3',{classData:c,revision:0}),{status:409});
   assert.equal(migrated.counts().writes,0);
   assert.equal(original.state().bootstrapAdminOid,migrated.state().bootstrapAdminOid);
+});
+
+test('Scoped saves merge only submitted months and preserve other classes, revisions and recovery',async()=>{
+  const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},fixture=restFixture();
+  const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}));
+  let boot=await api.bootstrap(admin),c=boot.classes['8C3'];
+  c.months={'T10/2026':{notes:{summary:'October retained'}},'T11/2026':{notes:{summary:'November'}}};
+  let saved=await api.putClass(admin,'8C3',{classData:c,revision:0});
+  const other=JSON.stringify(fixture.state().classes['6A1']);fixture.trace.length=0;
+  c={...saved.data,months:{'T11/2026':{...saved.data.months['T11/2026'],notes:{summary:'Changed November'}}}};
+  saved=await api.putClass(admin,'8C3',{classData:c,revision:1,partialMonths:true});
+  assert.equal(saved.revision,2);assert.equal(saved.data.months['T10/2026'].notes.summary,'October retained');
+  assert.equal(saved.data.months['T11/2026'].notes.summary,'Changed November');
+  assert.equal(JSON.stringify(fixture.state().classes['6A1']),other);
+  const local=fixture.state().classes['8C3'];
+  assert.deepEqual(local.recovery['rev-1'].data.months,{});
+  assert.equal(Object.keys(local.recovery['rev-1'].monthRefs).length,2);
+  assert.equal(Object.keys(local.recoveryBlobs).length,2);
+  assert(!fixture.trace.some(r=>r.path===''));
+  assert(fixture.trace.filter(r=>r.method==='PUT').every(r=>r.path==='classes/8C3'));
+  await assert.rejects(api.putClass(admin,'8C3',{classData:c,revision:1,partialMonths:true}),{status:409});
+  const history=await api.recovery(admin,'8C3');assert(history.snapshots['rev-1']);assert(history.audit.some(r=>r.action==='save-class:8C3'));
+  await api.backupDaily();const archived=await api.recovery(admin,'8C3');assert(archived.snapshots['rev-1']);
+  assert(!fixture.state().classes['8C3'].recovery);
+  const restored=await api.restore(admin,'8C3',{key:'rev-1',revision:2});
+  assert.equal(restored.classes['8C3'].months['T11/2026'].notes.summary,'November');
+});
+
+test('Paged bootstrap never downloads private histories and change checks read only revisions',async()=>{
+  const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},fixture=restFixture();
+  const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}));await api.bootstrap(admin);
+  fixture.trace.length=0;const page=await api.bootstrap(admin,{paged:true});
+  assert.equal(Object.keys(page.classes).length,8);assert.equal(page.remainingClassIds.length,24);
+  assert(page.scopedSync);assert(fixture.trace.length<40);
+  assert(!fixture.trace.some(r=>r.path===''||r.path==='classes'||r.path.startsWith('recovery')||r.path==='audit'));
+  const next=await api.bootstrap(admin,{ids:page.remainingClassIds.slice(0,8)});assert.equal(Object.keys(next.classes).length,8);
+  fixture.trace.length=0;const before=await api.changes(admin);assert(before.version);
+  assert(!fixture.trace.some(r=>r.path.includes('/data')||r.path===''));
+  assert(fixture.trace.length<45);assert.equal((await api.changes(admin)).version,before.version);
+  let c=page.classes['6A1'];c.months={'T11/2026':{notes:{summary:'new'}}};await api.putClass(admin,'6A1',{classData:c,revision:0});
+  assert.notEqual((await api.changes(admin)).version,before.version);
+});
+
+test('Scoped photo reads fetch one evidence item and no school/class archive',async()=>{
+  const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},fixture=restFixture();
+  const first=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}));await first.bootstrap(admin);
+  const state=fixture.state(),key='a'.repeat(64);state.evidence={[key]:{id:key,classId:'8C3',driveId:'drive',itemId:'item'}};
+  const reads=restFixture(state),api=createService(createFirebaseRestDatabase(configured,{fetchImpl:reads.fetch}));
+  assert.equal((await api.evidenceItem(admin,'8C3',key)).itemId,'item');
+  assert.deepEqual(reads.trace.map(r=>r.path).sort(),['calendar','evidence/'+key,'users/'+Buffer.from(admin.email).toString('base64url')].sort());
+});
+
+test('Paged reads reject data/revision pairs changed during loading',async()=>{
+  const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},fixture=restFixture();
+  await createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch})).bootstrap(admin);
+  let changed=false;
+  const fetchImpl=async(url,options)=>{
+    const response=await fixture.fetch(url,options);
+    if(!changed&&url.endsWith('/classes/6A1/data.json')){
+      changed=true;const revisionUrl=url.replace('/data.json','/revision.json');
+      const current=await fixture.fetch(revisionUrl,{method:'GET',headers:options.headers});
+      await fixture.fetch(revisionUrl,{method:'PUT',headers:{...options.headers,'If-Match':current.headers.get('etag')},body:'1'});
+    }
+    return response;
+  };
+  const api=createService(createFirebaseRestDatabase(configured,{fetchImpl}));
+  await assert.rejects(api.bootstrap(admin,{paged:true}),{status:409});
+});
+
+test('Scoped transactions preserve teacher scope and locked report rules',async()=>{
+  const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},teacher={email:'teacher@vietanhschool.edu.vn',oid:'teacher',name:'Teacher'},fixture=restFixture();
+  const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}));
+  await api.bootstrap(admin);await api.saveTeacher(admin,{email:teacher.email,name:'Teacher',classId:'8C3',active:true});
+  let boot=await api.bootstrap(teacher),c=boot.classes['8C3'];c.months={'T11/2026':{notes:{summary:'Own class'}}};
+  let result=await api.putClass(teacher,'8C3',{classData:c,revision:boot.revisions['8C3'],partialMonths:true});
+  await assert.rejects(api.putClass(teacher,'8C4',{classData:c,revision:0}),{status:403});
+  c=result.data;c.months['T11/2026'].approval.state='submitted';
+  await assert.rejects(api.putClass(teacher,'8C3',{classData:c,revision:result.revision}),{status:403});
+  await assert.rejects(api.bootstrap(teacher,{ids:['8C4']}),{status:403});
 });

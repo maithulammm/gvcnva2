@@ -11,6 +11,49 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
   const ref=db.ref(ROOT);
   const now=()=>clock().toISOString();
   const legacyId=image=>createHash('sha256').update(JSON.stringify(image)).digest('hex');
+  const read=async path=>(await db.ref(ROOT+'/'+path).get()).val();
+  /** Chỉ đọc phân công và lịch chung; không tải báo cáo, ảnh và bản sao lưu toàn trường. */
+  async function context(identity){
+    const key=emailKey(identity.email),[user,calendar]=await Promise.all([read('users/'+key),read('calendar')]);
+    const s=normalizeSchool({users:{[key]:user},calendar});
+    assignmentFor(s,identity);return s;
+  }
+  async function imageContext(identity,id,month,studentId){
+    const s=await context(identity);
+    // Kiểm tra quyền trước khi đọc tên học sinh hoặc nội dung tháng.
+    evidenceAccess(s,identity,id);
+    if(month){
+      requireValue(MONTHS.includes(month),'Tháng không hợp lệ.');
+      const [data,students]=await Promise.all([read('classes/'+id+'/data/months/'+month.replace('/','_')),
+        studentId?read('classes/'+id+'/data/students'):Promise.resolve([])]);
+      s.classes[id]={data:{students,months:{[month]:data||emptyMonth()}}};
+    }
+    return s;
+  }
+  /** Giao dịch cấp lớp giữ revision, liên kết M02–M05 và bản khôi phục cùng một lần ghi. */
+  async function mutateClass(identity,id,action,operation,evidence={}){
+    if(!db.scoped)return mutate(identity,action,operation);
+    requireValue(CLASSES.includes(id),'Lớp không hợp lệ.');
+    const base=await context(identity);checkScope(assignmentFor(base,identity),id);
+    const target=db.ref(ROOT+'/classes/'+id);let failure;
+    await target.get();
+    const result=await target.transaction(raw=>{
+      failure=null;
+      try{
+        const s=normalizeSchool({...base,classes:{[id]:raw},evidence,
+          recovery:{[id]:raw?.recovery||{}},recoveryBlobs:{[id]:raw?.recoveryBlobs||{}},audit:{}});
+        operation(s,assignmentFor(s,identity));
+        if(action)s.audit[randomUUID()]={action,actor:identity.email,oid:identity.oid,at:now()};
+        const events={...raw?.events,...s.audit};
+        // Lịch sử chi tiết gần nhất; các snapshot ngày/phiên bản có giới hạn riêng trong put().
+        const keys=Object.keys(events).sort((a,b)=>events[b].at.localeCompare(events[a].at));
+        return {...s.classes[id],recovery:s.recovery[id],recoveryBlobs:s.recoveryBlobs?.[id]||{},events:Object.fromEntries(keys.slice(0,2000).map(k=>[k,events[k]]))};
+      }catch(error){failure=error;return undefined;}
+    },undefined,false);
+    if(failure)throw failure;
+    requireValue(result.committed,'Lớp đã thay đổi. Vui lòng tải lại.',409);
+    return normalizeSchool({...base,classes:{[id]:result.snapshot.val()}});
+  }
   function publicData(c){
     const copy=structuredClone(c);
     for(const m of Object.values(copy.months))for(const row of m.connections)
@@ -86,6 +129,28 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     const stored=s.classes[id];
     return {data:normalizeClass(id,stored?.data),revision:stored?.revision||0};
   }
+  /** Snapshot dùng nội dung tháng theo hash: tháng không đổi chỉ lưu một lần, không nhân cả năm 50 lần. */
+  function snapshotClass(s,id,old,info){
+    s.recoveryBlobs ||= {};const blobs=s.recoveryBlobs[id] ||= {},monthRefs={};
+    for(const [month,value]of Object.entries(encodeClass(old.data).months)){
+      const hash=createHash('sha256').update(JSON.stringify(value)).digest('hex');
+      blobs[hash]=value;monthRefs[month]=hash;
+    }
+    return {format:2,data:encodeClass({...old.data,months:{}}),monthRefs,revision:old.revision,...info};
+  }
+  function snapshotData(s,id,snapshot){
+    const blobs={...s.recoveryBlobs?.[id],...s.classes[id]?.recoveryBlobs};
+    const months={...snapshot.data.months};
+    for(const [month,hash]of Object.entries(snapshot.monthRefs||{})){
+      requireValue(blobs[hash],'Bản sao thiếu dữ liệu tháng; không thực hiện khôi phục.',409);
+      months[month]=blobs[hash];
+    }
+    return {...snapshot.data,months};
+  }
+  function pruneSnapshotBlobs(s,id){
+    const used=new Set(Object.values(s.recovery?.[id]||{}).flatMap(snapshot=>Object.values(snapshot.monthRefs||{})));
+    for(const hash of Object.keys(s.recoveryBlobs?.[id]||{}))if(!used.has(hash))delete s.recoveryBlobs[id][hash];
+  }
   /**
    * So bản trước/sau để ghi audit từng bản ghi, giữ snapshot trước thay đổi rồi tăng revision lớp.
    */
@@ -109,7 +174,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     s.recovery ||= {};
     const history=s.recovery[id] ||= {};
     const stamp=now(),day=stamp.slice(0,10);
-    const snapshot={data:encodeClass(old.data),revision:old.revision,at:stamp,actor:identity.email};
+    const snapshot=snapshotClass(s,id,old,{at:stamp,actor:identity.email});
     if(!history['day-'+day])history['day-'+day]={...snapshot,kind:'daily'};
     history['rev-'+revision]={...snapshot,kind:'revision'};
     // Giới hạn dung lượng: giữ tối đa 30 snapshot ngày và 20 phiên bản gần nhất mỗi lớp.
@@ -117,15 +182,17 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       const keys=Object.keys(history).filter(k=>k.startsWith(kind)).sort((a,b)=>history[b].at.localeCompare(history[a].at)||history[b].revision-history[a].revision);
       for(const key of keys.slice(kind==='day-'?30:20))delete history[key];
     }
-    s.classes[id]={data:encodeClass(c),revision:revision+1,updatedAt:now(),updatedBy:identity.email};
+    pruneSnapshotBlobs(s,id);
+    s.classes[id]={...s.classes[id],data:encodeClass(c),revision:revision+1,updatedAt:now(),updatedBy:identity.email};
   }
   function publicClass(s,id) {const value=entry(s,id);return {...value,data:publicData(value.data)};}
   /**
    * Chỉ trả chi tiết cho Admin/GVCN đúng lớp; BGH/khối trưởng nhận chỉ tiêu và lỗi đã bỏ nội dung
    * nhận diện cá nhân.
    */
-  function publicBootstrap(s,identity) {
-    const u=assignmentFor(s,identity),ids=scopeFor(u),classes={},revisions={},summaries={},checks={};
+  function publicBootstrap(s,identity,selectedIds) {
+    const u=assignmentFor(s,identity),ids=selectedIds||scopeFor(u),classes={},revisions={},summaries={},checks={};
+    let today;
     for(const id of ids) {
       const {data:c,revision}=entry(s,id); revisions[id]=revision;
       const detailAllowed=hasRole(u,'admin') || (hasRole(u,'gvcn')&&u.classId===id);
@@ -133,7 +200,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       classes[id]={...blankClass(id),teacher:c.teacher,months:{}}; summaries[id]={}; checks[id]={};
       for(const month of MONTHS) {
         summaries[id][month]=summary(c,month);
-        const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(clock());
+        today ||= new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(clock());
         const m=c.months[month]||emptyMonth();
         summaries[id][month].overdueAppointments=c.students.flatMap(st=>m.schedule[st.id]?.appointments||[]).filter(a=>a.date&&a.date<today&&!m.meetings.some(r=>r.appointmentId===a.id)).length;
         const v=validateReport(c,month);
@@ -151,12 +218,19 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       }):[],serverTime:now()};
   }
   return {
+    async changes(identity){
+      if(!db.scoped)return {supported:false};
+      const s=await context(identity),u=assignmentFor(s,identity),ids=scopeFor(u);
+      const revisions=await Promise.all(ids.map(async id=>[id,await read('classes/'+id+'/revision')||0]));
+      const directory=hasRole(u,'admin')?await Promise.all([read('users'),read('teachers')]):[];
+      return {supported:true,version:createHash('sha256').update(JSON.stringify([s.users,s.calendar,revisions,directory])).digest('hex')};
+    },
     async storageAdmin(identity,ownerOnly=false){
-      const s=normalizeSchool((await ref.get()).val()),u=assignmentFor(s,identity);
+      const s=db.scoped?await context(identity):normalizeSchool((await ref.get()).val()),u=assignmentFor(s,identity);
       requireValue(hasRole(u,'admin'),'Chỉ Admin được quản lý kho ảnh.',403);
       if(ownerOnly)requireValue(identity.email===adminEmail,'Chỉ chủ kho ảnh được kết nối OneDrive.',403);
     },
-    async storageState(){return normalizeSchool((await ref.get()).val()).storageAuth||{};},
+    async storageState(){return db.scoped?(await read('storageAuth')||{}):normalizeSchool((await ref.get()).val()).storageAuth||{};},
     async createStorageFlow(identity,key,sealed,expiresAt){
       await mutate(identity,null,(s,u)=>{
         requireValue(hasRole(u,'admin')&&identity.email===adminEmail,'Chỉ chủ kho ảnh được kết nối.',403);
@@ -189,6 +263,12 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     },
     async refreshStorage(sealed,bindingId){
       let saved=false;
+      if(db.scoped){
+        await db.ref(ROOT+'/storageAuth').transaction(raw=>{
+          saved=false;if(raw?.bindingId!==bindingId)return undefined;
+          saved=true;return {...raw,sealed};
+        });requireValue(saved,'Kết nối kho ảnh đã thay đổi. Hãy thử lại.',409);return;
+      }
       await ref.get();await ref.transaction(raw=>{
         saved=false;if(!raw)return undefined;const s=normalizeSchool(raw);
         if(s.storageAuth?.bindingId!==bindingId)return undefined;
@@ -197,10 +277,17 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     },
     async evidenceScope(identity,id,month,studentId){
       requireValue(MONTHS.includes(month)&&typeof studentId==='string'&&studentId,'Chọn học sinh và tháng hợp lệ.');
-      const s=normalizeSchool((await ref.get()).val());evidenceAccess(s,identity,id,month,studentId,true);
+      const s=db.scoped?await imageContext(identity,id,month,studentId):normalizeSchool((await ref.get()).val());evidenceAccess(s,identity,id,month,studentId,true);
     },
     async registerEvidence(identity,id,body,item){
       const key=createHash('sha256').update([id,body.month,body.studentId,body.uploadId].join('|')).digest('hex');
+      if(db.scoped){
+        const s=await imageContext(identity,id,body.month,body.studentId);
+        evidenceAccess(s,identity,id,body.month,body.studentId,true);
+        const saved={...item,id:key,classId:id,month:body.month,studentId:body.studentId,createdBy:identity.email,createdAt:now()};
+        await db.ref(ROOT+'/evidence/'+key).transaction(()=>saved);
+        return {provider:'school',id:key,size:saved.size,mimeType:saved.mimeType};
+      }
       const s=await mutate(identity,'evidence:'+id,(school)=>{
         evidenceAccess(school,identity,id,body.month,body.studentId,true);school.evidence ||= {};
         school.evidence[key]={...item,id:key,classId:id,month:body.month,studentId:body.studentId,createdBy:identity.email,createdAt:now()};
@@ -208,11 +295,11 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       const saved=s.evidence[key];return {provider:'school',id:key,size:saved.size,mimeType:saved.mimeType};
     },
     async evidenceItem(identity,id,key){
-      const s=normalizeSchool((await ref.get()).val());evidenceAccess(s,identity,id);
-      const item=s.evidence?.[key];requireValue(item&&item.classId===id,'Không tìm thấy ảnh.',404);return item;
+      const s=db.scoped?await imageContext(identity,id):normalizeSchool((await ref.get()).val());evidenceAccess(s,identity,id);
+      const item=db.scoped?await read('evidence/'+key):s.evidence?.[key];requireValue(item&&item.classId===id,'Không tìm thấy ảnh.',404);return item;
     },
     async legacyEvidence(identity,id,month,recordId,key){
-      const s=normalizeSchool((await ref.get()).val());evidenceAccess(s,identity,id,month);
+      const s=db.scoped?await imageContext(identity,id,month):normalizeSchool((await ref.get()).val());evidenceAccess(s,identity,id,month);
       const row=entry(s,id).data.months[month]?.connections.find(r=>r.id===recordId);
       const image=row?.evidenceImages?.find(image=>image.provider==='onedrive'&&legacyId(image)===key);
       requireValue(image,'Không tìm thấy ảnh cũ.',404);return image;
@@ -225,28 +312,49 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
         const s=normalizeSchool(raw),at=now(),day=at.slice(0,10);s.recovery ||= {};
         for(const id of Object.keys(s.classes)){
           const old=entry(s,id),history=s.recovery[id] ||= {};
-          history['day-'+day] ||= {data:encodeClass(old.data),revision:old.revision,at,actor:'system',kind:'daily'};
+          // Gom lịch sử giao dịch lớp về kho riêng mỗi ngày; bootstrap không đọc kho này.
+          for(const [key,snapshot]of Object.entries(s.classes[id].recovery||{})){
+            if(!key.startsWith('day-')||!history[key])history[key]=snapshot;
+          }
+          s.recoveryBlobs ||= {};s.recoveryBlobs[id]={...s.recoveryBlobs[id],...s.classes[id].recoveryBlobs};
+          Object.assign(s.audit,s.classes[id].events||{});
+          delete s.classes[id].recovery;delete s.classes[id].recoveryBlobs;delete s.classes[id].events;
+          history['day-'+day] ||= snapshotClass(s,id,old,{at,actor:'system',kind:'daily'});
           const keys=Object.keys(history).filter(k=>k.startsWith('day-')).sort().reverse();
           for(const key of keys.slice(30))delete history[key];
+          const revisions=Object.keys(history).filter(k=>k.startsWith('rev-')).sort((a,b)=>history[b].revision-history[a].revision);
+          for(const key of revisions.slice(20))delete history[key];
+          pruneSnapshotBlobs(s,id);
         }
         return s;
       },undefined,false);
     },
     // Không trả snapshot/audit cho GVCN hoặc khối trưởng, kể cả có quyền xem tiến độ lớp.
     async recovery(identity,id){
+      if(db.scoped){
+        const s=await context(identity);
+        requireValue(hasRole(assignmentFor(s,identity),'admin'),'Chỉ Admin được xem bản sao lưu.',403);
+        requireValue(CLASSES.includes(id),'Lớp không hợp lệ.');
+        const [stored,legacy,audit,blobs]=await Promise.all([read('classes/'+id),read('recovery/'+id),read('audit'),read('recoveryBlobs/'+id)]);
+        s.classes[id]=stored;s.recoveryBlobs={[id]:blobs};
+        const snapshots=Object.fromEntries(Object.entries({...legacy,...stored?.recovery}).map(([key,snapshot])=>[key,{...snapshot,data:snapshotData(s,id,snapshot)}]));
+        return {classId:id,revision:stored?.revision||0,snapshots,
+          audit:Object.values({...audit,...stored?.events}).filter(a=>a.action?.endsWith(':'+id)).sort((a,b)=>b.at.localeCompare(a.at)).slice(0,100)};
+      }
       const s=normalizeSchool((await ref.get()).val());
       requireValue(hasRole(assignmentFor(s,identity),'admin'),'Chỉ Admin được xem bản sao lưu.',403);
       requireValue(CLASSES.includes(id),'Lớp không hợp lệ.');
-      return {classId:id,revision:entry(s,id).revision,snapshots:s.recovery?.[id]||{},audit:Object.values(s.audit).filter(a=>a.action?.endsWith(':'+id)).sort((a,b)=>b.at.localeCompare(a.at)).slice(0,100)};
+      const snapshots=Object.fromEntries(Object.entries({...s.recovery?.[id],...s.classes[id]?.recovery}).map(([key,snapshot])=>[key,{...snapshot,data:snapshotData(s,id,snapshot)}]));
+      return {classId:id,revision:entry(s,id).revision,snapshots,audit:Object.values({...s.audit,...s.classes[id]?.events}).filter(a=>a.action?.endsWith(':'+id)).sort((a,b)=>b.at.localeCompare(a.at)).slice(0,100)};
     },
     // Khôi phục có kiểm tra revision, sao lưu trạng thái hiện tại và giữ phân công GVCN hiện hành.
     async restore(identity,id,body){
       const s=await mutate(identity,'restore-class:'+id,(school,u)=>{
         requireValue(hasRole(u,'admin'),'Chỉ Admin được khôi phục.',403);
         requireValue(CLASSES.includes(id),'Lớp không hợp lệ.');
-        const old=entry(school,id),saved=school.recovery?.[id]?.[body.key];
+        const old=entry(school,id),saved=school.classes[id]?.recovery?.[body.key]||school.recovery?.[id]?.[body.key];
         requireValue(saved&&body.revision===old.revision,'Bản sao không tồn tại hoặc dữ liệu đã thay đổi.',409);
-        const c=normalizeClass(id,saved.data);c.teacher=old.data.teacher;c.email=old.data.email;
+        const c=normalizeClass(id,snapshotData(school,id,saved));c.teacher=old.data.teacher;c.email=old.data.email;
         validateClass(c,old.data);put(school,id,c,old.revision,identity);
       });return publicBootstrap(s,identity);
     },
@@ -289,7 +397,27 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       });
       return {calendar:s.calendar};
     },
-    async bootstrap(identity) {
+    async bootstrap(identity,options={}) {
+      if(db.scoped){
+        const user=await read('users/'+emailKey(identity.email));
+        if(user?.oid===identity.oid){
+          const s=await context(identity),u=assignmentFor(s,identity),all=scopeFor(u);
+          const ids=options.ids|| (options.paged?all.slice(0,8):all);
+          requireValue(Array.isArray(ids)&&ids.length<=32&&ids.every(id=>all.includes(id)),'Phạm vi lớp không hợp lệ.',403);
+          if(hasRole(u,'admin'))[s.users,s.teachers]=await Promise.all([read('users'),read('teachers')]);
+          s.users ||= {};s.teachers ||= {};
+          await Promise.all(ids.map(async id=>{
+            // Không ghép dữ liệu cũ với revision mới khi giáo viên khác đang lưu.
+            const revision=await read('classes/'+id+'/revision')||0;
+            const data=await read('classes/'+id+'/data');
+            const after=await read('classes/'+id+'/revision')||0;
+            requireValue(after===revision,'Lớp đang được cập nhật. Vui lòng tải lại dữ liệu.',409);
+            s.classes[id]={data,revision};
+          }));
+          return {...publicBootstrap(s,identity,ids),scopedSync:true,
+            remainingClassIds:options.paged?all.filter(id=>!ids.includes(id)):[]};
+        }
+      }
       const current=normalizeSchool((await ref.get()).val());
       const stored=current.users[emailKey(identity.email)];
       if(stored?.oid===identity.oid && current.bootstrapAdminOid &&
@@ -303,21 +431,38 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     },
     // Quyền và revision được kiểm tra trong transaction, không tin kiểm tra ở giao diện.
     async putClass(identity,id,body,importMode=false) {
-      const s=await mutate(identity,`${importMode?'import':'save'}-class:${id}`,(school,u)=>{
+      let evidence={};
+      if(db.scoped){
+        const base=await context(identity);checkScope(assignmentFor(base,identity),id);
+        // Ảnh đã gắn đúng bản ghi sẽ được xác minh lại với bản hiện tại trong transaction;
+        // chỉ tra cứu chỉ mục riêng cho ảnh vừa thêm, tránh hàng trăm request lặp lại.
+        const existing=await read('classes/'+id+'/data');
+        const existingIds=new Set(Object.values(existing?.months||{}).flatMap(m=>(m.connections||[]).flatMap(r=>(r.evidenceImages||[]).filter(a=>a?.provider==='school').map(a=>a.id))));
+        const ids=[...new Set(Object.values(body.classData?.months||{}).flatMap(m=>(m.connections||[]).flatMap(r=>(r.evidenceImages||[]).filter(a=>a?.provider==='school').map(a=>a.id))))];
+        requireValue(ids.length<=10000&&ids.every(key=>/^[a-f0-9]{64}$/.test(key)),'Mã ảnh không hợp lệ.');
+        const added=ids.filter(key=>!existingIds.has(key));
+        requireValue(added.length<=16,'Hãy lưu ảnh theo từng nhóm nhỏ hơn để tránh vượt giới hạn xử lý.');
+        evidence=Object.fromEntries(await Promise.all(added.map(async key=>[key,await read('evidence/'+key)])));
+      }
+      const s=await mutateClass(identity,id,`${importMode?'import':'save'}-class:${id}`,(school,u)=>{
         checkScope(u,id);
         const old=entry(school,id);
         requireValue(Number.isInteger(body.revision)&&body.revision===old.revision,'Lớp đã được cập nhật trên máy khác. Xuất JSON giữ bản đang sửa rồi tải lại dữ liệu.',409);
         requireValue(body.classData && typeof body.classData==='object','Thiếu dữ liệu lớp.');
         requireValue(Array.isArray(body.classData.students),'Danh sách học sinh phải là một mảng.');
         requireValue(!body.classData.profiles || Array.isArray(body.classData.profiles),'Danh sách M05 không đúng định dạng.');
-        const c=normalizeClass(id,body.classData);
+        const c=normalizeClass(id,body.partialMonths?{...body.classData,months:{...old.data.months,...body.classData.months}}:body.classData);
         for(const [month,m]of Object.entries(c.months))for(const row of m.connections){
           if(row.evidenceImages===undefined)continue;
-          requireValue(Array.isArray(row.evidenceImages)&&row.evidenceImages.length<=5,'Tối đa 5 ảnh minh chứng.');
+          requireValue(Array.isArray(row.evidenceImages),'Danh sách ảnh không hợp lệ.');
+          const previousImages=old.data.months[month]?.connections.find(r=>r.id===row.id&&r.studentId===row.studentId)?.evidenceImages||[];
+          const unchangedLegacy=row.evidenceImages.length<=previousImages.length&&row.evidenceImages.every(image=>image&&previousImages.some(oldImage=>oldImage&&(image.id&&image.id===oldImage.id&&image.provider===oldImage.provider||image.provider==='legacy'&&legacyId(oldImage)===image.id||JSON.stringify(image)===JSON.stringify(oldImage))));
+          requireValue(Array.isArray(row.evidenceImages)&&(row.evidenceImages.length<=2||unchangedLegacy),'Tối đa 2 ảnh minh chứng mỗi lần kết nối.');
           row.evidenceImages=row.evidenceImages.map(image=>{
             requireValue(image&&typeof image==='object','Ảnh minh chứng không hợp lệ.');
             if(image.provider==='school'){
-              const stored=school.evidence?.[image.id];
+              const existing=previousImages.find(a=>a.provider==='school'&&a.id===image.id);
+              const stored=school.evidence?.[image.id]||(existing?{...existing,classId:id,month,studentId:row.studentId}:null);
               requireValue(stored&&stored.classId===id&&stored.month===month&&stored.studentId===row.studentId,'Ảnh không thuộc học sinh/lớp/tháng này.',403);
               return {provider:'school',id:stored.id,size:stored.size,mimeType:stored.mimeType};
             }
@@ -342,7 +487,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
           requireValue(!school.calendar.excludedDates.includes(a.date)&&!school.calendar.excludedSessions.some(slot=>slot.date===a.date&&slot.session===a.session),'Ngày hoặc buổi đã chọn là lịch nghỉ. Hãy tải lại lịch.',409);
         }
         put(school,id,c,old.revision,identity);
-      });
+      },evidence);
       return publicClass(s,id);
     },
     async saveTeacher(identity,body) {

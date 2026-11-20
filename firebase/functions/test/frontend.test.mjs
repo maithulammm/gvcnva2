@@ -43,6 +43,44 @@ test('M03 defaults and optional text agree with server report validation',async(
   assert(!validateReport(c,'T11/2026').errors.some(x=>x.key==='K4'));
 });
 
+test('M03 rejects selecting more than two new photos before compression or upload',async()=>{
+  const f=frontend();await f.login();f.run("openModal('m03')");
+  assert.equal(f.run('EVIDENCE_LIMIT'),2);
+  assert(f.el('modalBody').innerHTML.includes('Tối đa 2 ảnh'));
+  await f.run('addEvidenceFiles([{}, {}, {}])');
+  assert.equal(f.run('ui.editing.evidence.entries.length'),0);
+  assert(f.alerts.some(text=>text.includes('tối đa 2 ảnh')));
+});
+
+test('Scoped sync sends changed months only and skips bootstrap when server revisions are unchanged',async()=>{
+  const f=frontend();await f.login();
+  f.run(`ui.classId='8C3';ui.month='T10/2026';mdata().notes.summary='Keep October';ui.month='T11/2026';mdata().notes.summary='Old';
+    cloud.ready=true;cloud.scopedSync=true;cloud.baselines={'8C3':classFingerprint(cls())};cloud.revisions={'8C3':1};`);
+  const initial=JSON.parse(f.run('JSON.stringify(cls())')),calls=[];
+  f.ctx.fetch=async(url,options)=>{
+    const path=new URL(url).pathname;calls.push(path);
+    if(path.endsWith('/changes'))return {ok:true,json:async()=>({supported:true,version:'unchanged'})};
+    assert(path.endsWith('/classes/8C3'));const body=JSON.parse(options.body);
+    assert(body.partialMonths);assert.deepEqual(Object.keys(body.classData.months),['T11/2026']);
+    return {ok:true,json:async()=>({revision:2,data:{...body.classData,months:{...initial.months,...body.classData.months}}})};
+  };
+  f.run("mdata().notes.summary='Updated'");await f.run('flushCloud()');
+  assert.equal(f.run("cls().months['T10/2026'].notes.summary"),'Keep October');
+  assert.equal(f.run('cloud.revisions["8C3"]'),2);
+  f.run("cloud.syncVersion='unchanged'");await f.run('refreshCloud(true)');
+  assert.equal(calls.length,2);assert(calls[1].endsWith('/changes'));
+});
+
+test('Paged bootstrap combines all authorized classes before applying data',async()=>{
+  const f=frontend();await f.login();
+  const all=JSON.parse(f.run('JSON.stringify(appData.classes)')),ids=Object.keys(all),assignment=JSON.parse(f.run('JSON.stringify(auth.assignment)'));
+  f.ctx.fetch=async url=>{
+    const query=new URL(url),selected=query.pathname.endsWith('/classes')?query.searchParams.get('ids').split(','):ids.slice(0,8);
+    return {ok:true,json:async()=>({year:'2026-2027',assignment,scopedSync:true,classes:Object.fromEntries(selected.map(id=>[id,all[id]])),revisions:Object.fromEntries(selected.map(id=>[id,0])),summaries:{},checks:{},remainingClassIds:query.pathname.endsWith('/classes')?[]:ids.slice(8)})};
+  };
+  const data=await f.run('loadCloudBootstrap()');assert.equal(Object.keys(data.classes).length,ids.length);
+});
+
 test('M03 central upload retries missing images without requesting teacher Graph permissions',async()=>{
   const f=frontend();await f.login();f.run(`cls().students=[{id:'S1',name:'Student',code:''}];openModal('m03');
     ui.editing.evidence.entries=[{file:new Blob(['one']),uploadId:'one'},{file:new Blob(['two']),uploadId:'two'}];`);

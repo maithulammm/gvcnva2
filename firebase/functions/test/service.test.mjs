@@ -12,6 +12,22 @@ async function fixture() {
 }
 const teacherInput={name:'Giáo viên A',email:teacher.email,classId:'8C3',active:true};
 
+test('M03 caps new attachments at two while retaining or reducing older three-photo records',async()=>{
+  const {db}=await fixture(),state=db.state();
+  const c=blankClass('8C3');c.students=[{id:'S1',name:'Student'}];
+  const images=[1,2,3].map(n=>({provider:'onedrive',driveId:'drive',itemId:'old-'+n,name:'photo.jpg',webUrl:'https://school-my.sharepoint.com/old-'+n,size:10,mimeType:'image/jpeg'}));
+  c.months['T11/2026']={...emptyMonth(),connections:[{id:'R1',studentId:'S1',date:'2026-11-20',channel:'Tin nhắn',recipient:'Mẹ',evidenceImages:images}]};
+  state.classes['8C3']={data:encodeClass(c),revision:0};
+  const api=createService(memoryDatabase(state));let boot=await api.bootstrap(admin);
+  let saved=await api.putClass(admin,'8C3',{classData:boot.classes['8C3'],revision:0});
+  assert.equal(saved.data.months['T11/2026'].connections[0].evidenceImages.length,3);
+  saved.data.months['T11/2026'].connections.push({...c.months['T11/2026'].connections[0],id:'R2'});
+  await assert.rejects(api.putClass(admin,'8C3',{classData:saved.data,revision:1}),{status:400});
+  saved.data.months['T11/2026'].connections.pop();saved.data.months['T11/2026'].connections[0].evidenceImages.pop();
+  saved=await api.putClass(admin,'8C3',{classData:saved.data,revision:1});
+  assert.equal(saved.data.months['T11/2026'].connections[0].evidenceImages.length,2);
+});
+
 test('M03 OneDrive metadata survives class save and bootstrap without exposing file links to aggregate roles',async()=>{
   const {api}=await fixture();await api.saveTeacher(admin,teacherInput);
   let boot=await api.bootstrap(admin),c=boot.classes['8C3'];

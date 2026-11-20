@@ -38,9 +38,9 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
     })();
     try{return await refreshing;}finally{refreshing=null;}
   }
-  async function request(method,headers={},body) {
+  async function request(path,method,headers={},body) {
     try {
-      const response=await fetchImpl(`${DATABASE_URL}/${ROOT}.json`,{method,
+      const response=await fetchImpl(`${DATABASE_URL}/${path}.json`,{method,
         headers:{Authorization:`Bearer ${await accessToken()}`,...headers},
         ...(body!==undefined?{body:JSON.stringify(body)}:{})});
       requireValue(response.ok||response.status===412,'Không thể đọc/ghi Firebase. Kiểm tra quyền của tài khoản dịch vụ.',503);
@@ -50,18 +50,18 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
       throw Object.assign(new Error('Kết nối Firebase tạm thời gián đoạn. Dữ liệu chưa được xác nhận lưu; hãy thử đồng bộ lại.'),{status:503});
     }
   }
-  return {ref(path) {
-    requireValue(path===ROOT,'Đường dẫn dữ liệu không hợp lệ.',500);
+  return {scoped:true,ref(path) {
+    requireValue(path===ROOT||path.startsWith(ROOT+'/')&&path.slice(ROOT.length+1).split('/').every(key=>/^[A-Za-z0-9_@%+-]+$/.test(key)),'Đường dẫn dữ liệu không hợp lệ.',500);
     return {
-      async get(){const response=await request('GET');return snapshot(await response.json());},
+      async get(){const response=await request(path,'GET');return snapshot(await response.json());},
       async transaction(update) {
         for(let attempt=0;attempt<maxAttempts;attempt++) {
-          const current=await request('GET',{'X-Firebase-ETag':'true'});
+          const current=await request(path,'GET',{'X-Firebase-ETag':'true'});
           const etag=current.headers.get('etag');
           requireValue(etag,'Firebase không trả mã phiên bản; không ghi dữ liệu để tránh ghi đè.',503);
           const value=await current.json(),next=update(structuredClone(value));
           if(next===undefined)return {committed:false,snapshot:snapshot(value)};
-          const written=await request('PUT',{'If-Match':etag,'Content-Type':'application/json'},next);
+          const written=await request(path,'PUT',{'If-Match':etag,'Content-Type':'application/json'},next);
           // 412 nghĩa ETag đã đổi: đọc lại rồi chạy lại update, tuyệt đối không PUT mù.
           if(written.status===412) {await written.arrayBuffer();continue;}
           return {committed:true,snapshot:snapshot(await written.json())};

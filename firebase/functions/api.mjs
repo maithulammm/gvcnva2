@@ -67,7 +67,13 @@ export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=pr
         const item=await service.legacyEvidence(identity,id,month,recordId,key);
         result=await storage().read(item,{legacy:true,classId:id,month});
       }
-      else if(method==='GET'&&route==='/bootstrap') result=await service.bootstrap(identity);
+      else if(method==='GET'&&route==='/changes') result=await service.changes(identity);
+      else if(method==='GET'&&route==='/bootstrap/classes'){
+        const ids=String(query.ids||'').split(',');
+        requireValue(ids.length<=8,'Mỗi lần tải tối đa 8 lớp.');
+        result=await service.bootstrap(identity,{ids});
+      }
+      else if(method==='GET'&&route==='/bootstrap') result=await service.bootstrap(identity,{paged:query.paged==='1'});
       else if(method==='GET'&&/^\/recovery\/[A-Za-z0-9]+$/.test(route)) result=await service.recovery(identity,route.split('/')[2]);
       else if(method==='POST'&&/^\/recovery\/[A-Za-z0-9]+$/.test(route)) result=await service.restore(identity,route.split('/')[2],body);
       else if(method==='PUT'&&route==='/calendar') result=await service.saveCalendar(identity,body);

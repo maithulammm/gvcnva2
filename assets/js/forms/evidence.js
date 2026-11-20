@@ -1,7 +1,7 @@
 "use strict";
 
 // M03: ảnh qua API có phân quyền; báo cáo chỉ giữ mã ảnh, không giữ token hoặc nội dung ảnh.
-const EVIDENCE_LIMIT=5, EVIDENCE_MAX_BYTES=10*1024*1024;
+const EVIDENCE_LIMIT=2, EVIDENCE_MAX_BYTES=10*1024*1024;
 
 /** Chỉ cho mở đường dẫn Microsoft HTTPS, không tin URL tùy ý trong bản sao lưu. */
 function evidenceWebUrl(value){
@@ -33,7 +33,7 @@ function initEvidenceEditor(record){
 function evidenceCurrent(editor){return ui.editing===editor&&editorContextCurrent()&&editable();}
 function evidenceEditorHtml(){
   return `<section class="wide evidence-editor" aria-label="Ảnh minh chứng kết nối phụ huynh">
-    <div class="evidence-heading"><b>Ảnh minh chứng <small>Không bắt buộc</small></b><span>Tối đa 5 ảnh</span></div>
+    <div class="evidence-heading"><b>Ảnh minh chứng <small>Không bắt buộc</small></b><span>Tối đa 2 ảnh</span></div>
     <div class="evidence-tools"><label class="btn small evidence-file-label">＋ Chọn ảnh<input id="evidenceFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="addEvidenceFiles(this.files);this.value='' "></label>
     </div>
     <div id="evidencePaste" class="evidence-paste" tabindex="0" role="group" aria-label="Bấm vào đây và dán ảnh chụp màn hình" onpaste="pasteEvidenceImages(event)">Bấm vào đây rồi Ctrl+V để dán ảnh chụp màn hình</div>
@@ -66,7 +66,7 @@ async function addEvidenceFiles(files){
   const editor=ui.editing,state=editor?.evidence;
   if(!state||state.busy||!evidenceCurrent(editor))return;
   const selected=Array.from(files||[]);if(!selected.length)return;
-  if(selected.length+state.entries.length>EVIDENCE_LIMIT)return appAlert('Mỗi lần kết nối được đính kèm tối đa 5 ảnh.');
+  if(selected.length+state.entries.length>EVIDENCE_LIMIT)return appAlert('Mỗi lần kết nối được đính kèm tối đa 2 ảnh.');
   state.busy=true;state.status='Đang chuẩn bị ảnh…';renderEvidenceEditor();
   try{
     for(const file of selected){

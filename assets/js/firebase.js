@@ -180,6 +180,7 @@ function useBootstrap(data) {
   cloud.revisions = data.revisions || {};
   cloud.summaries = data.summaries || {};
   cloud.checks = data.checks || {};
+  cloud.scopedSync=!!data.scopedSync;
   const defaults = defaultSchool();
   appData = {
     ...defaults,
@@ -222,9 +223,20 @@ function useBootstrap(data) {
  * Tải bootstrap rồi khôi phục bản chờ; chỉ polling khi không mở popup, không có thay đổi chờ và
  * không có lỗi.
  */
+/** Tải theo nhóm 8 lớp để không vượt số request con của Workers Free. Chỉ áp dụng khi đủ các nhóm. */
+async function loadCloudBootstrap(quiet=false){
+  const data=await databaseRequest('/bootstrap?paged=1','GET',undefined,{silent:quiet});
+  const ids=data.remainingClassIds||[];
+  for(let offset=0;offset<ids.length;offset+=8){
+    const page=await databaseRequest('/bootstrap/classes?ids='+ids.slice(offset,offset+8).join(','),'GET',undefined,{silent:quiet});
+    if(stableString(page.assignment)!==stableString(data.assignment))throw Error('Phân công đã thay đổi trong lúc tải. Vui lòng tải lại.');
+    for(const key of ['classes','revisions','summaries','checks'])Object.assign(data[key]||={},page[key]||{});
+  }
+  return data;
+}
 async function connectCloud() {
   const draft = localStorage.getItem(cloudCacheKey() + "_PENDING");
-  const data = await databaseRequest("/bootstrap");
+  const data = await loadCloudBootstrap();
   cloud.ready = true;
   useBootstrap(data);
   restorePendingDrafts(draft);
@@ -287,8 +299,13 @@ async function flushCloud() {
     try {
       for (const id of cloud.pending) {
         const snapshot = JSON.parse(JSON.stringify(appData.classes[id]));
+        // Chỉ gửi các tháng thay đổi; máy chủ ghép với các tháng hiện có trong giao dịch lớp.
+        const baseline=JSON.parse(cloud.baselines[id]||'{}');
+        const partialMonths=cloud.scopedSync;
+        const payload=partialMonths?{...snapshot,months:Object.fromEntries(Object.entries(snapshot.months||{}).filter(([month,value])=>stableString(value)!==stableString(baseline.months?.[month]||{})))}:snapshot;
         const result = await databaseRequest("/classes/" + id, "PUT", {
-          classData: snapshot,
+          classData: payload,
+          partialMonths,
           revision: cloud.revisions[id] || 0,
         }, {silent:true});
         if (epoch !== cloud.epoch) return;
@@ -357,8 +374,15 @@ async function refreshCloud(quiet = false) {
       if (cloud.worker) await cloud.worker;
     }
     cloud.busy = true;
-    const data = await databaseRequest("/bootstrap", "GET", undefined, {silent:quiet});
+    let nextSyncVersion;
+    if(quiet&&cloud.scopedSync){
+      const state=await databaseRequest('/changes','GET',undefined,{silent:true});
+      if(state.supported&&state.version===cloud.syncVersion){cloud.busy=false;return;}
+      nextSyncVersion=state.version;
+    }
+    const data = await loadCloudBootstrap(quiet);
     useBootstrap(data);
+    cloud.syncVersion=nextSyncVersion;
     cloud.unassignedDrafts = {};
     storePendingDrafts();
     cloud.busy = false;
