@@ -30,6 +30,19 @@ test('storage settings are Admin-only and connect navigates only to Microsoft af
   await f.run('connectSchoolStorage()');assert.equal(destinations.length,1);
 });
 
+test('M03 defaults and optional text agree with server report validation',async()=>{
+  const f=frontend();await f.login();f.run("cls().students=[{id:'S1',name:'Student'}];openModal('m03')");
+  assert(f.el('modalBody').innerHTML.includes('value="Tin nhắn" selected'));
+  assert(f.el('modalBody').innerHTML.includes('value="Mẹ" selected'));
+  assert.equal(f.run("FIELDS.m03.find(x=>x[0]==='message')[3]"),0);
+  assert.equal(f.run("FIELDS.m03.find(x=>x[0]==='reply')[3]"),0);
+  f.ctx.input={studentId:'S1',date:'2026-11-20',channel:'Tin nhắn',recipient:'Mẹ',message:'',reply:''};
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');
+  const c=JSON.parse(f.run('JSON.stringify(cls())'));
+  assert.equal(c.months['T11/2026'].connections.length,1);
+  assert(!validateReport(c,'T11/2026').errors.some(x=>x.key==='K4'));
+});
+
 test('M03 central upload retries missing images without requesting teacher Graph permissions',async()=>{
   const f=frontend();await f.login();f.run(`cls().students=[{id:'S1',name:'Student',code:''}];openModal('m03');
     ui.editing.evidence.entries=[{file:new Blob(['one']),uploadId:'one'},{file:new Blob(['two']),uploadId:'two'}];`);
@@ -1087,7 +1100,7 @@ function frontend({memory=new Map(),api}={}) {
   const nodes=new Map(),alerts=[],bodyClasses=new Set();
   const el=id=>{
     if(!nodes.has(id)) nodes.set(id,{innerHTML:'',textContent:'',value:'',disabled:false,checked:false,open:false,
-      classList:{add(){},remove(){}},setAttribute(k,v){this[k]=v;},addEventListener(){},replaceChildren(){this.innerHTML='';},
+      classList:{add(){},remove(){}},setAttribute(k,v){this[k]=v;},removeAttribute(k){delete this[k];},insertAdjacentHTML(position,html){this.innerHTML=html+this.innerHTML;},addEventListener(){},replaceChildren(){this.innerHTML='';},
       close(){this.open=false;},showModal(){this.open=true;},focus(){},select(){}});
     return nodes.get(id);
   };

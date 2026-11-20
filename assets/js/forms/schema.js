@@ -79,7 +79,7 @@ const FIELDS = {
       1,
       ["Tin nhắn", "Điện thoại", "Email", "Gặp trực tiếp", "Thư của HS"],
     ],
-    ["message", "Thông điệp tích cực đã chia sẻ", "textarea", 1],
+    ["message", "Thông điệp tích cực đã chia sẻ", "textarea", 0],
     [
       "recipient",
       "Người nhận",
@@ -89,9 +89,9 @@ const FIELDS = {
     ],
     [
       "reply",
-      "Phản hồi / kết quả (nếu chưa có, ghi Đã gửi, chưa phản hồi)",
+      "Phản hồi / kết quả",
       "textarea",
-      1,
+      0,
     ],
   ],
   previous: [

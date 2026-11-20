@@ -24,7 +24,7 @@ const FORM_HELP={
     'Nêu sự việc cụ thể về nỗ lực, điểm mạnh, tiến bộ hoặc đóng góp; không khen chung chung, so sánh với bạn hoặc sao chép lời khen.',
     'Chỉ ghi khi đã gửi/trao đổi thật; tin đang soạn không được tính là kết nối.',
     'Người nhận chỉ ghi vai trò như cha, mẹ, người giám hộ; không đưa số điện thoại vào báo cáo.',
-    'Ghi phản hồi thực tế. Nếu chưa phản hồi, ghi rõ Đã gửi, chưa phản hồi.',
+    'Thông điệp và phản hồi không bắt buộc nhập. Hình thức mặc định là Tin nhắn, người nhận mặc định là Mẹ; có thể đổi khi cần.',
     'Lưu chứng cứ tại nơi được phân quyền theo quy trình trường. Cuối tháng rà soát học sinh chưa được ghi nhận để cân đối cơ hội tháng sau.'
   ],example:'“Hôm nay em chủ động hỗ trợ bạn hoàn thành nhiệm vụ nhóm.” Một học sinh được liên hệ nhiều lần tạo nhiều lượt, nhưng chỉ đếm một học sinh được ghi nhận.'},
   m04:{title:'Mẫu 04 · Kế hoạch hỗ trợ học sinh',purpose:'Đánh giá hỗ trợ kỳ trước và lập kế hoạch phù hợp nhu cầu, điểm mạnh, mục tiêu của học sinh trong tháng này.',steps:[

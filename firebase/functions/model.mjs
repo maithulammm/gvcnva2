@@ -191,7 +191,7 @@ export function validateReport(c,month) {
     if(missing(r,['studentId','actual','concern','participation','progressEvidence','goal','action','cooperation','needsCoop'])) add('K3',`M02 lượt ${i+1} thiếu thông tin.`);
     if(r.profileId && (missing(r,['profileProgress','profileNext']) || !c.profiles.some(p=>p.id===r.profileId && p.studentId===r.studentId))) add('K6',`M05 lượt ${i+1} thiếu chi tiết hoặc liên kết.`);
   }
-  for(const [i,r] of m.connections.entries()) if(missing(r,['studentId','date','channel','message','recipient','reply'])) add('K4',`M03 lượt ${i+1} thiếu thông tin.`);
+  for(const [i,r] of m.connections.entries()) if(missing(r,['studentId','date','channel','recipient'])) add('K4',`M03 lượt ${i+1} thiếu thông tin.`);
   for(const r of m.previous) if(missing(r,['studentId','action','observation','next'])) add('K5','M04 phần I thiếu thông tin.');
   for(const r of m.plans) if(missing(r,['studentId','need','goal','action','deadline','cooperation','assessment'])) add('K5','M04 phần II thiếu thông tin.');
   for(const p of c.profiles.filter(p=>p.startMonth===month)) if(missing(p,['studentId','code','strength','concern','goal'])) add('K6','M05 thiếu thông tin.');

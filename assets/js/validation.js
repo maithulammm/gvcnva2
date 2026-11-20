@@ -142,9 +142,7 @@ function validations(c, month) {
       !x.studentId ||
       !x.date ||
       !x.channel ||
-      !x.message ||
-      !x.recipient ||
-      !x.reply
+      !x.recipient
     )
       add("K4", `M03 lượt ${i + 1} còn thiếu thông tin.`, true);
   }

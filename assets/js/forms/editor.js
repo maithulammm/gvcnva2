@@ -118,7 +118,11 @@ function openModal(type, id = "", seed = {}) {
   if (!id && type === "m02") Object.assign(rec, {
     actual:workToday(), progressEvidence:"Chưa đủ căn cứ", needsCoop:"Không", cooperation:"Chưa cần", ...rec,
   });
-  if (!id && type === "m03") rec.date ||= workToday();
+  if (!id && type === "m03") {
+    rec.date ||= workToday();
+    rec.channel ||= "Tin nhắn";
+    rec.recipient ||= "Mẹ";
+  }
   if (type==='m02') ui.editing.meetingInitial=meetingEditorValues(rec);
   if(type==='profile'&&!id)rec.code=nextProfileCode(c,rec.startMonth||ui.month);
   // Bản nháp chỉ được áp khi còn cùng baseline; ưu tiên nội dung giáo viên chưa lưu.
@@ -267,12 +271,15 @@ async function submitForm(e) {
   if(type==='m03'){
     const editor=ui.editing;
     if(editor.evidence?.busy)return toast('Đang xử lý ảnh. Vui lòng chờ.');
-    $('modalSave').disabled=true;$('modalBody').inert=true;
+    const saveButton=$('modalSave'),saveLabel=saveButton.innerHTML;
+    saveButton.disabled=true;saveButton.setAttribute('aria-busy','true');
+    saveButton.innerHTML='<span class="request-spinner" aria-hidden="true"></span> Đang lưu…';
+    $('modalBody').inert=true;
     try{
       record.evidenceImages=await uploadConnectionEvidence(editor);
       if(!evidenceCurrent(editor))return;
     }catch(error){appAlert(error.message);return;}
-    finally{$('modalSave').disabled=false;$('modalBody').inert=false;}
+    finally{saveButton.disabled=false;saveButton.removeAttribute('aria-busy');saveButton.innerHTML=saveLabel;$('modalBody').inert=false;}
   }
   if (type === "userRoles") {
     if (!record.roles.includes("lead")) record.grades = [];

@@ -44,6 +44,7 @@ function renderEvidenceEditor(){
   const state=ui.editing?.evidence,host=$('evidenceList');if(!state||!host)return;
   host.innerHTML=state.entries.map((item,i)=>evidenceThumbnail(item.meta,{editorIndex:i,preview:item.preview,disabled:state.busy})).join('');
   $('evidenceStatus').textContent=state.status||'';
+  if(state.busy)$('evidenceStatus').insertAdjacentHTML('afterbegin','<span class="request-spinner" aria-hidden="true"></span> ');
   $('evidenceFiles').disabled=state.busy;
   hydrateEvidenceImages(host);
 }

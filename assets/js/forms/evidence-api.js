@@ -42,7 +42,9 @@ async function evidenceImageUrl(path){
 }
 async function loadEvidenceThumbnail(img){
   const label=img.parentElement.querySelector('.evidence-image-state');
-  try{const url=await evidenceImageUrl(img.dataset.evidencePath);if(!img.isConnected)return;img.src=url;label.textContent='';}
+  // Giữ vòng xoay đến khi trình duyệt giải mã xong ảnh, không chỉ chờ API trả về.
+  label.innerHTML='<span class="request-spinner" role="status" aria-label="Đang tải ảnh"></span>';
+  try{const url=await evidenceImageUrl(img.dataset.evidencePath);if(!img.isConnected)return;img.src=url;if(img.decode)await img.decode();label.textContent='';}
   catch{if(img.isConnected){label.textContent='Chưa tải được ảnh';img.removeAttribute('src');}}
 }
 let evidenceObserver;
@@ -56,13 +58,15 @@ function hydrateEvidenceImages(root=document){
 }
 async function openEvidenceImage(button){
   const img=button.querySelector('img'),generation=evidenceGeneration;
+  const state=button.querySelector('.evidence-image-state');
+  state.innerHTML='<span class="request-spinner" role="status" aria-label="Đang tải ảnh"></span>';
   try{
     const url=img.dataset.evidencePath?await evidenceImageUrl(img.dataset.evidencePath):img.getAttribute('src');
     if(!url||!url.startsWith('blob:'))throw Error('Ảnh cũ cần được chuyển vào kho ảnh tập trung.');
     if(generation!==evidenceGeneration||!auth.account)return;
     img.src=url;button.querySelector('.evidence-image-state').textContent='';
     $('evidenceFullImage').src=url;$('evidenceViewer').showModal();
-  }catch(error){appAlert(error.message);}
+  }catch(error){state.textContent='Chưa tải được ảnh';appAlert(error.message);}
 }
 async function uploadSchoolEvidence(editor){
   const state=editor.evidence;if(!state)return [];
