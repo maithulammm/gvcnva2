@@ -3,6 +3,12 @@
 // Native modal stays above open editors and blocks repeated clicks.
 const pageLoading = {pending:new Map(),nextId:0};
 let databaseQueue=Promise.resolve();
+let releaseSavingOverlay;
+/** Một màn chờ cho toàn bộ chuỗi lưu, kể cả thời gian debounce và các lớp đang chờ. */
+function showSavingOverlay(active){
+  if(active&&!releaseSavingOverlay)releaseSavingOverlay=beginPageLoading('Đang lưu dữ liệu, vui lòng chờ...');
+  if(!active&&releaseSavingOverlay){const release=releaseSavingOverlay;releaseSavingOverlay=null;release();}
+}
 /**
  * Trả hàm release chỉ có hiệu lực một lần. Đếm các tác vụ để tác vụ xong sớm không tắt màn chờ của
  * tác vụ khác.

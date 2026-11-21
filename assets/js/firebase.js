@@ -100,13 +100,15 @@ function resetCloud() {
   cloud.baselines = {};
   cloud.summaries = {};
   cloud.checks = {};
+  showSavingOverlay(false);
 }
 /**
  * Đưa request vào một hàng đợi tuần tự. Nhánh catch giữ hàng đợi tiếp tục chạy sau khi một request
  * lỗi.
  */
 function databaseRequest(path, method = "GET", body, {silent=false} = {}) {
-  const epoch=cloud.epoch,release=silent?()=>{}:beginPageLoading(method==='GET'?'Đang tải dữ liệu…':'Đang lưu dữ liệu…');
+  const saving=method!=='GET'&&!path.endsWith('/evidence/cleanup');
+  const epoch=cloud.epoch,release=silent&&!saving?()=>{}:beginPageLoading(saving?'Đang lưu dữ liệu, vui lòng chờ...':'Đang tải dữ liệu…');
   const request=databaseQueue.then(()=>{
     if(epoch!==cloud.epoch)throw Error('Phiên làm việc đã thay đổi.');
     return performDatabaseRequest(path,method,body);
@@ -409,6 +411,7 @@ async function refreshCloud(quiet = false) {
  * hồi.
  */
 function updateStorageNotice() {
+  showSavingOverlay(!!(cloud.ready&&!cloud.error&&(cloud.worker||cloud.pending.size)));
   const message = !cloud.ready
     ? "Dữ liệu đang lưu cục bộ trên trình duyệt. Admin có thể quản lý GVCN và học sinh; bật Firebase sau khi triển khai API để dùng chung dữ liệu."
     : cloud.error

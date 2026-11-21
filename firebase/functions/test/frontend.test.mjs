@@ -466,15 +466,19 @@ test('forms omit evidence/student-code columns and allow complete linked reports
   await f.run('submitForm({preventDefault(){},currentTarget:meeting})');await f.run('flushCloud()');
   assert.equal((await api.bootstrap(admin)).classes['6A1'].months['T11/2026'].meetings[0].evidence,'OLD-EVIDENCE');
 });
-test('automatic saving and polling synchronize without showing the blocking loading screen',async()=>{
+test('saving blocks interaction until complete while quiet polling stays nonblocking',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
   f.run(`globalThis.loadingCalls=0;globalThis.originalLoading=beginPageLoading;
     beginPageLoading=(...args)=>{loadingCalls++;return originalLoading(...args);};
     cls().students.push({id:'S1',name:'Saved quietly',code:''});save()`);
+  assert(f.el('requestOverlay').open);
+  assert.equal(f.el('requestLoadingText').textContent,'Đang lưu dữ liệu, vui lòng chờ...');
   await f.run('flushCloud()');
   assert.equal((await api.bootstrap(admin)).classes['6A1'].students[0].name,'Saved quietly');
+  assert(!f.el('requestOverlay').open);
+  const calls=f.run('loadingCalls');assert(calls>0);
   await f.run('refreshCloud(true)');
-  assert.equal(f.run('loadingCalls'),0);assert(!f.el('requestOverlay').open);
+  assert.equal(f.run('loadingCalls'),calls);assert(!f.el('requestOverlay').open);
 });
 test('mobile menu preserves role scope, closes on navigation and clears after logout',async()=>{
   const f=frontend();await f.login();f.ctx.window.innerWidth=390;

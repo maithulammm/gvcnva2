@@ -272,6 +272,7 @@ async function submitForm(e) {
     const editor=ui.editing;
     if(editor.evidence?.busy)return toast('Đang xử lý ảnh. Vui lòng chờ.');
     const saveButton=$('modalSave'),saveLabel=saveButton.innerHTML;
+    const releaseUpload=beginPageLoading('Đang lưu dữ liệu, vui lòng chờ...');
     saveButton.disabled=true;saveButton.setAttribute('aria-busy','true');
     saveButton.innerHTML='<span class="request-spinner" aria-hidden="true"></span> Đang lưu…';
     $('modalBody').inert=true;
@@ -279,7 +280,7 @@ async function submitForm(e) {
       record.evidenceImages=await uploadConnectionEvidence(editor);
       if(!evidenceCurrent(editor))return;
     }catch(error){appAlert(error.message);return;}
-    finally{saveButton.disabled=false;saveButton.removeAttribute('aria-busy');saveButton.innerHTML=saveLabel;$('modalBody').inert=false;}
+    finally{releaseUpload();saveButton.disabled=false;saveButton.removeAttribute('aria-busy');saveButton.innerHTML=saveLabel;$('modalBody').inert=false;}
   }
   if (type === "userRoles") {
     if (!record.roles.includes("lead")) record.grades = [];
