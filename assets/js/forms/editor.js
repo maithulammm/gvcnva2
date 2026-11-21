@@ -23,21 +23,24 @@ function openMeetingFollowup(id,type){
   openModal(type,'',seed);
 }
 /**
- * Tìm mã M05 chưa dùng theo lớp/tháng và số tăng dần; chỉ tạo mã mới, không sửa mã hồ sơ cũ.
+ * Mã mới gồm lớp–STT học sinh–tháng–năm–CN–số phiếu; không sửa mã hồ sơ đã lưu.
  */
-function nextProfileCode(c=cls(),month=ui.month){
-  const prefix=c.id+'-'+month.replace(/^T/,'').replace('/','-')+'-CN-';
+function nextProfileCode(c=cls(),month=ui.month,studentId=''){
+  const ordinal=c.students.findIndex(student=>student.id===studentId)+1;
+  if(!ordinal)return '';
+  const prefix=c.id+'-'+String(ordinal).padStart(2,'0')+'-'+month.replace(/^T/,'').replace('/','-')+'-CN-';
   const used=new Set(c.profiles.map(p=>p.code));let index=1;
   while(used.has(prefix+String(index).padStart(2,'0')))index++;
   return prefix+String(index).padStart(2,'0');
 }
 /**
- * Cập nhật mã gợi ý khi đổi tháng bắt đầu của hồ sơ mới; hồ sơ đã lưu giữ nguyên mã.
+ * Đổi học sinh/tháng sẽ cập nhật mã phiếu mới; hồ sơ đã lưu giữ nguyên mã.
  */
 function updateProfileCode(){
   if(ui.editing?.type!=='profile'||ui.editing.id)return;
   const form=$('entryForm'),month=form.querySelector('[name="startMonth"]')?.value||ui.month;
-  form.querySelector('[name="code"]').value=nextProfileCode(cls(),month);
+  const studentId=form.querySelector('[name="studentId"]')?.value||'';
+  form.querySelector('[name="code"]').value=nextProfileCode(cls(),month,studentId);
 }
 /**
  * Ánh xạ loại popup đến bản ghi trong lớp/tháng hoặc danh mục Admin.
@@ -124,12 +127,12 @@ function openModal(type, id = "", seed = {}) {
     rec.recipient ||= "Mẹ";
   }
   if (type==='m02') ui.editing.meetingInitial=meetingEditorValues(rec);
-  if(type==='profile'&&!id)rec.code=nextProfileCode(c,rec.startMonth||ui.month);
+  if(type==='profile'&&!id)rec.code=nextProfileCode(c,rec.startMonth||ui.month,rec.studentId);
   // Bản nháp chỉ được áp khi còn cùng baseline; ưu tiên nội dung giáo viên chưa lưu.
   const restored = restoreEditorDraft();
   if (restored) Object.assign(rec, restored);
   if(type==='m03')initEvidenceEditor(rec);
-  if(type==='profile'&&!id)rec.code=nextProfileCode(c,rec.startMonth||ui.month);
+  if(type==='profile'&&!id){rec.code=nextProfileCode(c,rec.startMonth||ui.month,rec.studentId);rec.result ||= 'Đang theo dõi';}
   $("discardDraftBtn").hidden = !DRAFT_TYPES.includes(type);
   $("editorDraftStatus").textContent = restored ? "Đã khôi phục bản nháp trên máy này. Chưa ghi vào báo cáo." : "";
   $("modalTitle").textContent =
@@ -198,13 +201,13 @@ function openModal(type, id = "", seed = {}) {
     } else if (type === "userRoles" && key === "email" && id) {
       control = `<input name="${key}" type="email" value="${esc(value)}" readonly>`;
     } else if (kind === "students") {
-      control = `<select name="${key}" data-choice-mode="dropdown" ${req} onchange="updateMeetingFields()"><option value="">— Chọn học sinh —</option>${c.students.map((s) => `<option value="${s.id}" ${value === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select>`;
+      control = `<select name="${key}" data-choice-mode="dropdown" ${req} onchange="${type==='profile'?'updateProfileCode()':'updateMeetingFields()'}"><option value="">— Chọn học sinh —</option>${c.students.map((s) => `<option value="${s.id}" ${value === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select>`;
     } else if (kind === "classes") {
       control = `<select name="${key}" ${req}>${CLASSES.map((classId) => `<option value="${classId}" ${value === classId ? "selected" : ""}>${classId}</option>`).join("")}</select>`;
     } else if (kind === "profiles") {
       control = `<select name="${key}" onchange="updateMeetingFields()"><option value="">— Không liên kết —</option>${c.profiles.map((p) => `<option value="${p.id}" data-student="${p.studentId}" ${value === p.id ? "selected" : ""}>${esc(p.code)} · ${esc(studentName(c, p.studentId))}</option>`).join("")}</select>`;
     } else if (kind === "months") {
-      control = `<select name="${key}" data-choice-layout="months-row" ${type==='profile'?'onchange="updateProfileCode()"':''}>${MONTHS.map((s) => `<option value="${s}" ${(value || ui.month) === s ? "selected" : ""}>${s}</option>`).join("")}</select>`;
+      control = `<select name="${key}" ${type==='profile'?'data-choice-mode="dropdown" onchange="updateProfileCode()"':'data-choice-layout="months-row"'}>${MONTHS.map((s) => `<option value="${s}" ${(value || ui.month) === s ? "selected" : ""}>${s}</option>`).join("")}</select>`;
     } else if (kind === "select") {
       control = `<select name="${key}" ${type==='m03'&&key==='channel'||type==='profile'&&key==='result'?'data-choice-layout="row-five"':''} ${req} ${key==="needsCoop"?'onchange="updateMeetingFields()"':''}><option value="" ${!value ? "selected" : ""}>— Chọn —</option>${options.map((s) => `<option value="${esc(s)}" ${value === s ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>`;
     } else if (kind === "textarea") {
@@ -347,7 +350,7 @@ async function submitForm(e) {
     let meeting = lookup(type, id);
     Object.assign(meeting, record);
   } else if (type === "profile") {
-    if(!id)record.code=nextProfileCode(c,record.startMonth||ui.month);
+    if(!id){record.code=nextProfileCode(c,record.startMonth||ui.month,record.studentId);record.result ||= 'Đang theo dõi';}
     else record.code=lookup(type,id).code;
     if (!id && c.profiles.length >= 40) {
       appAlert("File Excel mẫu chỉ có tối đa 40 hồ sơ M05/lớp.");

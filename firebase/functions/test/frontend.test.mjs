@@ -137,13 +137,17 @@ test('M03 saved images render thumbnails and corner X without exposing source UR
 test('M05 generates unique class/month codes automatically and preserves existing codes when editing',async()=>{
   const f=frontend();await f.login();f.run(`cls().students=[{id:'S1',name:'Student',code:''}];openModal('profile')`);
   assert(f.el('modalBody').innerHTML.includes('readonly aria-label="Mã phiếu tự động"'));
+  assert(f.el('modalBody').innerHTML.includes('name="startMonth" data-choice-mode="dropdown"'));
+  assert(f.el('modalBody').innerHTML.includes('value="Đang theo dõi" selected'));
   f.ctx.input={studentId:'S1',startMonth:'T11/2026',strength:'A',concern:'B',goal:'C',code:'manual'};
   await f.run('submitForm({preventDefault(){},currentTarget:input})');
-  assert.equal(f.run('cls().profiles[0].code'),'6A1-11-2026-CN-01');
+  assert.equal(f.run('cls().profiles[0].code'),'6A1-01-11-2026-CN-01');
   f.run(`openModal('profile')`);await f.run('submitForm({preventDefault(){},currentTarget:input})');
-  assert.equal(f.run('cls().profiles[1].code'),'6A1-11-2026-CN-02');
+  assert.equal(f.run('cls().profiles[1].code'),'6A1-01-11-2026-CN-02');
   f.run(`openModal('profile',cls().profiles[0].id)`);f.ctx.input={...f.ctx.input,code:'changed',startMonth:'T12/2026'};
-  await f.run('submitForm({preventDefault(){},currentTarget:input})');assert.equal(f.run('cls().profiles[0].code'),'6A1-11-2026-CN-01');
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');assert.equal(f.run('cls().profiles[0].code'),'6A1-01-11-2026-CN-01');
+  f.run("cls().students.push({id:'S2',name:'Second student'})");
+  assert.equal(f.run("nextProfileCode(cls(),'T12/2026','S2')"),'6A1-02-12-2026-CN-01');
 });
 
 test('MSAL popup and iframe callbacks leave auth response for the parent without starting nested login',async()=>{
