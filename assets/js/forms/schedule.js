@@ -253,18 +253,23 @@ function buildAutomaticSchedule(c=cls(),month=ui.month) {
 async function autoScheduleMonth() {
   if (!editable()) return;
   const context={owner:auth.email,epoch:cloud.epoch,classId:ui.classId,month:ui.month};
-  if(cloud.ready) {
-    try {
+  const release=beginPageLoading('Đang xếp lịch, vui lòng chờ...');
+  let c,result;
+  try {
+    // Nhường một khung hình để màn chờ được vẽ trước khi tính lịch trên thiết bị di động.
+    await new Promise(resolve=>typeof requestAnimationFrame==='function'?requestAnimationFrame(()=>requestAnimationFrame(resolve)):setTimeout(resolve,0));
+    if(cloud.ready) {
       const data=await databaseRequest('/calendar','GET',undefined,{silent:true});
       if(auth.email!==context.owner||cloud.epoch!==context.epoch||ui.classId!==context.classId||ui.month!==context.month||!editable())return;
       if(data.calendar)appData.calendar=data.calendar;
-    } catch(error){appAlert('Chưa kiểm tra được lịch không gặp mới nhất: '+error.message);return;}
-  }
-  if (!cls().students.length) return toast('Cần nhập danh sách học sinh trước khi xếp lịch.');
-  const c=cls(),result=buildAutomaticSchedule(c);
+    }
+    if (!cls().students.length) return toast('Cần nhập danh sách học sinh trước khi xếp lịch.');
+    c=cls();result=buildAutomaticSchedule(c);
+  } catch(error){appAlert('Chưa xếp được lịch: '+error.message);return;}
+  finally{release();}
   if (!result.added) return toast('Không còn khung giờ trống.');
-  const belowTwo=c.students.filter(s=>studentAppointments(result.classData,ui.month,s.id).length<2).length;
-  if (!await appConfirm(`Xếp thêm ${result.added} lịch theo thứ tự danh sách, ngày và buổi. Giữ nguyên lịch đã có.${belowTwo?`\n${belowTwo} học sinh chưa đủ 2 lượt vì tháng không đủ khung giờ phù hợp.`:''}\nCác lịch chỉ là dự kiến, chưa tính là đã gặp. Áp dụng?`)) return;
+  if (!await appConfirm(`Xếp thêm ${result.added} lịch dự kiến?`)) return;
+  if(auth.email!==context.owner||cloud.epoch!==context.epoch||ui.classId!==context.classId||ui.month!==context.month||!editable())return;
   const old=c.months[ui.month];c.months[ui.month]=result.classData.months[ui.month];
   if (!save()) {if(old)c.months[ui.month]=old;else delete c.months[ui.month];return;}
   render();toast(`Đã xếp thêm ${result.added} lịch dự kiến. Xem tại Mẫu 2.`);

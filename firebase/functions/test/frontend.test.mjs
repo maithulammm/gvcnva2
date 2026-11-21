@@ -742,7 +742,8 @@ test('automatic scheduling preserves existing appointments and warns when two vi
   await f.run('flushCloud()');
   const original=f.run('JSON.stringify(mdata().schedule.S0)');let message='';
   f.ctx.confirm=text=>{message=text;return false;};await f.run('autoScheduleMonth()');
-  assert(message.includes('chưa đủ 2 lượt'));
+  assert.match(message,/^Xếp thêm \d+ lịch dự kiến\?$/);
+  assert(!f.el('requestOverlay').open);
   assert.equal(f.run('JSON.stringify(mdata().schedule.S0)'),original);
   f.ctx.confirm=()=>true;await f.run('autoScheduleMonth()');await f.run('flushCloud()');
   const existing=f.run(`studentAppointments(cls(),ui.month,'S0').find(a=>a.id==='legacy-S0')`);
@@ -777,7 +778,7 @@ test('auto appointments appear in M02 without actual counts; confirmation links 
 });
 test('M01 deletes only the edited appointment and persists remaining visits without changing actual meetings',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
-  await f.run(`cls().students=[{id:'S1',name:'Student 1',code:''},{id:'S2',name:'Student 2',code:''}];autoScheduleMonth();flushCloud()`);
+  await f.run(`(async()=>{cls().students=[{id:'S1',name:'Student 1',code:''},{id:'S2',name:'Student 2',code:''}];await autoScheduleMonth();await flushCloud();})()`);
   const before=JSON.parse(f.run('JSON.stringify(mdata())'));
   const visits=before.schedule.S1.appointments;
   f.ctx.appointmentId=visits[1].id;
@@ -1162,6 +1163,7 @@ function frontend({memory=new Map(),api}={}) {
   };
   const ctx={console:{log:console.log,warn(){},error(){}},TextEncoder,TextDecoder,Blob,Response,DecompressionStream,Uint8Array,DataView,URL,atob,btoa,AbortController,
     setTimeout(fn,ms){if(ms===2000)Promise.resolve().then(fn);return 1;},clearTimeout(){},setInterval(){return 1;},clearInterval(){},
+    requestAnimationFrame(fn){Promise.resolve().then(fn);return 1;},
     alert:m=>alerts.push(m),confirm:()=>true,prompt:()=> 'Test reason',
     FormData:class {constructor(record){this.record=record;}get(key){return this.record[key]??null;}getAll(key){const value=this.record[key];return value===undefined?[]:Array.isArray(value)?value:[value];}},
     localStorage:{get length(){return memory.size;},key:i=>[...memory.keys()][i]??null,getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)},
