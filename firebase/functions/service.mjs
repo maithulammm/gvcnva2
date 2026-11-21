@@ -234,6 +234,11 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       }):[],serverTime:now()};
   }
   return {
+    /** Đọc lịch nghỉ riêng; vẫn xác minh phân công nhưng không tải dữ liệu 32 lớp. */
+    async calendar(identity){
+      const s=db.scoped?await context(identity):normalizeSchool((await ref.get()).val());
+      assignmentFor(s,identity);return {calendar:s.calendar};
+    },
     /** Chỉ hàng đợi do máy chủ tạo mới có thể gọi xóa; không nhận itemId từ trình duyệt. */
     async cleanupEvidence(identity,id,remove,{limit=2}={}){
       requireValue(CLASSES.includes(id),'Lớp không hợp lệ.');

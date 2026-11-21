@@ -154,7 +154,7 @@ async function migrateLegacyData() {
       cloud.baselines[id] = classFingerprint(result.data);
       count++;
     }
-    useBootstrap(await databaseRequest("/bootstrap"));
+    useBootstrap(await loadCloudBootstrap());
     cloud.busy = false;
     render();
     toast(

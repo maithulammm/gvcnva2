@@ -1173,6 +1173,7 @@ function frontend({memory=new Map(),api}={}) {
     try {
       let result;
       if(path==='/bootstrap') result=await api.bootstrap(admin);
+      else if(path==='/calendar'&&options.method==='GET') result=await api.calendar(admin);
       else if(path==='/calendar'&&options.method==='PUT') result=await api.saveCalendar(admin,body);
       else if(path==='/teachers'&&options.method==='POST') result=await api.saveTeacher(admin,body);
       else if(path.startsWith('/teachers/')&&options.method==='DELETE') result=await api.deleteTeacher(admin,path.split('/')[2]);

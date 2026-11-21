@@ -76,6 +76,7 @@ export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=pr
       else if(method==='GET'&&route==='/bootstrap') result=await service.bootstrap(identity,{paged:query.paged==='1'});
       else if(method==='GET'&&/^\/recovery\/[A-Za-z0-9]+$/.test(route)) result=await service.recovery(identity,route.split('/')[2]);
       else if(method==='POST'&&/^\/recovery\/[A-Za-z0-9]+$/.test(route)) result=await service.restore(identity,route.split('/')[2],body);
+      else if(method==='GET'&&route==='/calendar') result=await service.calendar(identity);
       else if(method==='PUT'&&route==='/calendar') result=await service.saveCalendar(identity,body);
       else if(method==='POST'&&route==='/teachers') result=await service.saveTeacher(identity,body);
       else if(method==='DELETE'&&/^\/teachers\/[A-Za-z0-9_-]+$/.test(route)) result=await service.deleteTeacher(identity,route.split('/')[2]);

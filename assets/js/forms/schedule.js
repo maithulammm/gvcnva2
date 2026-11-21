@@ -87,7 +87,7 @@ async function rescheduleAppointment(studentId,appointmentId){
   if(!editable()||cloud.busy)return;
   const context=dialogContext();
   if(cloud.ready){
-    try{const data=await databaseRequest('/bootstrap','GET',undefined,{silent:true});
+    try{const data=await databaseRequest('/calendar','GET',undefined,{silent:true});
       if(Object.keys(context).some(k=>context[k]!==dialogContext()[k]))return;
       if(data.calendar)appData.calendar=data.calendar;
     }catch(error){return appAlert('Chưa kiểm tra được lịch nghỉ: '+error.message);}
@@ -255,7 +255,7 @@ async function autoScheduleMonth() {
   const context={owner:auth.email,epoch:cloud.epoch,classId:ui.classId,month:ui.month};
   if(cloud.ready) {
     try {
-      const data=await databaseRequest('/bootstrap','GET',undefined,{silent:true});
+      const data=await databaseRequest('/calendar','GET',undefined,{silent:true});
       if(auth.email!==context.owner||cloud.epoch!==context.epoch||ui.classId!==context.classId||ui.month!==context.month||!editable())return;
       if(data.calendar)appData.calendar=data.calendar;
     } catch(error){appAlert('Chưa kiểm tra được lịch không gặp mới nhất: '+error.message);return;}

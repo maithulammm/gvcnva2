@@ -176,6 +176,22 @@ test('Paged reads reject data/revision pairs changed during loading',async()=>{
   await assert.rejects(api.bootstrap(admin,{paged:true}),{status:409});
 });
 
+test('Calendar-only reads stay below the Worker budget and require a bound account',async()=>{
+  const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},fixture=restFixture();
+  const first=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}));await first.bootstrap(admin);
+  await first.saveCalendar(admin,{excludedDates:['2026-12-01'],excludedSessions:[{date:'2026-12-02',session:'afternoon'}],revision:0});
+  let requests=0;
+  const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:async(...args)=>{
+    if(++requests>50)throw Error('Worker subrequest limit');return fixture.fetch(...args);
+  }}));
+  fixture.trace.length=0;const result=await api.calendar(admin);
+  assert.deepEqual(result.calendar.excludedDates,['2026-12-01']);assert.equal(result.calendar.excludedSessions[0].session,'afternoon');
+  assert(fixture.trace.every(r=>r.path==='calendar'||r.path.startsWith('users/')));assert(requests<5);
+  await assert.rejects(api.calendar({email:'unassigned@vietanhschool.edu.vn',oid:'other'}),{status:403});
+  // Tái hiện luồng cũ để bảo vệ việc không quay lại dùng bootstrap toàn trường cho lịch nghỉ.
+  requests=0;await assert.rejects(api.bootstrap(admin),{status:503});assert(requests>50);
+});
+
 test('Scoped transactions preserve teacher scope and locked report rules',async()=>{
   const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},teacher={email:'teacher@vietanhschool.edu.vn',oid:'teacher',name:'Teacher'},fixture=restFixture();
   const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}));
