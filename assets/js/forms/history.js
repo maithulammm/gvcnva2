@@ -51,5 +51,11 @@ function updatePreviousMeetingPanel() {
   const before=date&&/^\d{2}:\d{2}$/.test(time)?date+'T'+time:'';
   $('previousMeetingPanel').innerHTML=previousMeetingPanel(cls(),student,ui.month,ui.editing.id,before);
   const review=form.querySelector('[data-field="previousReview"]');
-  if(review)review.hidden=!previousMeetingFor(cls(),student,ui.month,ui.editing.id,before)&&!form.querySelector('[name="previousReview"]')?.value;
+  const hide=!previousMeetingFor(cls(),student,ui.month,ui.editing.id,before)&&!form.querySelector('[name="previousReview"]')?.value;
+  if(review)review.hidden=hide;
+  $('previousReviewHeading').hidden=hide;
+  $('previousReviewReference').hidden=hide;
+  let step=0;
+  for(const heading of form.querySelectorAll?.('.meeting-section-title')||[])
+    if(!heading.hidden)heading.textContent=heading.textContent.replace(/^\d+\./,++step+'.');
 }

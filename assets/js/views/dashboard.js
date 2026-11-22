@@ -78,9 +78,16 @@ function renderDashboard() {
 }
 
 function renderDashboardFilters(){
-  return `<div class="actions" role="group" aria-label="Lọc lớp cần hỗ trợ">${[['all','Tất cả'],['unsubmitted','Chưa gửi báo cáo'],['overdue','Có lịch quá hạn chưa ghi nhận'],['coordination','Có học sinh cần phối hợp']].map(([key,label])=>`<button type="button" class="btn ${(!ui.dashboardFilter&&key==='all'||ui.dashboardFilter===key)?'primary':''}" aria-pressed="${(ui.dashboardFilter||'all')===key}" onclick="ui.dashboardFilter='${key}';render()">${label}</button>`).join('')}</div>`;
+  const scope=scopedClasses().map(id=>summarize(cls(id),ui.month));
+  const filters=[['all','Tất cả'],['unsubmitted','Chưa gửi báo cáo'],['overdue','Có lịch quá hạn chưa ghi nhận'],['coordination','Có học sinh cần phối hợp'],['support-unreviewed','Chưa rà soát M04'],['support-missing-plan','Có phát sinh, chưa lập kế hoạch']];
+  return `<div class="actions" role="group" aria-label="Lọc lớp cần hỗ trợ">${filters.map(([key,label])=>{
+    const count=key==='support-unreviewed'?scope.filter(s=>(s.supportReview||'pending')==='pending').length:key==='support-missing-plan'?scope.filter(s=>s.supportReview==='needed'&&!s.supportPlans).length:null;
+    return `<button type="button" class="btn ${(!ui.dashboardFilter&&key==='all'||ui.dashboardFilter===key)?'primary':''}" aria-pressed="${(ui.dashboardFilter||'all')===key}" onclick="ui.dashboardFilter='${key}';render()">${label}${count!==null?` (${count})`:''}</button>`;
+  }).join('')}</div>`;
 }
 function dashboardMatches(s){
+  if(ui.dashboardFilter==='support-unreviewed')return (s.supportReview||'pending')==='pending';
+  if(ui.dashboardFilter==='support-missing-plan')return s.supportReview==='needed'&&!s.supportPlans;
   if(ui.dashboardFilter==='unsubmitted')return ['draft','returned'].includes(s.state);
   if(ui.dashboardFilter==='coordination')return (s.coordination||0)>0;
   if(ui.dashboardFilter==='overdue')return (s.overdueAppointments||0)>0;

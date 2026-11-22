@@ -110,10 +110,11 @@ function resetCloud() {
 function databaseRequest(path, method = "GET", body, {silent=false} = {}) {
   const saving=method!=='GET'&&!path.endsWith('/evidence/cleanup');
   const epoch=cloud.epoch,release=silent&&!saving?()=>{}:beginPageLoading(saving?'Đang lưu dữ liệu, vui lòng chờ...':'Đang tải dữ liệu…');
+  let completed=false;
   const request=databaseQueue.then(()=>{
     if(epoch!==cloud.epoch)throw Error('Phiên làm việc đã thay đổi.');
     return performDatabaseRequest(path,method,body);
-  }).finally(release);
+  }).then(data=>{completed=true;return data;}).finally(()=>release(completed));
   // Nuốt lỗi chỉ ở đuôi hàng đợi; Promise request trả cho nơi gọi vẫn báo lỗi đầy đủ.
   databaseQueue=request.catch(()=>{});
   return request;

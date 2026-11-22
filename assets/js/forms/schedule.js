@@ -298,7 +298,7 @@ async function autoScheduleMonth() {
     if (!cls().students.length) return toast('Cần nhập danh sách học sinh trước khi xếp lịch.');
     c=cls();result=await buildAutomaticScheduleAsync(c,context.month);
   } catch(error){appAlert('Chưa xếp được lịch: '+error.message);return;}
-  finally{release();}
+  finally{await release(!!result);}
   if(cls()!==c)return toast('Dữ liệu lớp đã thay đổi. Vui lòng xếp lịch lại.');
   if (!result.added) return toast('Không còn khung giờ trống.');
   if (!await appConfirm(`Xếp thêm ${result.added} lịch dự kiến?`)) return;

@@ -94,7 +94,7 @@ async function openEvidenceImage(button){
     $('evidenceFullImage').src=url;$('evidenceViewer').showModal();
   }catch(error){state.textContent='Chưa tải được ảnh';appAlert(error.message);}
 }
-async function uploadSchoolEvidence(editor){
+async function uploadSchoolEvidence(editor,onProgress=()=>{}){
   const state=editor.evidence;if(!state)return [];
   if(state.busy)throw Error('Đang xử lý ảnh. Vui lòng chờ.');
   if(!state.entries.some(item=>!item.meta))return state.entries.map(item=>item.meta);
@@ -102,16 +102,18 @@ async function uploadSchoolEvidence(editor){
   if(!studentId)throw Error('Hãy chọn học sinh trước khi lưu ảnh.');
   state.busy=true;const controller=state.controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),120000);
+  const total=state.entries.filter(item=>!item.meta).length;let completed=0;
   try{
     for(const [index,item]of state.entries.entries()){
       if(item.meta)continue;
       if(!evidenceCurrent(editor))throw Error('Phiên hoặc dữ liệu đã thay đổi.');
-      state.status='Đang lưu ảnh '+(index+1)+'/'+state.entries.length+'…';renderEvidenceEditor();
+      state.status='Đang tải ảnh '+(completed+1)+'/'+total+'…';onProgress(completed,total,state.status);renderEvidenceEditor();
       const bytes=new Uint8Array(await item.file.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
       const uploaded=await evidenceApi('/evidence/'+editor.classId+'/upload',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({month:editor.month,studentId,uploadId:item.uploadId,contentBase64:btoa(binary)})});
       const meta=evidenceMetadata(uploaded);if(meta?.provider!=='school')throw Error('Kho ảnh trả kết quả chưa hợp lệ.');
       if(!evidenceCurrent(editor))throw Error('Phiên hoặc dữ liệu đã thay đổi.');
       item.meta=meta;saveEditorDraft();
+      completed++;onProgress(completed,total,completed===total?'Đã tải ảnh, đang chuẩn bị lưu dữ liệu…':state.status);
     }
     state.status='Đã lưu ảnh minh chứng.';return state.entries.map(item=>item.meta);
   }catch(error){state.status=error.name==='AbortError'?'Tải ảnh quá thời gian chờ. Hãy thử lại.':error.message;throw Error(state.status);}

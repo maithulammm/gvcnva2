@@ -85,8 +85,42 @@ test('M02 editor orders meeting information, previous review, new content and ne
   const html=f.el('modalBody').innerHTML;
   const headings=['1. Thông tin cuộc gặp','2. Nhận xét lần trước','3. Nội dung mới','4. Mục tiêu tiếp theo'].map(title=>html.indexOf(title));
   assert(headings.every(n=>n>=0));assert(headings.every((n,i)=>i===0||n>headings[i-1]));
-  assert.match(html,/<details class="wide meeting-history"><summary>/);
+  assert.match(html,/<details id="previousReviewReference" class="wide meeting-history"><summary>/);
   assert(html.indexOf('data-field="previousReview"')<html.indexOf('data-field="concern"'));
+});
+
+test('M02 hides the whole previous-review group only when there is no previous meeting or existing review',async()=>{
+  const f=frontend();await f.login();f.run("cls().students=[{id:'S1',name:'Student'}];openModal('m02')");
+  const fields={'[name="studentId"]':{value:'S1'},'[name="actualDate"]':{value:'2026-11-20'},'[name="actualTime"]':{value:'09:55'},'[name="previousReview"]':{value:''},'[data-field="previousReview"]':{hidden:false}};
+  f.el('entryForm').querySelector=selector=>fields[selector];
+  f.run('updatePreviousMeetingPanel()');
+  assert(f.el('previousReviewHeading').hidden);assert(f.el('previousReviewReference').hidden);
+  fields['[name="previousReview"]'].value='Existing saved review';f.run('updatePreviousMeetingPanel()');
+  assert.equal(f.el('previousReviewHeading').hidden,false);assert.equal(fields['[name="previousReview"]'].value,'Existing saved review');
+});
+
+test('M04 no-support view collapses this month only and BGH filters separate pending review from missing plans',async()=>{
+  const f=frontend();await f.login();f.run("mdata().notes.supportReview='none';mdata().previous=[{id:'P1',studentId:'S1',action:'Previous support',observation:'Result',next:'Next'}]");
+  const html=f.run('renderM04()');assert.match(html,/<details class="card support-none-details"><summary>/);
+  assert(html.includes('Previous support'));
+  f.run("ui.dashboardFilter='support-unreviewed'");
+  assert(f.run("dashboardMatches({supportReview:'pending',supportPlans:0})"));
+  assert(!f.run("dashboardMatches({supportReview:'none',supportPlans:0})"));
+  f.run("ui.dashboardFilter='support-missing-plan'");
+  assert(f.run("dashboardMatches({supportReview:'needed',supportPlans:0})"));
+  assert(!f.run("dashboardMatches({supportReview:'needed',supportPlans:1})"));
+});
+
+test('Loading progress is bounded before confirmation, monotonic and never reports failure as 100 percent',async()=>{
+  const f=frontend();await f.login();let tick;
+  f.ctx.setInterval=fn=>{tick=fn;return 1;};
+  f.run("var releaseProgress=beginPageLoading('Saving')");assert.equal(f.el('requestProgress').value,0);
+  for(let i=0;i<150;i++)tick();assert(f.el('requestProgress').value<=90);
+  f.run("releaseProgress.update(95,'Finishing')");tick();assert.equal(f.el('requestProgress').value,95);
+  f.run('releaseProgress(false)');assert.equal(f.el('requestProgress').value,95);assert(!f.el('requestOverlay').open);
+  f.run("releaseProgress=beginPageLoading('Next');releaseProgress.update(50,'Image 1/2')");
+  assert.equal(f.el('requestProgress').value,50);assert.equal(f.el('requestLoadingText').textContent,'Image 1/2');
+  f.run('releaseProgress();releaseProgress()');assert.equal(f.el('requestProgress').value,100);assert.equal(f.run('pageLoading.pending.size'),0);
 });
 
 test('Automatic scheduling paints first, yields during calculation and closes loading before confirmation',async()=>{
@@ -642,21 +676,21 @@ test('M02 shows a locale-independent 24-hour clock and rejects AM/PM or out-of-r
     assert.equal(f.run('mdata().meetings.at(-1).actualDateTime'),'2026-11-18T'+value);
   }
 });
-test('requests wait for the complete JSON body then 2 seconds before the next request and loading dismissal',async()=>{
+test('requests wait for complete JSON without an artificial delay before the next request',async()=>{
   const f=frontend({api:createService(memoryDatabase())});await f.login();
   const cooldowns=[];f.ctx.setTimeout=(fn,ms)=>{if(ms===2000)cooldowns.push(fn);return 1;};
-  let finishBody,fetches=0;
-  const body=new Promise(resolve=>{finishBody=resolve;});
-  f.ctx.fetch=async()=>({ok:true,status:200,json:++fetches===1?()=>body:async()=>({second:true})});
+  let finishBody,finishSecond,fetches=0;
+  const body=new Promise(resolve=>{finishBody=resolve;}),secondBody=new Promise(resolve=>{finishSecond=resolve;});
+  f.ctx.fetch=async()=>({ok:true,status:200,json:++fetches===1?()=>body:()=>secondBody});
   const first=f.run('databaseRequest("/first")'),second=f.run('databaseRequest("/second")');
   await new Promise(setImmediate);
   assert.equal(fetches,1);assert.equal(cooldowns.length,0);assert(f.el('requestOverlay').open);
   finishBody({first:true});await new Promise(setImmediate);
-  assert.equal(cooldowns.length,1);assert.equal(fetches,1);assert(f.el('requestOverlay').open);
-  cooldowns[0]();assert.deepEqual(await first,{first:true});await new Promise(setImmediate);
-  assert.equal(fetches,2);assert.equal(cooldowns.length,2);assert(f.el('requestOverlay').open);
-  cooldowns[1]();assert.deepEqual(await second,{second:true});
+  assert.equal(cooldowns.length,0);assert.deepEqual(await first,{first:true});
+  assert.equal(fetches,2);assert(f.el('requestOverlay').open);
+  finishSecond({second:true});assert.deepEqual(await second,{second:true});
   assert(!f.el('requestOverlay').open);assert.equal(f.run('pageLoading.pending.size'),0);
+  assert.equal(f.el('requestProgress').value,100);
 });
 
 test('a failed request releases loading and does not prevent the queued request from completing',async()=>{
@@ -667,16 +701,17 @@ test('a failed request releases loading and does not prevent the queued request 
   assert.equal(requests,2);assert(!f.el('requestOverlay').open);
 });
 
-test('changing session during the post-request delay discards the response and cancels old queued requests',async()=>{
+test('changing session while reading a response cancels old queued requests without reporting success',async()=>{
   const f=frontend({api:createService(memoryDatabase())});await f.login();
-  const cooldowns=[];let requests=0;
-  f.ctx.setTimeout=(fn,ms)=>{if(ms===2000)cooldowns.push(fn);return 1;};
-  f.ctx.fetch=async()=>{requests++;return {ok:true,status:200,json:async()=>({old:true})};};
+  let requests=0,finishBody;
+  const body=new Promise(resolve=>{finishBody=resolve;});
+  f.ctx.fetch=async()=>{requests++;return {ok:true,status:200,json:()=>body};};
   const first=f.run('databaseRequest("/old")'),queued=f.run('databaseRequest("/queued")');
   const firstRejected=assert.rejects(first,/Phiên làm việc đã thay đổi/),queuedRejected=assert.rejects(queued,/Phiên làm việc đã thay đổi/);
-  await new Promise(setImmediate);assert.equal(cooldowns.length,1);
-  f.run('lockUi()');cooldowns[0]();await Promise.all([firstRejected,queuedRejected]);
+  await new Promise(setImmediate);assert.equal(requests,1);
+  f.run('lockUi()');finishBody({old:true});await Promise.all([firstRejected,queuedRejected]);
   assert.equal(requests,1);assert(!f.el('requestOverlay').open);
+  assert.notEqual(f.el('requestProgress').value,100);
 });
 const rememberedAccount={username:admin.email,homeAccountId:'remembered-admin',tenantId:'22215a7f-b9e3-4b53-bd27-3a317311e6ca',idTokenClaims:{oid:admin.oid}};
 async function restoreMicrosoft(f,{fresh=false,account=rememberedAccount}={}) {

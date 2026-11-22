@@ -160,10 +160,10 @@ function openModal(type, id = "", seed = {}) {
   for (let [key, label, kind, required, options] of opts) {
     if(type==='m02'&&['studentId','previousReview','concern','goal'].includes(key)){
       const titles={studentId:'1. Thông tin cuộc gặp',previousReview:'2. Nhận xét lần trước',concern:'3. Nội dung mới',goal:'4. Mục tiêu tiếp theo'};
-      h+=`<h3 class="wide meeting-section-title">${titles[key]}</h3>`;
+      h+=`<h3 class="wide meeting-section-title" ${key==='previousReview'?'id="previousReviewHeading"':''}>${titles[key]}</h3>`;
       if(key==='previousReview'){
         const initial=meetingEditorValues(rec);
-        h+=`<details class="wide meeting-history"><summary>Tham khảo lần gặp trước</summary><div id="previousMeetingPanel">${previousMeetingPanel(c,rec.studentId,ui.month,id,initial.actualDateTime)}</div></details>`;
+        h+=`<details id="previousReviewReference" class="wide meeting-history"><summary>Tham khảo lần gặp trước</summary><div id="previousMeetingPanel">${previousMeetingPanel(c,rec.studentId,ui.month,id,initial.actualDateTime)}</div></details>`;
       }
     }
     let value = rec[key] ?? (kind === "boolean" ? false : "");
@@ -271,19 +271,22 @@ async function submitForm(e) {
     try { record=serializeMeetingInputs(fd,record); }
     catch(error) { appAlert(error.message);return; }
   }
+  let releaseEvidenceLoading;
   if(type==='m03'){
     const editor=ui.editing;
     if(editor.evidence?.busy)return toast('Đang xử lý ảnh. Vui lòng chờ.');
     const saveButton=$('modalSave'),saveLabel=saveButton.innerHTML;
     const releaseUpload=beginPageLoading('Đang lưu dữ liệu, vui lòng chờ...');
+    releaseEvidenceLoading=releaseUpload;let uploaded=false;
     saveButton.disabled=true;saveButton.setAttribute('aria-busy','true');
     saveButton.innerHTML='<span class="request-spinner" aria-hidden="true"></span> Đang lưu…';
     $('modalBody').inert=true;
     try{
-      record.evidenceImages=await uploadConnectionEvidence(editor);
+      record.evidenceImages=await uploadConnectionEvidence(editor,(done,total,message)=>releaseUpload.update(Math.round(done/Math.max(total,1)*70),message));
       if(!evidenceCurrent(editor))return;
+      uploaded=true;releaseUpload.update(70,'Đang lưu dữ liệu, vui lòng chờ...');
     }catch(error){appAlert(error.message);return;}
-    finally{releaseUpload();saveButton.disabled=false;saveButton.removeAttribute('aria-busy');saveButton.innerHTML=saveLabel;$('modalBody').inert=false;}
+    finally{if(!uploaded)releaseUpload(false);saveButton.disabled=false;saveButton.removeAttribute('aria-busy');saveButton.innerHTML=saveLabel;$('modalBody').inert=false;}
   }
   if (type === "userRoles") {
     if (!record.roles.includes("lead")) record.grades = [];
@@ -405,10 +408,12 @@ async function submitForm(e) {
       });
   }
   if (!save()) {
+    releaseEvidenceLoading?.(false);
     Object.assign(c,beforeSave);
     toast("Chưa lưu được dữ liệu. Giữ biểu mẫu mở và xuất bản sao trước khi tải lại.");
     return;
   }
+  releaseEvidenceLoading?.();
   clearEditorDraft();
   const nextStudent=type==='m02'&&e.submitter?.id==='modalSaveNext'?record.studentId:'';
   resetEvidenceEditor();

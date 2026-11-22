@@ -44,6 +44,10 @@ function renderM04() {
       ],
     ],
   ]) {
+    if(key==='plans'&&state==='none'){
+      out+=`<details class="card support-none-details"><summary>II. Kế hoạch tháng này · Không phát sinh hỗ trợ</summary><p class="help">Đã rà soát, không có trường hợp cần hỗ trợ trong tháng.</p>${editable()?btn('Thêm kế hoạch hỗ trợ',"openModal('plans')",'primary'):''}</details>`;
+      continue;
+    }
     let list = m[key];
     out += `<div class="section-head"><h2>${title}</h2>${editable() ? btn("＋ Thêm nội dung", `openModal('${key}')`, "primary") : ""}</div><p class="help">${desc}</p><div class="card no-pad"><div class="table-wrap"><table><thead><tr>${columns.map((h) => `<th>${h}</th>`).join("")}<th></th></tr></thead><tbody>${list.map((r) => `<tr data-compact-status="${esc(key==='previous'?'Đã ghi nhận':r.result||'Đang hỗ trợ')}"><td><b>${esc(studentName(c, r.studentId))}</b></td>${(key === "previous" ? [r.action, r.observation, r.next] : [r.need, r.goal, r.action, r.deadline, r.cooperation, r.assessment, r.result || "Chưa chốt"]).map((v) => `<td class="long">${esc(displayDateText(v || "—"))}</td>`).join("")}<td>${rowAction(key, r.id)}</td></tr>`).join("") || `<tr><td colspan="${columns.length + 1}"><div class="empty">${key==='plans'?state==='none'?'Không phát sinh hỗ trợ trong tháng.':state==='needed'?'Chưa ghi kế hoạch hỗ trợ.':'Chưa rà soát hỗ trợ trong tháng.':'Chưa ghi kết quả hỗ trợ tháng trước.'}</div></td></tr>`}</tbody></table></div></div>`;
   }

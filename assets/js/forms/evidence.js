@@ -91,7 +91,7 @@ async function removeEvidenceImage(index){
   state.entries.splice(index,1);saveEditorDraft();renderEvidenceEditor();
 }
 /** Upload through the school API, never through a teacher Graph token. */
-async function uploadConnectionEvidence(editor){return uploadSchoolEvidence(editor);}
+async function uploadConnectionEvidence(editor,onProgress){return uploadSchoolEvidence(editor,onProgress);}
 async function requestCloseEditor(){
   const editor=ui.editing,state=editor?.evidence;
   if(state?.busy)return toast('Đang xử lý ảnh. Vui lòng chờ.');
