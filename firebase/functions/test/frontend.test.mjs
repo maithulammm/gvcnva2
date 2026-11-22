@@ -69,6 +69,19 @@ test('Automatic scheduling paints first, yields during calculation and closes lo
   await pending;assert(confirmed);assert(frames>=8);assert.equal(Object.keys(f.run('mdata().schedule')).length,0);
 });
 
+test('Inspection shortcuts show a truthful security notice without blocking normal shortcuts or spamming dialogs',async()=>{
+  const f=frontend();await f.login();let notices=0,blocked=0;
+  f.ctx.appAlert=message=>{notices++;assert(message.includes('phạm vi được phân quyền'));return Promise.resolve(true);};
+  f.ctx.keyEvent={key:'F12',preventDefault(){blocked++;}};
+  f.run('warnSourceInspection(keyEvent)');assert.equal(notices,1);assert.equal(blocked,1);
+  f.run('warnSourceInspection(keyEvent)');assert.equal(notices,1);
+  f.ctx.keyEvent={key:'c',ctrlKey:true,preventDefault(){blocked++;}};f.run('warnSourceInspection(keyEvent)');assert.equal(blocked,2);
+  for(const event of [{key:'i',ctrlKey:true,shiftKey:true},{key:'u',ctrlKey:true},{key:'j',metaKey:true,altKey:true}]){
+    f.run('securityNoticeAt=-Infinity');f.ctx.keyEvent={...event,preventDefault(){blocked++;}};f.run('warnSourceInspection(keyEvent)');
+  }
+  assert.equal(notices,4);
+});
+
 test('M03 rejects selecting more than two new photos before compression or upload',async()=>{
   const f=frontend();await f.login();f.run("openModal('m03')");
   assert.equal(f.run('EVIDENCE_LIMIT'),2);
