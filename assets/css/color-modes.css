@@ -1,0 +1,66 @@
+/* Bootstrap 5.3 color modes + tokens riêng của trường. Đặt cuối để phủ các màu cố định cũ. */
+:root,[data-bs-theme="light"]{
+  color-scheme:light;
+  --bs-primary:#4b1d67;--bs-primary-rgb:75,29,103;
+  --bs-body-color:var(--ink);--bs-body-bg:var(--canvas);--bs-border-color:var(--line);
+  --bs-body-font-family:"Segoe UI",Arial,sans-serif;
+}
+.theme-toggle{position:fixed;right:16px;bottom:max(16px,env(safe-area-inset-bottom));z-index:40;display:grid;place-items:center;width:44px;height:44px;padding:0;border-radius:50%;font-size:25px;line-height:1;background:var(--surface);color:var(--primary);border:1px solid var(--line);}
+.theme-toggle:hover{background:var(--primary-soft);}
+.theme-toggle svg{display:block;width:20px;height:20px;}
+.theme-toggle:focus-visible{outline:3px solid var(--accent-orange);outline-offset:3px;}
+/* Bootstrap toast sử dụng .show; toast hiện có dùng opacity để animate cả hai chiều. */
+.toast:not(.show){display:block;}
+.toast{bottom:72px;}
+.card{color:var(--ink);}
+dialog{color:var(--ink);}
+input,select,textarea{color-scheme:inherit;}
+.btn{--bs-btn-focus-shadow-rgb:75,29,103;}
+.field input,.field select,.field textarea{transition:border-color .15s,box-shadow .15s;}
+.field input:focus,.field select:focus,.field textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 15%,transparent);}
+
+[data-bs-theme="dark"]{
+  color-scheme:dark;
+  --primary:#d8b4f0;--primary-hover:#e9cef9;--primary-soft:#34253f;
+  --canvas:#18151d;--surface:#221e29;--ink:#f1eaf5;--muted:#c0b3c9;
+  --line:#4a3d55;--soft:#2a2332;--white:var(--surface);
+  --blue:var(--primary);--mint:var(--primary-soft);--selection-bg:#493157;
+  --orange:#ffba80;--red:#ff9ca7;--green:#82d4a3;
+  --shadow:0 8px 28px #0003;
+  --bs-primary:#d8b4f0;--bs-primary-rgb:216,180,240;
+  --bs-body-color:var(--ink);--bs-body-bg:var(--canvas);--bs-border-color:var(--line);
+  --bs-secondary-color:var(--muted);--bs-tertiary-bg:var(--soft);
+}
+[data-bs-theme="dark"] :is(.sidebar,.mobile-bar,.mobile-nav){background:#301440;color:#f8efff;}
+[data-bs-theme="dark"] :is(.logo strong,.logo small,.nav button,.admin-nav>summary,.mobile-nav-header h2){color:#f8efff;}
+[data-bs-theme="dark"] .nav button.active{color:#321144;background:var(--accent-yellow);}
+[data-bs-theme="dark"] .mobile-bar .btn{background:#44304f;color:#f8efff;border-color:#70557e;}
+[data-bs-theme="dark"] :is(.card,.kpi,.page-toolbar,.auth-panel,.account-dropdown,dialog,.modal-h,.modal-f,.app-dialog-actions,.app-dialog-header,.table-filter-panel){background:var(--surface);color:var(--ink);border-color:var(--line);}
+[data-bs-theme="dark"] #authGate{background:radial-gradient(circle at 15% 20%,#40204a,transparent 50%),var(--canvas);}
+[data-bs-theme="dark"] :is(input,textarea,select,.inline-select,.work-search,.choice-search,#appDialogInput){background-color:var(--surface);color:var(--ink);border-color:var(--line);}
+[data-bs-theme="dark"] :where(.btn,#accountMenuButton,.schedule-choice,.calendar-day,.choice-buttons button,.meeting-options span){background:var(--surface);color:var(--primary);border-color:#70557e;}
+[data-bs-theme="dark"] :is(.btn.primary,.ms-btn,.btn.success){background:#714090;color:#fff;border-color:#9660b7;}
+[data-bs-theme="dark"] :is(.btn.primary,.ms-btn):hover{background:#84509f;}
+[data-bs-theme="dark"] :is(.choice-buttons button[aria-pressed="true"],.schedule-choice[aria-pressed="true"],.calendar-day[aria-pressed="true"],.meeting-options input:checked+span,.work-filters button[aria-pressed="true"]){background:#714090;color:#fff;border-color:#ad82c2;}
+[data-bs-theme="dark"] :is(.btn.danger,.account-dropdown button,.evidence-remove){color:var(--red);}
+[data-bs-theme="dark"] :is(.account-dropdown button:hover,.account-dropdown button:focus-visible){background:#422a39;}
+[data-bs-theme="dark"] :is(tbody tr:nth-child(even),.responsive-records tbody tr:nth-child(even)){background:#27212e;}
+[data-bs-theme="dark"] tbody tr:hover{background:#33283c;}
+[data-bs-theme="dark"] :is(th,.pill,.status,.status.info){background:var(--primary-soft);color:var(--primary);}
+[data-bs-theme="dark"] :is(.notice,.status.warn,.highlight,.tag){background:#483916;color:#ffe29a;border-color:#806622;}
+[data-bs-theme="dark"] .status.ok{background:#203c2d;color:#a1e5b9;}
+[data-bs-theme="dark"] .status.bad{background:#472531;color:#ffb0ba;}
+[data-bs-theme="dark"] :is(.readonly,.meeting-reference,.footnote,.headnote,.auth-hint){background:var(--soft);color:var(--muted);border-color:var(--line);}
+[data-bs-theme="dark"] .auth-hint.error{background:#472531;color:#ffb0ba;}
+[data-bs-theme="dark"] .calendar-weekend:not([aria-pressed="true"]){background:var(--soft);color:var(--muted);}
+[data-bs-theme="dark"] .bar{background:#493753;}
+[data-bs-theme="dark"] .bar i{background:#b18bc7;}
+[data-bs-theme="dark"] :is(.sync-ok,.check.ok){color:var(--green);}
+[data-bs-theme="dark"] .toast{background:#4b2c60;color:#fff;}
+[data-bs-theme="dark"] .theme-toggle:hover{background:var(--primary-soft);}
+@media(prefers-reduced-motion:reduce){.field input,.field select,.field textarea{transition:none;}}
+@media print{
+  .theme-toggle{display:none!important;}
+  html[data-bs-theme],html[data-bs-theme] body{color-scheme:light;background:#fff!important;color:#000!important;}
+  html[data-bs-theme] :is(.card,table,th,td){background:#fff!important;color:#000!important;}
+}

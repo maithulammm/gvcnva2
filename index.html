@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="vi">
+<html lang="vi" data-bs-theme="light">
   <head>
     <!-- Main application page and Microsoft Entra callback. -->
     <meta charset="utf-8" />
@@ -7,6 +7,7 @@
     <title>Quản lý GVCN VA2</title>
     <link rel="icon" type="image/png" href="assets/logo/logova2.png?v=school-logo" />
     <link rel="apple-touch-icon" href="assets/logo/logova2.png?v=school-logo" />
+    <link rel="stylesheet" href="assets/vendor/bootstrap/bootstrap.min.css?v=5.3.9" />
     <link rel="stylesheet" href="assets/css/app.css?v=20261118-quick-meeting" />
     <link rel="stylesheet" href="assets/css/responsive.css?v=20261119-half-days" />
     <link rel="stylesheet" href="assets/css/header.css?v=20261119-auto-photo" />
@@ -23,8 +24,10 @@
   <link rel="stylesheet" href="assets/css/simple-flow.css?v=20261119" />
   <link rel="stylesheet" href="assets/css/evidence.css?v=20261120-central" />
   <link rel="stylesheet" href="assets/css/interaction.css?v=20261122" />
+  <link rel="stylesheet" href="assets/css/color-modes.css?v=20261122" />
   </head>
   <body>
+    <button type="button" class="btn theme-toggle shadow-sm" id="themeToggle" onclick="toggleColorMode()" aria-label="Bật giao diện tối" aria-pressed="false" title="Bật giao diện tối"><span id="themeIcon" aria-hidden="true">☾</span><span class="visually-hidden" id="themeLabel">Bật giao diện tối</span></button>
     <!-- Microsoft login gate: before authentication NO application view is rendered. -->
     <section id="authGate" aria-label="Đăng nhập Microsoft 365">
       <div class="auth-panel">
@@ -157,6 +160,7 @@
       src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"
     ></script>
     <script defer src="assets/js/config.js?v=20261119-simple-flow"></script>
+    <script defer src="assets/js/color-modes.js?v=20261122"></script>
     <script defer src="assets/js/state.js?v=20261118-school-calendar"></script>
     <script defer src="assets/js/helpers.js?v=20261119-lead-readonly"></script>
     <script defer src="assets/js/loading.js?v=20261118-school-calendar"></script>
