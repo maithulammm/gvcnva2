@@ -5,6 +5,9 @@
 function rows(m, key) {
   return m[key] || [];
 }
+/** Kế hoạch đã có là căn cứ phát sinh; trạng thái không phát sinh phải được GVCN chọn rõ. */
+function supportReviewState(m){return m.plans?.length?'needed':['none','needed'].includes(m.notes?.supportReview)?m.notes.supportReview:'pending';}
+function supportReviewLabel(state){return {none:'Không phát sinh hỗ trợ',needed:'Có phát sinh hỗ trợ',pending:'Chưa rà soát'}[state]||'Chưa rà soát';}
 /**
  * Dùng Set để mỗi học sinh chỉ tính một lần trong số HS đã gặp, dù có nhiều cuộc gặp.
  */
@@ -81,6 +84,7 @@ function summarize(c, month) {
     ),
     supportPrev: uniq(previous.map((x) => x.studentId)).length,
     supportPlans: uniq(plans.map((x) => x.studentId)).length,
+    supportReview:supportReviewState(m),
     supportDone: plans.filter((x) => x.result === "Đạt").length,
     profileSessions: meet.filter((x) => x.profileId).length,
     state: m.approval?.state || "draft",
@@ -197,7 +201,7 @@ function validations(c, month) {
       false,
     );
   // M03–M05 ghi theo phát sinh: không tạo cảnh báo hay đòi đủ số lượng khi không có bản ghi.
-  const hasData =
+  const hasData = supportReviewState(m)!=='pending' ||
     s.planned +
       s.meetings +
       s.connections +
@@ -219,5 +223,8 @@ function validations(c, month) {
   const active={K2:m.meetings.length,K3:m.meetings.length,K4:m.connections.length,
     K5:m.previous.length+m.plans.length,K6:c.profiles.filter(p=>p.startMonth===month).length+m.meetings.filter(r=>r.profileId).length,K9:m.connections.length};
   for(const [key,count]of Object.entries(active))if(!count&&!errors.some(e=>e.key===key))codes[key]=key==='K6'?'THEO TRƯỜNG HỢP':'CHƯA GHI NHẬN';
+  if(m.notes?.supportReview==='none'&&m.plans.length){errors.push({key:'K5',message:'M04 đã có kế hoạch hỗ trợ, không thể chọn không phát sinh.'});codes.K5='LỖI';}
+  else if(supportReviewState(m)==='none'&&!errors.some(e=>e.key==='K5'))codes.K5='KHÔNG PHÁT SINH';
+  else if(supportReviewState(m)==='needed'&&!m.plans.length){warnings.push({key:'K5',message:'M04 đã xác nhận có phát sinh nhưng chưa có kế hoạch hỗ trợ.'});codes.K5='CHÚ Ý';}
   return { errors, warnings, codes, hasData };
 }

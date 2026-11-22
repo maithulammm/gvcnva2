@@ -42,3 +42,17 @@
 [data-bs-theme="dark"] .schedule-tag-morning{background:#49371b;border-color:#80612b;color:#ffdc99;}
 [data-bs-theme="dark"] .schedule-tag-other{background:#20354d;border-color:#3c5d80;color:#b7d8ff;}
 [data-bs-theme="dark"] .schedule-tag-recorded{background:#203c2d;border-color:#3c6c4b;color:#a1e5b9;}
+.support-review{margin-bottom:16px;}
+.support-review-choices{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.support-review-choices .btn{min-height:44px;white-space:normal;text-align:left;}
+.compact-row-meta{display:none;}
+@media(max-width:900px){
+  .meeting-row-toggle{display:grid;grid-template-columns:minmax(0,1fr) auto 12px;gap:8px;min-height:60px;padding-top:8px;padding-bottom:8px;}
+  table.m01-table.responsive-records .meeting-collapsible>td.schedule-selection-cell:has(input){height:60px;}
+  .meeting-row-name{font-size:13px;}
+  .compact-row-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:0;max-width:148px;}
+  .compact-row-date{font-size:11px;line-height:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted);}
+  .compact-row-status{max-width:100%;font-size:10px;line-height:15px;padding:1px 6px;border-radius:12px;border:1px solid var(--line);background:var(--primary-soft);color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #view table.responsive-records .meeting-expanded td:last-child .btn{min-height:44px;min-width:44px;padding:9px 10px;}
+  .support-review-choices{display:grid;grid-template-columns:1fr;}
+}

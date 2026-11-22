@@ -1,6 +1,14 @@
 "use strict";
 
 // M02: actual student meetings.
+/** Tóm tắt ngày/giờ, không đưa nội dung trao đổi riêng vào dòng thu gọn. */
+function compactRecordDate(value){
+  const text=displayDateText(value||''),date=text.match(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/)?.[0],time=text.match(/\b\d{1,2}:\d{2}\b/)?.[0];
+  return [date,time?.padStart(5,'0')].filter(Boolean).join(' ');
+}
+function compactRecordMeta(date,status){
+  return `<span class="compact-row-meta">${date?`<span class="compact-row-date">${esc(date)}</span>`:''}${status?`<span class="compact-row-status">${esc(status)}</span>`:''}</span>`;
+}
 /**
  * Thêm hàng tóm tắt tên/giờ có thể mở rộng trên điện thoại; giữ nguyên dữ liệu và thao tác của
  * dòng đầy đủ.
@@ -10,10 +18,10 @@ function installMeetingSummaries(table){
   for(const row of table.querySelectorAll('tbody > tr')){
     if(row.querySelector('.meeting-row-toggle')||row.cells.length<3)continue;
     const nameCell=row.cells[1],name=nameCell.textContent.trim(),actual=row.cells[2].textContent.trim();
-    const time=actual.match(/\b\d{1,2}:\d{2}\b/)?.[0]||'—';
+    const time=compactRecordDate(actual);
     const button=document.createElement('button');button.type='button';button.className='meeting-row-toggle';
     button.setAttribute('aria-expanded','false');button.setAttribute('aria-label','Xem chi tiết lượt gặp của '+name+' · '+actual);button.title=actual;
-    button.innerHTML=`<span class="meeting-row-name">${esc(name)}</span><span class="meeting-row-time">${esc(time)}</span><span class="meeting-row-arrow" aria-hidden="true">▾</span>`;
+    button.innerHTML=`<span class="meeting-row-name">${esc(name)}</span>${compactRecordMeta(time,'Đã ghi nhận')}<span class="meeting-row-arrow" aria-hidden="true">▾</span>`;
     nameCell.classList.add('meeting-name-cell');row.classList.add('meeting-collapsible');
     for(const node of [...nameCell.children])node.classList.add('meeting-name-original');
     nameCell.append(button);
@@ -32,13 +40,15 @@ function installCompactList(table){
   if(primary<0)primary=headers.findIndex(h=>/GVCN|Tên|Tiêu chí/i.test(h));
   if(primary<0)primary=0;
   const secondary=headers.findIndex((h,i)=>i!==primary&&/Ngày|Lịch|Thời|Trạng thái/.test(h));
+  const statusColumn=headers.findIndex(h=>/Trạng thái|Kết quả|Mức độ/.test(h));
   table.classList.add('compact-list-table');
   for(const row of table.querySelectorAll('tbody > tr')){
     if(row.querySelector('.meeting-row-toggle')||row.querySelector('td[colspan]')||!row.cells[primary])continue;
     const cell=row.cells[primary],name=cell.textContent.trim(),detail=secondary>=0?row.cells[secondary]?.textContent.trim()||'':'';
     const button=document.createElement('button');button.type='button';button.className='meeting-row-toggle';
     button.setAttribute('aria-expanded','false');button.setAttribute('aria-label','Xem chi tiết '+name);button.title=[name,detail].filter(Boolean).join(' · ');
-    button.innerHTML=`<span class="meeting-row-name">${esc(name)}</span>${detail?`<span class="compact-row-detail">${esc(detail)}</span>`:''}<span class="meeting-row-arrow" aria-hidden="true">▾</span>`;
+    const status=row.dataset.compactStatus||(statusColumn>=0?row.cells[statusColumn]?.textContent.trim()||'':'');
+    button.innerHTML=`<span class="meeting-row-name">${esc(name)}</span>${compactRecordMeta(compactRecordDate(detail),status)}<span class="meeting-row-arrow" aria-hidden="true">▾</span>`;
     const original=document.createElement('span');original.className='meeting-name-original';
     while(cell.firstChild)original.append(cell.firstChild);
     cell.append(original,button);cell.classList.add('meeting-name-cell');row.classList.add('meeting-collapsible');
@@ -68,7 +78,7 @@ function renderPendingMeetings(c,m) {
   if (!pending.length) return '';
   return `<section class="card pending-meetings"><div class="section-head"><h2>Lịch gặp dự kiến từ Mẫu 1</h2><span class="pill pending-count">${pending.length} lịch</span></div>
     <div class="table-wrap"><table><thead><tr><th>Ngày / buổi</th><th>Học sinh</th><th>Mục tiêu</th><th>Ghi chú</th><th></th></tr></thead><tbody>
-    ${pending.map(a=>`<tr><td>${esc(displayDateText(a.planTime))}</td><td><b>${esc(studentName(c,a.studentId))}</b></td><td>${esc(a.goal||'—')}</td><td>${esc(a.note||'—')}</td><td>${editable()?btn('Ghi nhận đã gặp',`openScheduledMeeting('${a.studentId}','${a.id}')`,'small primary'):'Dự kiến'}</td></tr>`).join('')}
+    ${pending.map(a=>`<tr data-compact-status="Dự kiến"><td>${esc(displayDateText(a.planTime))}</td><td><b>${esc(studentName(c,a.studentId))}</b></td><td>${esc(a.goal||'—')}</td><td>${esc(a.note||'—')}</td><td>${editable()?btn('Ghi nhận đã gặp',`openScheduledMeeting('${a.studentId}','${a.id}')`,'small primary'):'Dự kiến'}</td></tr>`).join('')}
     </tbody></table></div></section>`;
 }
 /**

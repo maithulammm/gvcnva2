@@ -212,6 +212,29 @@ test('Scoped transactions preserve teacher scope and locked report rules',async(
   await assert.rejects(api.bootstrap(teacher,{ids:['8C4']}),{status:403});
 });
 
+test('M04 review saves by class/month and management receives its state without student details',async()=>{
+  const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},lead={email:'lead@vietanhschool.edu.vn',oid:'lead',name:'Lead'},fixture=restFixture();
+  const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}));
+  const boot=await api.bootstrap(admin),c=boot.classes['8C3'];
+  c.students=[{id:'S1',name:'Student',code:''}];
+  c.months={'T11/2026':{notes:{supportReview:'none'}},'T10/2026':{notes:{summary:'Keep October'}}};
+  let saved=await api.putClass(admin,'8C3',{classData:c,revision:0});
+  assert.equal(saved.data.months['T11/2026'].notes.supportReview,'none');
+  assert.equal(saved.data.months['T10/2026'].notes.summary,'Keep October');
+  await api.saveUserRoles(admin,{...lead,roles:['lead'],grades:['8'],active:true});
+  const management=await api.bootstrap(lead);
+  assert.equal(management.summaries['8C3']['T11/2026'].supportReview,'none');
+  assert.equal(management.summaries['8C3']['T10/2026'].supportReview,'pending');
+  assert.equal(management.checks['8C3']['T11/2026'].codes.K5,'KHÔNG PHÁT SINH');
+  assert.deepEqual(management.classes['8C3'].students,[]);
+  const invalid=structuredClone(saved.data);invalid.months['T11/2026'].notes.supportReview='anything';
+  await assert.rejects(api.putClass(admin,'8C3',{classData:invalid,revision:saved.revision}),{status:400});
+  invalid.months['T11/2026'].notes.supportReview='none';
+  invalid.months['T11/2026'].plans=[{id:'P1',studentId:'S1',need:'Need',goal:'Goal',action:'Act',deadline:'2026-11-30',cooperation:'Teacher',assessment:'Review'}];
+  await assert.rejects(api.putClass(admin,'8C3',{classData:invalid,revision:saved.revision}),{status:400});
+  await assert.rejects(api.putClass(lead,'8C3',{classData:saved.data,revision:saved.revision}),{status:403});
+});
+
 test('Lead bootstrap and change checks read only assigned grades and return no student details',async()=>{
   const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},
     lead={email:'lead@vietanhschool.edu.vn',oid:'lead',name:'Lead'},fixture=restFixture();

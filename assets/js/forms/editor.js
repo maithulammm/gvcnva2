@@ -158,8 +158,8 @@ function openModal(type, id = "", seed = {}) {
   if (type === "userRoles")
     h += `<div class="footnote wide">Phân công GVCN được quản lý trong mục Quản lý GVCN; vai trò GVCN hiện có không thể bị bỏ tại đây.</div>`;
   for (let [key, label, kind, required, options] of opts) {
-    if(type==='m02'&&['studentId','previousReview','goal'].includes(key)){
-      const titles={studentId:'1. Thông tin cuộc gặp',previousReview:'2. Chia sẻ & nhận xét',goal:'3. Mục tiêu & việc tiếp theo'};
+    if(type==='m02'&&['studentId','previousReview','concern','goal'].includes(key)){
+      const titles={studentId:'1. Thông tin cuộc gặp',previousReview:'2. Nhận xét lần trước',concern:'3. Nội dung mới',goal:'4. Mục tiêu tiếp theo'};
       h+=`<h3 class="wide meeting-section-title">${titles[key]}</h3>`;
       if(key==='previousReview'){
         const initial=meetingEditorValues(rec);
@@ -396,6 +396,7 @@ async function submitForm(e) {
         return;
       }
     }
+    if(type==='plans')m.notes.supportReview='needed';
     if (id) Object.assign(lookup(type, id), record);
     else
       m[{ m02: "meetings", m03: "connections" }[type] || type].push({

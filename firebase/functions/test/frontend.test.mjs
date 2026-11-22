@@ -58,6 +58,37 @@ test('Monthly checks do not demand conditional M03-M05 records but still reject 
   result=compare();assert(result.back.errors.some(e=>e.key==='K4'));assert(result.back.errors.some(e=>e.key==='K5'));
 });
 
+test('M04 explicitly distinguishes unreviewed and no support, preserves records and matches server summaries',async()=>{
+  const f=frontend();await f.login();
+  f.run("cls().students=[{id:'S1',name:'Student'}]");
+  assert.equal(f.run('summarize(cls(),ui.month).supportReview'),'pending');
+  f.run("setSupportReview('none')");
+  let c=JSON.parse(f.run('JSON.stringify(cls())'));
+  assert.equal(summary(c,'T11/2026').supportReview,'none');
+  assert.equal(validateReport(c,'T11/2026').codes.K5,'KHÔNG PHÁT SINH');
+  assert.equal(f.run('validations(cls(),ui.month).codes.K5'),'KHÔNG PHÁT SINH');
+  assert.equal(f.run("summarize(cls(),'T10/2026').supportReview"),'pending');
+  f.run("openModal('plans')");
+  f.ctx.input={studentId:'S1',need:'Support',goal:'Goal',action:'Action',deadline:'2026-11-30',cooperation:'Teacher',assessment:'Review',result:'Chưa chốt'};
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');
+  assert.equal(f.run('mdata().notes.supportReview'),'needed');
+  const before=f.run('JSON.stringify(mdata().plans)');
+  f.run("setSupportReview('none')");assert.equal(f.run('mdata().notes.supportReview'),'needed');
+  assert.equal(f.run('JSON.stringify(mdata().plans)'),before);
+  c=JSON.parse(f.run('JSON.stringify(cls())'));assert.equal(summary(c,'T11/2026').supportReview,'needed');
+  f.run("auth.assignment={role:'lead',roles:['lead'],grades:['6']};setSupportReview('none')");
+  assert.equal(f.run('mdata().notes.supportReview'),'needed');
+});
+
+test('M02 editor orders meeting information, previous review, new content and next goals with collapsed reference',async()=>{
+  const f=frontend();await f.login();f.run("openModal('m02')");
+  const html=f.el('modalBody').innerHTML;
+  const headings=['1. Thông tin cuộc gặp','2. Nhận xét lần trước','3. Nội dung mới','4. Mục tiêu tiếp theo'].map(title=>html.indexOf(title));
+  assert(headings.every(n=>n>=0));assert(headings.every((n,i)=>i===0||n>headings[i-1]));
+  assert.match(html,/<details class="wide meeting-history"><summary>/);
+  assert(html.indexOf('data-field="previousReview"')<html.indexOf('data-field="concern"'));
+});
+
 test('Automatic scheduling paints first, yields during calculation and closes loading before confirmation',async()=>{
   const f=frontend();await f.login();f.run("cls().students=[{id:'S1',name:'Student 1'},{id:'S2',name:'Student 2'}]");
   const originalEditable=f.ctx.editable;let checked=false;

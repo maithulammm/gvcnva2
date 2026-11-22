@@ -331,6 +331,7 @@ function exportSchool() {
     "Lỗi",
     "Chú ý",
     "Trạng thái báo cáo",
+    "Rà soát M04",
   ];
   let rows = [head];
   let allRows = [head];
@@ -360,6 +361,7 @@ function exportSchool() {
         v.errors.length,
         v.warnings.length,
         stageName(s.state),
+        supportReviewLabel(s.supportReview),
       ];
     };
     rows.push(renderRow(ui.month));

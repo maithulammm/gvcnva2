@@ -37,6 +37,7 @@ export function requireValue(condition, message, status=400) { if(!condition) fa
 export function emptyMonth() {
   return {schedule:{},meetings:[],connections:[],previous:[],plans:[],notes:{},approval:{state:'draft',history:[]}};
 }
+export function supportReviewState(m){return m.plans?.length?'needed':['none','needed'].includes(m.notes?.supportReview)?m.notes.supportReview:'pending';}
 export function blankClass(id) {
   return {id,grade:gradeOf(id),teacher:'',email:'',students:[],months:{},profiles:[],audit:[]};
 }
@@ -118,6 +119,8 @@ export function validateClass(c,previous=null) {
   }
   for(const [month,m] of Object.entries(c.months)) {
     requireValue(MONTHS.includes(month),'Tháng báo cáo không hợp lệ.');
+    requireValue(m.notes.supportReview===undefined||['pending','none','needed'].includes(m.notes.supportReview),'Trạng thái rà soát M04 không hợp lệ.');
+    requireValue(m.notes.supportReview!=='none'||!m.plans.length,'M04 đã có kế hoạch hỗ trợ, không thể chọn không phát sinh.');
     requireValue(['draft','returned','submitted','reviewed','approved'].includes(m.approval.state),'Trạng thái báo cáo không hợp lệ.');
     validateAppointments(c,month,m,previous,requireValue);
     for(const key of ['meetings','connections','previous','plans']) {
@@ -197,11 +200,14 @@ export function validateReport(c,month) {
   for(const p of c.profiles.filter(p=>p.startMonth===month)) if(missing(p,['studentId','code','strength','concern','goal'])) add('K6','M05 thiếu thông tin.');
   const planned=c.students.filter(s=>m.schedule[s.id]?.planTime || m.schedule[s.id]?.status || m.meetings.some(r=>r.studentId===s.id)).length;
   if(planned<c.students.length) add('K7',`M01 mới lên lịch ${planned}/${c.students.length} học sinh.`,false);
-  const hasData=!!(planned+m.meetings.length+m.connections.length+m.previous.length+m.plans.length);
+  const hasData=supportReviewState(m)!=='pending'||!!(planned+m.meetings.length+m.connections.length+m.previous.length+m.plans.length);
   const codes=Object.fromEntries(Array.from({length:9},(_,i)=>{const k=`K${i+1}`;return [k,errors.some(e=>e.key===k)?'LỖI':warnings.some(e=>e.key===k)?'CHÚ Ý':hasData?'OK':'—'];}));
   const active={K2:m.meetings.length,K3:m.meetings.length,K4:m.connections.length,K5:m.previous.length+m.plans.length,
     K6:c.profiles.filter(p=>p.startMonth===month).length+m.meetings.filter(r=>r.profileId).length,K9:m.connections.length};
   for(const [key,count]of Object.entries(active))if(!count&&!errors.some(e=>e.key===key))codes[key]=key==='K6'?'THEO TRƯỜNG HỢP':'CHƯA GHI NHẬN';
+  if(m.notes?.supportReview==='none'&&m.plans.length){errors.push({key:'K5',message:'M04 đã có kế hoạch hỗ trợ, không thể chọn không phát sinh.'});codes.K5='LỖI';}
+  else if(supportReviewState(m)==='none'&&!errors.some(e=>e.key==='K5'))codes.K5='KHÔNG PHÁT SINH';
+  else if(supportReviewState(m)==='needed'&&!m.plans.length){warnings.push({key:'K5',message:'M04 đã xác nhận có phát sinh nhưng chưa có kế hoạch hỗ trợ.'});codes.K5='CHÚ Ý';}
   return {errors,warnings,hasData,codes};
 }
 export function summary(c,month,today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())) {
@@ -216,5 +222,5 @@ export function summary(c,month,today=new Intl.DateTimeFormat('en-CA',{timeZone:
     improved:unique(m.meetings.filter(r=>r.progressEvidence==='Có')),coordination:unique(m.meetings.filter(r=>r.needsCoop==='Có')),
     connections:m.connections.length,connectedStudents:unique(m.connections),connEvidence:m.connections.filter(r=>r.evidence).length,
     unconnected:Math.max(0,c.students.length-unique(m.connections)),supportPrev:unique(m.previous),supportPlans:unique(m.plans),
-    supportDone:m.plans.filter(r=>r.result==='Đạt').length,profileSessions:m.meetings.filter(r=>r.profileId).length,state:m.approval.state};
+    supportReview:supportReviewState(m),supportDone:m.plans.filter(r=>r.result==='Đạt').length,profileSessions:m.meetings.filter(r=>r.profileId).length,state:m.approval.state};
 }

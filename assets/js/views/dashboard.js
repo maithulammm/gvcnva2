@@ -69,7 +69,7 @@ function renderDashboard() {
     .filter(s=>dashboardMatches(s))
     .map((s) => {
       let v = validations(cls(s.classId), ui.month);
-      return `<tr><td><b>${s.classId}</b></td><td>${esc(s.teacher || "Chưa gán")}</td><td>${s.count || "—"}</td><td>${s.met}/${s.count}</td><td style="min-width:128px"><div class="bar"><i style="width:${Math.min(s.rate, 100)}%"></i></div><small>${percent(s.rate)}</small></td><td>${s.meetings}/${s.plannedMeetings||0}</td><td>${s.connections}</td><td>${s.supportPlans}</td><td>${v.hasData ? statusTag(v.errors.length ? "Còn lỗi" : v.warnings.length ? "CHÚ Ý" : "Hợp lệ") : "Chưa nhập"}</td><td>${statusTag(stageName(s.state))}</td></tr>`;
+      return `<tr><td><b>${s.classId}</b></td><td>${esc(s.teacher || "Chưa gán")}</td><td>${s.count || "—"}</td><td>${s.met}/${s.count}</td><td style="min-width:128px"><div class="bar"><i style="width:${Math.min(s.rate, 100)}%"></i></div><small>${percent(s.rate)}</small></td><td>${s.meetings}/${s.plannedMeetings||0}</td><td>${s.connections}</td><td>${s.supportPlans}<div class="hint">${esc(supportReviewLabel(s.supportReview))}</div></td><td>${v.hasData ? statusTag(v.errors.length ? "Còn lỗi" : v.warnings.length ? "CHÚ Ý" : "Hợp lệ") : "Chưa nhập"}</td><td>${statusTag(stageName(s.state))}</td></tr>`;
     })
     .join(
       "",
