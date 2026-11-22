@@ -1036,6 +1036,19 @@ test('failed form persistence keeps the draft and retry does not duplicate a mee
   assert.equal(f.run('mdata().meetings.length'),1);
   assert(!f.memory.has(key));
 });
+test('Schedule tags show local dates, fixed and custom times without rewriting legacy plans',async()=>{
+  const f=frontend();await f.login();
+  const before=f.run('JSON.stringify(appData)');
+  const morning=f.run("scheduleTimeTags({date:'2026-11-02',session:'morning'})");
+  assert.match(morning,/datetime="2026-11-02">02\/11\/2026/);
+  assert.match(morning,/schedule-tag-morning/);assert.match(morning,/09:55–10:15/);
+  const other=f.run("scheduleTimeTags({date:'2026-11-18',session:'other',startTime:'11:10',endTime:'11:30'},true)");
+  assert.match(other,/Giờ khác/);assert.match(other,/11:10–11:30/);assert.match(other,/Đã ghi nhận/);
+  const legacy=f.run("scheduleTimeTags({planTime:'Tuần 4 <ghi chú>'})");
+  assert.match(legacy,/Tuần 4 &lt;ghi chú&gt;/);assert(!legacy.includes('09:55'));
+  assert.equal(f.run('JSON.stringify(appData)'),before);
+});
+
 test('schedule export picker supports Word, Excel and cancellation',async()=>{
   const f=frontend();await f.login();
   let choice=f.run("appDialog('Choose format','export')");

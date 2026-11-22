@@ -1,0 +1,42 @@
+/* Thu gọn riêng bảng dữ liệu; không giảm các nút lưu/đóng của popup hoặc nút điều hướng. */
+.schedule-tags{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px;min-width:0;}
+.schedule-tag{display:inline-flex;align-items:center;max-width:100%;padding:2px 6px;border:1px solid var(--line);border-radius:6px;background:var(--soft);color:var(--ink);font-size:11px;line-height:16px;overflow-wrap:anywhere;}
+.schedule-tag-date,.schedule-tag-time{white-space:nowrap;font-variant-numeric:tabular-nums;}
+.schedule-tag-morning{background:#fff0cf;border-color:#f0d498;color:#784300;}
+.schedule-tag-afternoon{background:var(--primary-soft);color:var(--primary);}
+.schedule-tag-other{background:#e8f1fb;border-color:#c8d8ed;color:#23517f;}
+.schedule-tag-recorded{background:#eaf5ed;color:#205a39;border-color:#c4dfcd;}
+.m01-table .m01-entry{min-height:26px;padding:1px 0;line-height:1.4;}
+.m01-table .m01-appointment-line{gap:6px;align-items:center;}
+.m01-table .m01-visit-label{gap:4px;font-size:11px;}
+#view .m01-table .m01-visit-label .schedule-icon{width:24px;height:24px;min-width:24px;min-height:24px;padding:4px;border-radius:6px;}
+#view .m01-table .m01-visit-label .schedule-icon svg{width:13px;height:13px;}
+.m01-table .m01-actions{padding:0;overflow:visible;}
+#view .m01-table .m01-actions .btn{flex:0 0 28px;width:28px;height:28px;min-width:28px;min-height:28px;padding:5px;border-radius:7px;}
+#view .m01-table .m01-actions .btn svg{width:16px;height:16px;}
+.m01-table .m01-add{margin-left:0!important;}
+.m01-table th:last-child{width:54px;}
+#view table td .btn.small:not(.schedule-icon),#view .pending-meetings table td .btn{min-height:28px;margin:0 3px 0 0;padding:4px 8px;font-size:12px;line-height:18px;border-radius:7px;}
+#view table td .meeting-followup summary{min-height:28px;padding:4px 0;}
+@media(min-width:901px){
+  #view table:not(.m01-table) td{padding:7px 10px;}
+  .m01-table td{padding-top:5px;padding-bottom:5px;}
+}
+@media(pointer:coarse),(max-width:900px){
+  /* Cỡ 32–36px, có khoảng cách giữa các lần gặp, tránh nút to kéo cả hàng cao theo. */
+  .m01-table .m01-entry{min-height:34px;padding:1px 0;}
+  #view .m01-table .m01-visit-label .schedule-icon{width:32px;height:32px;min-width:32px;min-height:32px;padding:7px;}
+  #view .m01-table .m01-visit-label .schedule-icon svg{width:16px;height:16px;}
+  #view .m01-table .m01-actions .btn{flex-basis:36px;width:36px;height:36px;min-width:36px;min-height:36px;padding:8px;}
+  .m01-table .m01-appointment-line{align-items:flex-start;gap:6px;}
+  .m01-table .m01-visit-label{min-height:32px;}
+  .m01-table .schedule-tags{padding-top:5px;gap:4px;}
+  #view table td .btn.small:not(.schedule-icon),#view .pending-meetings table td .btn{min-height:36px;padding:7px 10px;margin:0 5px 2px 0;}
+  #view table td .meeting-followup summary{min-height:36px;padding:7px 0;}
+}
+@media(max-width:900px){
+  table.m01-table.compact-list-table.responsive-records .meeting-expanded>td.m01-empty{display:none!important;}
+}
+[data-bs-theme="dark"] .schedule-tag-morning{background:#49371b;border-color:#80612b;color:#ffdc99;}
+[data-bs-theme="dark"] .schedule-tag-other{background:#20354d;border-color:#3c5d80;color:#b7d8ff;}
+[data-bs-theme="dark"] .schedule-tag-recorded{background:#203c2d;border-color:#3c6c4b;color:#a1e5b9;}
