@@ -315,6 +315,18 @@ test('form guides open per form, remember opt-out per account and reopen manuall
   f.run('lockUi()');assert(!f.el('formHelp').open);
 });
 
+test('Guide keyword emphasis escapes source text and retains the full reference for every form',async()=>{
+  const f=frontend();await f.login();
+  const text=f.run(`guideText('Bấm **Lưu thông tin** <img src=x onerror=alert(1)>')`);
+  assert(text.includes('<strong>Lưu thông tin</strong>'));
+  assert(text.includes('&lt;img'));assert(!text.includes('<img'));
+  for(const page of ['m01','m02','m03','m04','m05']){
+    const html=f.run(`renderFormHelp('${page}')`);
+    assert(html.includes('guide-key-note'));assert(html.includes('Đọc hướng dẫn chi tiết'));
+    assert(html.includes('Ví dụ áp dụng'));assert(!html.includes('<details open'));
+  }
+});
+
 test('bulk schedule deletion confirms, preserves roster/actual records and persists only selected students',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
   f.run(`cls().students=[{id:'S1',name:'One',code:''},{id:'S2',name:'Two',code:''}];mdata().schedule=buildAutomaticSchedule().classData.months[ui.month].schedule;
