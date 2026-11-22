@@ -60,6 +60,8 @@ test('Monthly checks do not demand conditional M03-M05 records but still reject 
 
 test('Automatic scheduling paints first, yields during calculation and closes loading before confirmation',async()=>{
   const f=frontend();await f.login();f.run("cls().students=[{id:'S1',name:'Student 1'},{id:'S2',name:'Student 2'}]");
+  const originalEditable=f.ctx.editable;let checked=false;
+  f.ctx.editable=()=>{if(!checked){assert(f.el('requestOverlay').open);checked=true;}return originalEditable();};
   let frames=0,confirmed=false;
   f.ctx.requestAnimationFrame=callback=>{frames++;assert(f.el('requestOverlay').open);Promise.resolve().then(callback);return frames;};
   f.ctx.confirm=()=>{confirmed=true;assert(!f.el('requestOverlay').open);return false;};

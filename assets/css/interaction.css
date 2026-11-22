@@ -1,0 +1,24 @@
+/* Phản hồi nhấn thống nhất; transform không thay đổi kích thước hay bố cục danh sách. */
+:where(button,input[type="button"],input[type="submit"],input[type="reset"],[role="button"],.btn,summary){
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  transition:transform 100ms ease,filter 100ms ease,box-shadow 120ms ease,background-color 120ms ease;
+}
+@media(hover:hover) and (pointer:fine){
+  :where(button,input[type="button"],input[type="submit"],input[type="reset"],[role="button"],.btn,summary):not(:disabled):not([aria-disabled="true"]):hover{
+    filter:brightness(.97);
+  }
+}
+:where(button,input[type="button"],input[type="submit"],input[type="reset"],[role="button"],.btn,summary):not(:disabled):not([aria-disabled="true"]):active{
+  transform:translateY(1px) scale(.97);
+  filter:brightness(.88);
+  box-shadow:inset 0 2px 5px #24112d30;
+}
+:where(button,input[type="button"],input[type="submit"],input[type="reset"],[role="button"],.btn,summary):focus-visible{
+  outline:2px solid var(--primary,#4b1d67);
+  outline-offset:3px;
+}
+@media(prefers-reduced-motion:reduce){
+  :where(button,input[type="button"],input[type="submit"],input[type="reset"],[role="button"],.btn,summary):not(:disabled):not([aria-disabled="true"]){transition:none;}
+  :where(button,input[type="button"],input[type="submit"],input[type="reset"],[role="button"],.btn,summary):not(:disabled):not([aria-disabled="true"]):active{transform:none;}
+}

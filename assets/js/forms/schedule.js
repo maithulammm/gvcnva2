@@ -281,13 +281,15 @@ async function buildAutomaticScheduleAsync(c,month){
  * lại bản cũ.
  */
 async function autoScheduleMonth() {
-  if (!editable()||pageLoading.pending.size) return;
-  const context={owner:auth.email,epoch:cloud.epoch,classId:ui.classId,month:ui.month};
+  if (pageLoading.pending.size) return;
+  // Hiện modal ngay trong click handler, trước cả kiểm tra quyền/dữ liệu có thể tốn thời gian.
   const release=beginPageLoading('Đang xếp lịch, vui lòng chờ...');
+  const context={owner:auth.email,epoch:cloud.epoch,classId:ui.classId,month:ui.month};
   let c,result;
   try {
     // Nhường một khung hình để màn chờ được vẽ trước khi tính lịch trên thiết bị di động.
     await schedulePaint();
+    if(!editable())return;
     if(cloud.ready) {
       const data=await databaseRequest('/calendar','GET',undefined,{silent:true});
       if(auth.email!==context.owner||cloud.epoch!==context.epoch||ui.classId!==context.classId||ui.month!==context.month||!editable())return;
