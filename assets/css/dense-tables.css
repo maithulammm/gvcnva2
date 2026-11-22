@@ -16,6 +16,8 @@
 #view .m01-table .m01-actions .btn svg{width:16px;height:16px;}
 .m01-table .m01-add{margin-left:0!important;}
 .m01-table th:last-child{width:54px;}
+/* Căn giữa các ô thông tin chung theo toàn bộ hàng, kể cả học sinh có nhiều lịch. */
+.m01-table td:first-child,.m01-table td:nth-child(2),.m01-table td.m01-controls{vertical-align:middle;}
 #view table td .btn.small:not(.schedule-icon),#view .pending-meetings table td .btn{min-height:28px;margin:0 3px 0 0;padding:4px 8px;font-size:12px;line-height:18px;border-radius:7px;}
 #view table td .meeting-followup summary{min-height:28px;padding:4px 0;}
 @media(min-width:901px){
