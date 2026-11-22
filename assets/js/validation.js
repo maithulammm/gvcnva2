@@ -196,8 +196,7 @@ function validations(c, month) {
       `M01 mới lên kế hoạch cho ${s.planned}/${c.students.length} học sinh.`,
       false,
     );
-  if (!m.connections.length)
-    add("K9", "M03 tháng này chưa ghi nhận kết nối tích cực.", false);
+  // M03–M05 ghi theo phát sinh: không tạo cảnh báo hay đòi đủ số lượng khi không có bản ghi.
   const hasData =
     s.planned +
       s.meetings +
@@ -217,5 +216,8 @@ function validations(c, month) {
           ? "OK"
           : "—";
   }
+  const active={K2:m.meetings.length,K3:m.meetings.length,K4:m.connections.length,
+    K5:m.previous.length+m.plans.length,K6:c.profiles.filter(p=>p.startMonth===month).length+m.meetings.filter(r=>r.profileId).length,K9:m.connections.length};
+  for(const [key,count]of Object.entries(active))if(!count&&!errors.some(e=>e.key===key))codes[key]=key==='K6'?'THEO TRƯỜNG HỢP':'CHƯA GHI NHẬN';
   return { errors, warnings, codes, hasData };
 }

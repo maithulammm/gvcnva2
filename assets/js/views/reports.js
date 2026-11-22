@@ -31,20 +31,21 @@ function renderCheck() {
     state = m.approval?.state || "draft";
   let names = {
     K1: "M01 khớp số HS đã gặp ở M02",
-    K2: "M01 trạng thái và ngày giờ thực tế",
+    K2: "M02 ngày giờ các cuộc gặp thực tế",
     K3: "M02 đủ thông tin từng cuộc gặp",
-    K4: "M03 đủ thông tin kết nối",
-    K5: "M04 đủ kết quả / kế hoạch hỗ trợ",
-    K6: "M05 liên kết đúng học sinh và đủ chi tiết",
-    K7: "M01 bao quát sĩ số (khuyến nghị)",
-    K9: "M03 có kết nối tích cực trong tháng (khuyến nghị)",
+    K4: "M03 đủ thông tin các kết nối đã ghi",
+    K5: "M04 đủ thông tin khi có hỗ trợ",
+    K6: "M05 đủ chi tiết khi có theo dõi chuyên sâu",
+    K7: "M01 rà soát lịch bao quát sĩ số",
+    K9: "M03 thống kê các kết nối thực tế",
   };
+  const applicable=Object.keys(names).filter(key=>['OK','LỖI','CHÚ Ý'].includes(v.codes[key]));
   return `<div class="section-head"><h2>Chốt kiểm tra · lớp ${c.id}</h2>${statusTag(stageName(state))}</div>${kpis(
     [
       [
-        "Kiểm tra đạt",
-        Object.keys(names).filter((key) => v.codes[key] === "OK").length + "/" + Object.keys(names).length,
-        "Tiêu chí đang áp dụng",
+        "Dữ liệu hợp lệ",
+        applicable.length?applicable.filter(key=>v.codes[key]==='OK').length+'/'+applicable.length:'—',
+        "Chỉ tính tiêu chí có dữ liệu để kiểm tra",
       ],
       ["Lỗi cần sửa", v.errors.length, "Không được nộp khi còn lỗi"],
       ["Chú ý", v.warnings.length, "Khuyến nghị bổ sung"],

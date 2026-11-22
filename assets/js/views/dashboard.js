@@ -50,7 +50,7 @@ function renderDashboard() {
     let unconn = c.students.filter(
       (st) => !m.connections.some((r) => r.studentId === st.id),
     );
-    h += `<div class="cols2"><section class="card"><div class="section-head" style="margin-top:0"><h2>Tiến độ lớp ${c.id}</h2>${statusTag(stageName(s.state))}</div><div class="stack"><div><div class="filterline" style="justify-content:space-between"><b>Gặp gỡ học sinh</b><span>${s.met}/${s.count}</span></div><div class="bar"><i style="width:${Math.min(s.rate, 100)}%"></i></div></div><div><div class="filterline" style="justify-content:space-between"><b>Kết nối tích cực với phụ huynh</b><span>${s.connectedStudents}/${s.count}</span></div><div class="bar"><i style="width:${s.count ? Math.min(100, (100 * s.connectedStudents) / s.count) : 0}%"></i></div></div></div></section><section class="card"><div class="section-head" style="margin-top:0"><h2>Cần theo dõi</h2><span class="pill">${v.errors.length} lỗi · ${v.warnings.length} chú ý</span></div><b>${ungap.length} học sinh chưa có lượt gặp trong tháng</b><div class="help">${esc(
+    h += `<div class="cols2"><section class="card"><div class="section-head" style="margin-top:0"><h2>Tiến độ lớp ${c.id}</h2>${statusTag(stageName(s.state))}</div><div class="stack"><div><div class="filterline" style="justify-content:space-between"><b>Gặp gỡ học sinh</b><span>${s.met}/${s.count}</span></div><div class="bar"><i style="width:${Math.min(s.rate, 100)}%"></i></div></div><div><div class="filterline" style="justify-content:space-between"><b>HS đã có kết nối PHHS · thống kê</b><span>${s.connectedStudents}/${s.count}</span></div><div class="bar"><i style="width:${s.count ? Math.min(100, (100 * s.connectedStudents) / s.count) : 0}%"></i></div></div></div></section><section class="card"><div class="section-head" style="margin-top:0"><h2>Cần theo dõi</h2><span class="pill">${v.errors.length} lỗi · ${v.warnings.length} chú ý</span></div><b>${ungap.length} học sinh chưa có lượt gặp trong tháng</b><div class="help">${esc(
       ungap
         .slice(0, 6)
         .map((x) => x.name)
@@ -69,7 +69,7 @@ function renderDashboard() {
     .filter(s=>dashboardMatches(s))
     .map((s) => {
       let v = validations(cls(s.classId), ui.month);
-      return `<tr><td><b>${s.classId}</b></td><td>${esc(s.teacher || "Chưa gán")}</td><td>${s.count || "—"}</td><td>${s.met}/${s.count}</td><td style="min-width:128px"><div class="bar"><i style="width:${Math.min(s.rate, 100)}%"></i></div><small>${percent(s.rate)}</small></td><td>${s.meetings}/${s.plannedMeetings||0}</td><td>${s.connections}</td><td>${s.supportPlans}</td><td>${v.hasData ? statusTag(v.errors.length ? "Còn lỗi" : v.warnings.length ? "CHÚ Ý" : "OK") : "Chưa nhập"}</td><td>${statusTag(stageName(s.state))}</td></tr>`;
+      return `<tr><td><b>${s.classId}</b></td><td>${esc(s.teacher || "Chưa gán")}</td><td>${s.count || "—"}</td><td>${s.met}/${s.count}</td><td style="min-width:128px"><div class="bar"><i style="width:${Math.min(s.rate, 100)}%"></i></div><small>${percent(s.rate)}</small></td><td>${s.meetings}/${s.plannedMeetings||0}</td><td>${s.connections}</td><td>${s.supportPlans}</td><td>${v.hasData ? statusTag(v.errors.length ? "Còn lỗi" : v.warnings.length ? "CHÚ Ý" : "Hợp lệ") : "Chưa nhập"}</td><td>${statusTag(stageName(s.state))}</td></tr>`;
     })
     .join(
       "",

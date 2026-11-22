@@ -74,6 +74,10 @@ CSS được nạp theo nhiều lớp. Quy tắc phía sau có thể ghi đè qu
 
 ## Kiểm tra sau khi sửa
 
+- Kiểm tra báo cáo dùng chung cách phân loại ở `validation.js` và `model.mjs`: M03 trống không tự phát sinh cảnh báo; M04–M05 chỉ kiểm tra thông tin các bản ghi/liên kết hiện có. `CHƯA GHI NHẬN` và `THEO TRƯỜNG HỢP` là trạng thái trung tính, không khẳng định GVCN đã hoàn thành rà soát. Không ép tạo lượt kết nối hoặc hồ sơ để đủ số lượng. M01 vẫn nhắc rà soát độ bao phủ danh sách lớp; trạng thái gửi/xem xét báo cáo là quy trình riêng.
+- Sheet `KiemTra` của bản Excel xuất dùng kết quả kiểm tra tại thời điểm xuất, đồng nhất với web; công thức kiểm tra dòng M03 không bắt buộc thông điệp, phản hồi hay ảnh. Workbook gốc không thay đổi.
+- `automaticScheduleSteps()` dùng chỉ mục lịch bận theo ngày, không sắp xếp toàn bộ lớp cho mỗi ô giờ. Bản bất đồng bộ nhường khung hình sau mỗi bốn ngày để màn chờ vẫn hoạt động; bản đồng bộ dùng cùng generator cho kiểm thử. Chỉ sao chép và thay tháng đang xếp, giữ nguyên lịch cũ và các tháng khác.
+
 ### Đồng bộ theo lớp và tháng (Workers)
 
 - Adapter REST hỗ trợ đường dẫn con dưới `ROOT`. Lưu biểu mẫu thường xuyên dùng transaction tại `classes/{classId}`, giữ revision và các liên kết M02–M05 nhất quán. Trình duyệt gửi `partialMonths: true` và chỉ các tháng thay đổi; máy chủ ghép với tháng hiện có. Không dùng PATCH không có điều kiện hoặc ghi đè từ một bản lớp đã cũ.

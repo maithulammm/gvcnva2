@@ -197,9 +197,11 @@ export function validateReport(c,month) {
   for(const p of c.profiles.filter(p=>p.startMonth===month)) if(missing(p,['studentId','code','strength','concern','goal'])) add('K6','M05 thiếu thông tin.');
   const planned=c.students.filter(s=>m.schedule[s.id]?.planTime || m.schedule[s.id]?.status || m.meetings.some(r=>r.studentId===s.id)).length;
   if(planned<c.students.length) add('K7',`M01 mới lên lịch ${planned}/${c.students.length} học sinh.`,false);
-  if(!m.connections.length) add('K9','Chưa có kết nối PHHS trong tháng.',false);
   const hasData=!!(planned+m.meetings.length+m.connections.length+m.previous.length+m.plans.length);
   const codes=Object.fromEntries(Array.from({length:9},(_,i)=>{const k=`K${i+1}`;return [k,errors.some(e=>e.key===k)?'LỖI':warnings.some(e=>e.key===k)?'CHÚ Ý':hasData?'OK':'—'];}));
+  const active={K2:m.meetings.length,K3:m.meetings.length,K4:m.connections.length,K5:m.previous.length+m.plans.length,
+    K6:c.profiles.filter(p=>p.startMonth===month).length+m.meetings.filter(r=>r.profileId).length,K9:m.connections.length};
+  for(const [key,count]of Object.entries(active))if(!count&&!errors.some(e=>e.key===key))codes[key]=key==='K6'?'THEO TRƯỜNG HỢP':'CHƯA GHI NHẬN';
   return {errors,warnings,hasData,codes};
 }
 export function summary(c,month,today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())) {

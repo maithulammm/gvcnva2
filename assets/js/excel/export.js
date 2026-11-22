@@ -26,6 +26,8 @@ function retireWorkbookCodeFields(files) {
       const address=formula.parentNode.getAttribute('r'),row=Number(address.replace(/\D/g,''));
       let text=formula.textContent;
       if(sheet.name==='M02'&&address.startsWith('N'))text=text.replace(`&IF(L${row}="","Mã minh chứng; ","")`,'');
+      if(sheet.name==='M03'&&address.startsWith('I')&&row>=5)
+        text=`IF(C${row}="","",IF(A${row}="","Tháng; ","")&IF(B${row}="","Ngày; ","")&IF(D${row}="","Hình thức; ","")&IF(F${row}="","Người nhận; ",""))`;
       if(sheet.name==='M05_CacLan'&&address.startsWith('L')) {
         text=text.replace(`&IF(K${row}="","Mã xác nhận; ","")`,'');
         text=text.replace(`&IF(AND(K${row}<>"",COUNTIF('M02'!$L$5:$L$604,K${row})=0),"Mã chưa khớp dòng M02; ","")`,'');
@@ -121,6 +123,13 @@ async function exportClass() {
     add("ThongTin", "B6", c.teacher);
     add("ThongTin", "B7", c.email);
     add("ThongTin", "B8", YEARS);
+    // Bản xuất là kết quả chốt tại thời điểm xuất, dùng cùng tiêu chí với web/máy chủ.
+    add('KiemTra','A3','Kết quả tại thời điểm xuất: OK = dữ liệu hợp lệ; LỖI = cần sửa; CHÚ Ý = cần rà soát. M03–M04 theo phát sinh, M05 theo trường hợp; không ép đủ số bản ghi.');
+    add('KiemTra','D4','K2. M02: ngày giờ cuộc gặp thực tế');
+    add('KiemTra','F4','K4. M03: thông tin kết nối đã ghi');
+    add('KiemTra','G4','K5. M04: thông tin hỗ trợ khi phát sinh');
+    add('KiemTra','H4','K6. M05: theo dõi chuyên sâu khi cần');
+    add('KiemTra','K4','K9. M03: thống kê kết nối thực tế');
     c.students.forEach((s, i) => {
       add("DanhSach", "B" + (5 + i), s.name);
       if (s.code) add("DanhSach", "C" + (5 + i), s.code);
@@ -132,6 +141,8 @@ async function exportClass() {
       sessionsAll = [];
     MONTHS.forEach((month, mi) => {
       const m = mdata(c, month, false);
+      const checked=validations(c,month);
+      for(let k=1;k<=9;k++)add('KiemTra',String.fromCharCode(66+k)+(mi+5),checked.codes['K'+k]);
       c.students.forEach((st, si) => {
         let a = m.schedule?.[st.id] || {},
           meet = m.meetings.filter((x) => x.studentId === st.id),

@@ -227,46 +227,77 @@ async function removeAppointment(studentId,appointmentId,editor=null) {
  * Xếp trên bản sao: duyệt ngày rồi sáng/chiều và quay vòng danh sách học sinh. Giữ lịch có sẵn,
  * không áp trần số lần/tháng.
  */
-function buildAutomaticSchedule(c=cls(),month=ui.month) {
-  const copy=JSON.parse(JSON.stringify(c)), m=mdata(copy,month), students=copy.students;
+function* automaticScheduleSteps(c=cls(),month=ui.month) {
+  // Chỉ sao chép tháng đang xếp. Các tháng khác và nhật ký gặp thực tế không bị sửa.
+  const copy={...c,students:c.students.map(s=>({...s})),months:{...c.months,[month]:JSON.parse(JSON.stringify(mdata(c,month,false)))}};
+  const m=mdata(copy,month),students=copy.students,busy=new Map(),studentDays=new Map();
+  const addBusy=(studentId,appointment)=>{
+    const slot=scheduleSlot(appointment);if(!slot.date)return;
+    if(!busy.has(slot.date))busy.set(slot.date,[]);
+    busy.get(slot.date).push(appointmentRange({...appointment,...slot}));
+    if(!studentDays.has(studentId))studentDays.set(studentId,new Set());
+    studentDays.get(studentId).add(slot.date);
+  };
+  for(const student of students)for(const appointment of studentAppointments(copy,month,student.id))addBusy(student.id,appointment);
   let next=0,added=0;
   if (!students.length) return {classData:copy,added};
-  for (const date of scheduleMonthDates(month)) for (const session of Object.keys(MEETING_SESSIONS)) {
+  for (const date of scheduleMonthDates(month)) {
+    yield;
+    for (const session of Object.keys(MEETING_SESSIONS)) {
     if(isExcludedMeetingDate(date,session))continue;
-    if (!scheduleSessionAllowed(copy,date,session)||scheduleOccupant(date,session,'',copy,month,'')) continue;
+    const [start,end]=appointmentRange({session});
+    if (!scheduleSessionAllowed(copy,date,session)||(busy.get(date)||[]).some(([a,b])=>start<b&&end>a)) continue;
     for (let attempt=0;attempt<students.length;attempt++) {
       const student=students[next];next=(next+1)%students.length;
       const appointments=studentAppointments(copy,month,student.id);
-      if (!scheduleAvailable(date,session,student.id,copy,month,'')) continue;
+      if (studentDays.get(student.id)?.has(date)) continue;
       const info=MEETING_SESSIONS[session],appointment={id:newID(),date,session,topics:[],goal:'',note:'',
         planTime:`${date.slice(8)}/${date.slice(5,7)}/${date.slice(0,4)} · ${info.label} ${info.time}`};
       m.schedule[student.id]=appointmentRollup(m.schedule[student.id]||{},[...appointments,appointment]);
+      addBusy(student.id,appointment);
       added++;break;
+    }
     }
   }
   return {classData:copy,added};
+}
+/** Bản đồng bộ dùng chung thuật toán cho xuất/kiểm thử; không nhân đôi quy tắc xếp lịch. */
+function buildAutomaticSchedule(c=cls(),month=ui.month){
+  const steps=automaticScheduleSteps(c,month);let step;
+  do{step=steps.next();}while(!step.done);
+  return step.value;
+}
+function schedulePaint(){
+  return new Promise(resolve=>typeof requestAnimationFrame==='function'?requestAnimationFrame(()=>requestAnimationFrame(resolve)):setTimeout(resolve,0));
+}
+/** Nhường luồng giao diện sau mỗi bốn ngày để vòng xoay vẫn chạy trên điện thoại. */
+async function buildAutomaticScheduleAsync(c,month){
+  const steps=automaticScheduleSteps(c,month);let step,count=0;
+  while(!(step=steps.next()).done)if(++count%4===0)await schedulePaint();
+  return step.value;
 }
 /**
  * Đọc lịch nghỉ mới nhất trước khi xếp, hỏi xác nhận rồi mới thay dữ liệu tháng; lưu lỗi thì trả
  * lại bản cũ.
  */
 async function autoScheduleMonth() {
-  if (!editable()) return;
+  if (!editable()||pageLoading.pending.size) return;
   const context={owner:auth.email,epoch:cloud.epoch,classId:ui.classId,month:ui.month};
   const release=beginPageLoading('Đang xếp lịch, vui lòng chờ...');
   let c,result;
   try {
     // Nhường một khung hình để màn chờ được vẽ trước khi tính lịch trên thiết bị di động.
-    await new Promise(resolve=>typeof requestAnimationFrame==='function'?requestAnimationFrame(()=>requestAnimationFrame(resolve)):setTimeout(resolve,0));
+    await schedulePaint();
     if(cloud.ready) {
       const data=await databaseRequest('/calendar','GET',undefined,{silent:true});
       if(auth.email!==context.owner||cloud.epoch!==context.epoch||ui.classId!==context.classId||ui.month!==context.month||!editable())return;
       if(data.calendar)appData.calendar=data.calendar;
     }
     if (!cls().students.length) return toast('Cần nhập danh sách học sinh trước khi xếp lịch.');
-    c=cls();result=buildAutomaticSchedule(c);
+    c=cls();result=await buildAutomaticScheduleAsync(c,context.month);
   } catch(error){appAlert('Chưa xếp được lịch: '+error.message);return;}
   finally{release();}
+  if(cls()!==c)return toast('Dữ liệu lớp đã thay đổi. Vui lòng xếp lịch lại.');
   if (!result.added) return toast('Không còn khung giờ trống.');
   if (!await appConfirm(`Xếp thêm ${result.added} lịch dự kiến?`)) return;
   if(auth.email!==context.owner||cloud.epoch!==context.epoch||ui.classId!==context.classId||ui.month!==context.month||!editable())return;

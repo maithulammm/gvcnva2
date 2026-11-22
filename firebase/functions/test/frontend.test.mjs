@@ -43,6 +43,30 @@ test('M03 defaults and optional text agree with server report validation',async(
   assert(!validateReport(c,'T11/2026').errors.some(x=>x.key==='K4'));
 });
 
+test('Monthly checks do not demand conditional M03-M05 records but still reject incomplete existing records',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student'}];mdata().schedule.S1={planTime:'21/11/2026 · Sáng 9:55–10:15'};
+    mdata().meetings=[{id:'R1',studentId:'S1',actual:'21/11/2026 09:55',concern:'A',participation:'B',progressEvidence:'Chưa đủ căn cứ',goal:'C',action:'D',cooperation:'Chưa cần',needsCoop:'Không'}];`);
+  const compare=()=>{
+    const c=JSON.parse(f.run('JSON.stringify(cls())')),front=f.run('validations(cls(),ui.month)'),back=validateReport(c,'T11/2026');
+    for(const key of ['K3','K4','K5','K6','K9'])assert.equal(front.codes[key],back.codes[key]);
+    return {front,back};
+  };
+  let result=compare();assert.equal(result.back.errors.length,0);assert.equal(result.back.warnings.length,0);
+  assert.equal(result.front.codes.K4,'CHƯA GHI NHẬN');assert.equal(result.front.codes.K5,'CHƯA GHI NHẬN');assert.equal(result.front.codes.K6,'THEO TRƯỜNG HỢP');
+  f.run("mdata().connections.push({id:'C1',studentId:'S1'});mdata().plans.push({id:'P1',studentId:'S1'})");
+  result=compare();assert(result.back.errors.some(e=>e.key==='K4'));assert(result.back.errors.some(e=>e.key==='K5'));
+});
+
+test('Automatic scheduling paints first, yields during calculation and closes loading before confirmation',async()=>{
+  const f=frontend();await f.login();f.run("cls().students=[{id:'S1',name:'Student 1'},{id:'S2',name:'Student 2'}]");
+  let frames=0,confirmed=false;
+  f.ctx.requestAnimationFrame=callback=>{frames++;assert(f.el('requestOverlay').open);Promise.resolve().then(callback);return frames;};
+  f.ctx.confirm=()=>{confirmed=true;assert(!f.el('requestOverlay').open);return false;};
+  const pending=f.run('autoScheduleMonth()');assert(f.el('requestOverlay').open);
+  await pending;assert(confirmed);assert(frames>=8);assert.equal(Object.keys(f.run('mdata().schedule')).length,0);
+});
+
 test('M03 rejects selecting more than two new photos before compression or upload',async()=>{
   const f=frontend();await f.login();f.run("openModal('m03')");
   assert.equal(f.run('EVIDENCE_LIMIT'),2);
@@ -1028,9 +1052,13 @@ test('classes above 28 students save to Firebase and export all students across 
   const hidden=(name,index)=>Array.from(sheet(name).getElementsByTagName('col')).some(col=>+col.getAttribute('min')<=index&&+col.getAttribute('max')>=index&&col.getAttribute('hidden')==='1');
   assert(hidden('DanhSach',3));assert(hidden('M02',12));assert(hidden('M03',8));assert(hidden('M05_CacLan',11));
   assert(!cell(sheet('M02'),'N5').textContent.includes('Mã minh chứng'));
+  assert(!cell(sheet('M03'),'I5').textContent.includes('IF(E5'));
+  assert(!cell(sheet('M03'),'I5').textContent.includes('IF(G5'));
   assert(!cell(sheet('M05_CacLan'),'L5').textContent.includes('Mã xác nhận'));
   assert(!cell(sheet('M05_CacLan'),'L5').textContent.includes('Mã chưa khớp dòng M02'));
-  assert.equal(cell(sheet('KiemTra'),'J5').textContent,'IF($B5=0,"—","OK")');
+  assert.equal(cell(sheet('KiemTra'),'J5').textContent,f.run("validations(cls(),'T09/2026').codes.K8"));
+  assert.equal(cell(sheet('KiemTra'),'K5').textContent,'CHƯA GHI NHẬN');
+  assert.equal(cell(sheet('KiemTra'),'H5').textContent,'THEO TRƯỜNG HỢP');
   assert.equal(cell(sheet('DanhSach'),'C39').textContent,'HS34');
   assert.equal(cell(sheet('DanhSach'),'B39').textContent,'Student 34');
   assert.match(cell(sheet('TheoDoiHS'),'B39').textContent,/DanhSach!\$B\$39/);
