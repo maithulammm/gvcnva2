@@ -8,7 +8,7 @@ const MEETING_SUGGESTIONS = {
   participation:{placeholder:"Ví dụ: HS chủ động chia sẻ hơn lần trước; cần gợi mở; chưa đủ điều kiện so sánh…",
     values:["Chưa đủ điều kiện so sánh","Chủ động trao đổi","Cần gợi mở","Tham gia tích cực hơn","Chưa ghi nhận thay đổi"]},
 };
-const PROGRESS_CHOICES = [["Chưa đủ căn cứ","Chưa ghi nhận"],["Có","Có tiến bộ"],["Không","Chưa tiến bộ"]];
+const PROGRESS_CHOICES = [["Chưa đủ căn cứ","Chưa đủ căn cứ"],["Có","Có tiến bộ"],["Không","Chưa tiến bộ"]];
 const MEETING_EXTRA_FIELDS = ["actualDateTime","actualDate","actualTime","actualLocation",...Array.from({length:3},(_,i)=>["goal"+(i+1),"goalAmount"+(i+1),"goalUnit"+(i+1)]).flat()];
 /**
  * Đọc giờ ISO hoặc dd/mm/yyyy và tách địa điểm từ chuỗi cũ; chỉ chuẩn hóa để nhập, không tự sửa

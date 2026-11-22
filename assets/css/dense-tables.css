@@ -43,6 +43,10 @@
 [data-bs-theme="dark"] .schedule-tag-other{background:#20354d;border-color:#3c5d80;color:#b7d8ff;}
 [data-bs-theme="dark"] .schedule-tag-recorded{background:#203c2d;border-color:#3c6c4b;color:#a1e5b9;}
 .support-review{margin-bottom:16px;}
+.support-review-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.support-review-options{margin-top:8px;}
+.support-review-options>summary{min-height:44px;padding:10px 0;cursor:pointer;color:var(--muted);font-size:12px;}
+.support-review-options .btn{min-height:44px;}
 .support-review-choices{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
 .support-review-choices .btn{min-height:44px;white-space:normal;text-align:left;}
 .compact-row-meta{display:none;}

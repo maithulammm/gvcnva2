@@ -14,7 +14,7 @@ const FORM_HELP={
     'Kiểm tra học sinh, ngày, giờ 24 giờ và địa điểm thực tế. Thông tin điền sẵn được phép sửa.',
     'Nếu có lần gặp trước, đọc thông tin tham khảo và nhận xét việc thực hiện mục tiêu đã thống nhất. Chọn cụm từ gợi ý rồi chỉnh theo thực tế; không sao chép kết quả cũ.',
     'Ghi điều học sinh quan tâm bằng ngôn ngữ trung tính; lắng nghe ý kiến, điểm mạnh và mong muốn của học sinh.',
-    'Ghi mức tham gia và căn cứ tiến bộ trước–sau. Khi chưa đủ dữ kiện, chọn Chưa ghi nhận; không suy diễn tiến bộ.',
+    'Ghi mức tham gia và căn cứ tiến bộ trước–sau. Khi chưa đủ dữ kiện, chọn Chưa đủ căn cứ; không suy diễn tiến bộ.',
     'Thống nhất mục tiêu cụ thể, mức cần đạt, thời hạn và hành động của học sinh/GVCN. Ví dụ: chuẩn bị bài đủ 4/5 ngày mỗi tuần trong 2 tuần.',
     'Chỉ chọn phối hợp khi có nhiệm vụ cụ thể. Liên kết Mẫu 05 nếu học sinh có hồ sơ theo dõi chuyên sâu.',
     'Lưu sau cuộc gặp; giữ xác nhận học sinh theo quy trình của trường. Mỗi cuộc gặp là một bản ghi, không ghi trùng cùng một lịch.'
@@ -29,7 +29,7 @@ const FORM_HELP={
     'Cuối tháng rà soát học sinh chưa được ghi nhận để cân đối cơ hội tháng sau.'
   ],example:'“Hôm nay em chủ động hỗ trợ bạn hoàn thành nhiệm vụ nhóm.” Một học sinh được liên hệ nhiều lần tạo nhiều lượt, nhưng chỉ đếm một học sinh được ghi nhận.'},
   m04:{title:'Mẫu 04 · Kế hoạch hỗ trợ học sinh',purpose:'Đánh giá hỗ trợ kỳ trước và lập kế hoạch phù hợp nhu cầu, điểm mạnh, mục tiêu của học sinh trong tháng này.',steps:[
-    'Rà soát hỗ trợ tháng này: chọn Chưa rà soát, Không phát sinh hỗ trợ trong tháng hoặc Có phát sinh hỗ trợ. Khi đã có kế hoạch, không thể chọn Không phát sinh.',
+    'Trạng thái ban đầu là Chưa rà soát. Sau khi kiểm tra lớp, chọn Không phát sinh hỗ trợ trong tháng hoặc Có phát sinh hỗ trợ. Nếu chưa có kế hoạch, có thể đặt lại về Chưa rà soát trong Tùy chọn rà soát.',
     'Phần I: ghi biện pháp đã thực hiện tháng trước, kết quả quan sát và nội dung cần tiếp tục; không chép nguyên kế hoạch dự định.',
     'Khi không phát sinh hỗ trợ kỳ trước, phản ánh đúng tình hình; không tạo bản ghi học sinh giả để đủ biểu mẫu.',
     'Phần II: nêu nhu cầu cùng điểm mạnh/nguồn lực. Hỗ trợ có thể nhằm phát huy thế mạnh, thói quen hoặc hòa nhập, không chỉ xử lý khó khăn.',
@@ -60,14 +60,14 @@ const FORM_HELP_QUICK={
     ['Nhận xét lần trước','Nhóm này chỉ hiện khi có **lần gặp trước** hoặc nhận xét đã lưu. Đánh giá việc thực hiện mục tiêu cũ; phần tham khảo dài có thể bấm mở.'],
     ['Nội dung mới','Ghi **điều học sinh quan tâm** và **mức tham gia / tiến bộ**. Chọn cụm từ gợi ý rồi chỉnh theo tình huống thực tế.'],
     ['Mục tiêu tiếp theo','Thống nhất **mục tiêu cụ thể**, **thời hạn** và **việc cần làm**. Bấm **Lưu thông tin** hoặc **Lưu & ghi HS tiếp theo**.']
-  ],note:['Ghi đúng căn cứ','Chọn **Chưa ghi nhận** khi chưa có đủ dữ kiện để so sánh tiến bộ. Chỉ mở **Phối hợp & liên kết Mẫu 5** khi cần.']},
+  ],note:['Ghi đúng căn cứ','Chọn **Chưa đủ căn cứ** khi chưa có đủ dữ kiện để so sánh tiến bộ. Chỉ mở **Phối hợp & liên kết Mẫu 5** khi cần.']},
   m03:{label:'KẾT NỐI PHỤ HUYNH',headline:'Ghi lại lần kết nối đã thực hiện',steps:[
     ['Chọn học sinh và ngày','Hình thức mặc định là **Tin nhắn**, người nhận mặc định là **Mẹ**. Đổi lại nếu lần kết nối có hình thức hoặc người nhận khác.'],
     ['Ghi nội dung cần thiết','**Thông điệp** và **phản hồi không bắt buộc nhập**. Nếu ghi, nêu sự việc tích cực cụ thể; tránh so sánh học sinh với bạn.'],
     ['Thêm ảnh và lưu','Có thể **chọn ảnh** hoặc **dán ảnh chụp màn hình**, tối đa **2 ảnh** cho lần kết nối mới. Bấm **Lưu thông tin**, chờ xử lý hoàn tất; bấm ảnh để xem lớn.']
   ],note:['Chỉ ghi kết nối đã diễn ra','Tin đang soạn chưa được tính là kết nối. Trước khi tải ảnh, kiểm tra ảnh có chứa **thông tin riêng tư không cần thiết** hay không.']},
   m04:{label:'RÀ SOÁT HỖ TRỢ',headline:'Xác nhận tình hình hỗ trợ trong tháng',steps:[
-    ['Chọn đúng trạng thái','**Chưa rà soát**: chưa kiểm tra tình hình lớp. **Không phát sinh hỗ trợ trong tháng**: đã rà soát và không có trường hợp cần hỗ trợ. **Có phát sinh hỗ trợ**: cần ghi kế hoạch cụ thể.'],
+    ['Chọn đúng trạng thái','Trạng thái mặc định **Chưa rà soát** nghĩa là chưa kiểm tra tình hình lớp. **Không phát sinh hỗ trợ trong tháng**: đã rà soát và không có trường hợp cần hỗ trợ. **Có phát sinh hỗ trợ**: cần ghi kế hoạch cụ thể.'],
     ['Nhìn lại tháng trước','Ở **Phần I**, ghi biện pháp **đã thực hiện**, kết quả quan sát và nội dung cần tiếp tục. Kết quả tháng trước vẫn được giữ khi tháng này không phát sinh.'],
     ['Lập kế hoạch khi phát sinh','Ở **Phần II**, nêu **mục tiêu → biện pháp → thời hạn → người phối hợp → cách đánh giá**. Khi chọn không phát sinh, phần này tự thu gọn.']
   ],note:['BGH đọc trạng thái rà soát','Chọn **Không phát sinh** sau khi đã rà soát lớp. Khi đã có kế hoạch hỗ trợ trong tháng, hệ thống sẽ giữ trạng thái **Có phát sinh hỗ trợ**.']},

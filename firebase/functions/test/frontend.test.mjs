@@ -801,7 +801,7 @@ test('M02 prefills planned date and classroom, stores independent goal deadlines
   assert.match(f.el('modalBody').innerHTML,/name="actualDateTime" value="2026-11-18T09:55"/);
   assert.match(f.el('modalBody').innerHTML,/name="actualLocation" value="Phòng 8C3"/);
   assert(!f.el('modalBody').innerHTML.includes('<select name="progressEvidence"'));
-  for(const label of ['Chưa ghi nhận','Có tiến bộ','Chưa tiến bộ','Chưa đủ điều kiện so sánh'])assert(f.el('modalBody').innerHTML.includes(label));
+  for(const label of ['Chưa đủ căn cứ','Có tiến bộ','Chưa tiến bộ','Chưa đủ điều kiện so sánh'])assert(f.el('modalBody').innerHTML.includes(label));
   f.ctx.newMeeting={...completeMeeting,profileId:'',progressEvidence:'Có',actualDateTime:'2026-11-18T10:00',actualLocation:'Phòng tư vấn',
     goal1:'Nộp bài đúng hạn',goalAmount1:'2',goalUnit1:'day',goal2:'Chủ động hỏi bài',goalAmount2:'1',goalUnit2:'week',goal3:''};
   await f.run('submitForm({preventDefault(){},currentTarget:newMeeting})');await f.run('flushCloud()');

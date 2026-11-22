@@ -15,7 +15,7 @@ function renderM04() {
   let c = cls(),
     m = mdata();
   const state=supportReviewState(m);
-  let out = `<section class="card support-review"><h2>Rà soát hỗ trợ · ${esc(ui.month)}</h2><div class="support-review-choices" role="group" aria-label="Trạng thái rà soát hỗ trợ">${[['pending','Chưa rà soát'],['none','Không phát sinh hỗ trợ trong tháng'],['needed','Có phát sinh hỗ trợ']].map(([value,label])=>`<button type="button" class="btn ${state===value?'primary':''}" aria-pressed="${state===value}" ${editable()?'':'disabled'} onclick="setSupportReview('${value}')">${label}</button>`).join('')}</div></section>`;
+  let out = `<section class="card support-review"><div class="support-review-heading"><h2>Rà soát hỗ trợ · ${esc(ui.month)}</h2><span class="pill" role="status">${esc(supportReviewLabel(state))}</span></div><div class="support-review-choices" role="group" aria-label="Xác nhận rà soát hỗ trợ">${[['none','Không phát sinh hỗ trợ trong tháng'],['needed','Có phát sinh hỗ trợ']].map(([value,label])=>`<button type="button" class="btn ${state===value?'primary':''}" aria-pressed="${state===value}" ${editable()?'':'disabled'} onclick="setSupportReview('${value}')">${label}</button>`).join('')}</div>${editable()&&state!=='pending'&&!m.plans.length?`<details class="support-review-options"><summary>Tùy chọn rà soát</summary>${btn('Đặt lại về Chưa rà soát',"setSupportReview('pending')",'small')}</details>`:''}</section>`;
   for (let [key, title, desc, columns] of [
     [
       "previous",
