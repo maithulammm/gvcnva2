@@ -306,7 +306,10 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       const s=await context(identity),u=assignmentFor(s,identity),ids=scopeFor(u);
       const revisions=await Promise.all(ids.map(async id=>[id,await read('classes/'+id+'/revision')||0]));
       const directory=hasRole(u,'admin')?await Promise.all([read('users'),read('teachers')]):[];
-      return {supported:true,version:createHash('sha256').update(JSON.stringify([s.users,s.calendar,revisions,directory])).digest('hex')};
+      // Dấu mốc phân công/lịch/danh bạ tách khỏi revision lớp để client chỉ tải lớp thay đổi.
+      const metadataVersion=createHash('sha256').update(JSON.stringify([s.users,s.calendar,directory])).digest('hex');
+      return {supported:true,metadataVersion,revisions:Object.fromEntries(revisions),
+        version:createHash('sha256').update(JSON.stringify([metadataVersion,revisions])).digest('hex')};
     },
     async storageAdmin(identity,ownerOnly=false){
       const s=db.scoped?await context(identity):normalizeSchool((await ref.get()).val()),u=assignmentFor(s,identity);
@@ -490,7 +493,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
           const s=await context(identity),u=assignmentFor(s,identity),all=scopeFor(u);
           const ids=options.ids|| (options.paged?all.slice(0,8):all);
           requireValue(Array.isArray(ids)&&ids.length<=32&&ids.every(id=>all.includes(id)),'Phạm vi lớp không hợp lệ.',403);
-          if(hasRole(u,'admin'))[s.users,s.teachers]=await Promise.all([read('users'),read('teachers')]);
+          if(hasRole(u,'admin')&&!options.ids)[s.users,s.teachers]=await Promise.all([read('users'),read('teachers')]);
           s.users ||= {};s.teachers ||= {};
           await Promise.all(ids.map(async id=>{
             // Không ghép dữ liệu cũ với revision mới khi giáo viên khác đang lưu.
@@ -500,8 +503,14 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
             requireValue(after===revision,'Lớp đang được cập nhật. Vui lòng tải lại dữ liệu.',409);
             s.classes[id]={data,revision};
           }));
-          return {...publicBootstrap(s,identity,ids),scopedSync:true,
+          const result={...publicBootstrap(s,identity,ids),scopedSync:true,
             remainingClassIds:options.paged?all.filter(id=>!ids.includes(id)):[]};
+          if(!options.ids)result.metadataVersion=createHash('sha256').update(JSON.stringify([
+            {[emailKey(identity.email)]:user},s.calendar,hasRole(u,'admin')?[s.users,s.teachers]:[],
+          ])).digest('hex');
+          // Các trang tiếp theo chỉ mang dữ liệu lớp; danh bạ đã có ở trang đầu.
+          if(options.ids){delete result.users;delete result.teachers;}
+          return result;
         }
       }
       const current=normalizeSchool((await ref.get()).val());

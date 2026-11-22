@@ -120,6 +120,37 @@ test('Paged bootstrap combines all authorized classes before applying data',asyn
   const data=await f.run('loadCloudBootstrap()');assert.equal(Object.keys(data.classes).length,ids.length);
 });
 
+test('Quiet sync reloads only changed classes and retains unchanged class data',async()=>{
+  const f=frontend();await f.login();
+  f.run("cloud.ready=true;cloud.scopedSync=true;cloud.metadataVersion='directory-v1';cloud.revisions=Object.fromEntries(Object.keys(appData.classes).map(id=>[id,0]));");
+  const before=f.run('JSON.stringify(appData.classes["8C3"])');
+  const revisions=JSON.parse(f.run('JSON.stringify(cloud.revisions)'));revisions['6A1']=1;
+  const assignment=JSON.parse(f.run('JSON.stringify(auth.assignment)'));
+  const changed=JSON.parse(f.run('JSON.stringify(appData.classes["6A1"])'));changed.teacher='Updated teacher';
+  const calls=[];
+  f.ctx.fetch=async url=>{
+    const parsed=new URL(url);calls.push(parsed.pathname+parsed.search);
+    if(parsed.pathname.endsWith('/changes'))return {ok:true,json:async()=>({supported:true,version:'new',metadataVersion:'directory-v1',revisions})};
+    assert.equal(parsed.searchParams.get('ids'),'6A1');
+    return {ok:true,json:async()=>({assignment,classes:{'6A1':changed},revisions:{'6A1':1},summaries:{},checks:{}})};
+  };
+  await f.run('refreshCloud(true)');
+  assert.equal(calls.length,2);assert(!calls.some(c=>c.includes('paged=1')));
+  assert.equal(f.run('appData.classes["6A1"].teacher'),'Updated teacher');
+  assert.equal(f.run('JSON.stringify(appData.classes["8C3"])'),before);
+  await f.run('refreshCloud(true)');assert.equal(calls.length,3);
+});
+
+test('Teacher bootstrap cache contains only the assigned class',async()=>{
+  const f=frontend();await f.login();
+  f.run(`useBootstrap({year:YEARS,assignment:{role:'gvcn',roles:['gvcn'],classId:'8C3',grades:[]},
+    classes:{'8C3':appData.classes['8C3']},revisions:{'8C3':0},scopedSync:true})`);
+  assert.deepEqual(JSON.parse(f.run('JSON.stringify(Object.keys(appData.classes))')),['8C3']);
+  assert.equal(f.run('ui.classId'),'8C3');
+  const cache=JSON.parse(f.memory.get(f.run('cloudCacheKey()')));
+  assert.deepEqual(Object.keys(cache.classes),['8C3']);
+});
+
 test('Photo cleanup runs through the protected class endpoint and failures do not undo a saved revision',async()=>{
   const f=frontend();await f.login();f.run("cloud.ready=true;cloud.evidenceCleanup=true;cloud.revisions={'8C3':7};ui.classId='8C3';ui.page='m02'");
   let calls=0;

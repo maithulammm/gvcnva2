@@ -144,10 +144,12 @@ test('Paged bootstrap never downloads private histories and change checks read o
   assert(!fixture.trace.some(r=>r.path===''||r.path==='classes'||r.path.startsWith('recovery')||r.path==='audit'));
   const next=await api.bootstrap(admin,{ids:page.remainingClassIds.slice(0,8)});assert.equal(Object.keys(next.classes).length,8);
   fixture.trace.length=0;const before=await api.changes(admin);assert(before.version);
+  assert.equal(before.metadataVersion,page.metadataVersion);
   assert(!fixture.trace.some(r=>r.path.includes('/data')||r.path===''));
   assert(fixture.trace.length<45);assert.equal((await api.changes(admin)).version,before.version);
   let c=page.classes['6A1'];c.months={'T11/2026':{notes:{summary:'new'}}};await api.putClass(admin,'6A1',{classData:c,revision:0});
   assert.notEqual((await api.changes(admin)).version,before.version);
+  assert.equal((await api.changes(admin)).metadataVersion,before.metadataVersion);
 });
 
 test('Scoped photo reads fetch one evidence item and no school/class archive',async()=>{
@@ -197,11 +199,36 @@ test('Scoped transactions preserve teacher scope and locked report rules',async(
   const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}));
   await api.bootstrap(admin);await api.saveTeacher(admin,{email:teacher.email,name:'Teacher',classId:'8C3',active:true});
   let boot=await api.bootstrap(teacher),c=boot.classes['8C3'];c.months={'T11/2026':{notes:{summary:'Own class'}}};
+  assert.deepEqual(Object.keys(boot.classes),['8C3']);
+  fixture.trace.length=0;
+  const teacherPage=await api.bootstrap(teacher,{paged:true});
+  assert.deepEqual(Object.keys(teacherPage.classes),['8C3']);
+  assert.deepEqual(teacherPage.remainingClassIds,[]);
+  assert(!fixture.trace.some(r=>r.path.startsWith('classes/')&&!r.path.startsWith('classes/8C3/')));
   let result=await api.putClass(teacher,'8C3',{classData:c,revision:boot.revisions['8C3'],partialMonths:true});
   await assert.rejects(api.putClass(teacher,'8C4',{classData:c,revision:0}),{status:403});
   c=result.data;c.months['T11/2026'].approval.state='submitted';
   await assert.rejects(api.putClass(teacher,'8C3',{classData:c,revision:result.revision}),{status:403});
   await assert.rejects(api.bootstrap(teacher,{ids:['8C4']}),{status:403});
+});
+
+test('Lead bootstrap and change checks read only assigned grades and return no student details',async()=>{
+  const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},
+    lead={email:'lead@vietanhschool.edu.vn',oid:'lead',name:'Lead'},fixture=restFixture();
+  const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}));
+  await api.bootstrap(admin);
+  await api.saveUserRoles(admin,{...lead,roles:['lead'],grades:['8'],active:true});
+  await api.bootstrap(lead);
+  fixture.trace.length=0;
+  const page=await api.bootstrap(lead,{paged:true});
+  assert(Object.keys(page.classes).every(id=>id.startsWith('8')));
+  assert(Object.values(page.classes).every(c=>c.students.length===0&&c.profiles.length===0));
+  assert(!fixture.trace.some(r=>r.path.startsWith('classes/')&&!r.path.startsWith('classes/8')));
+  fixture.trace.length=0;
+  const changes=await api.changes(lead);
+  assert(changes.metadataVersion);assert(Object.keys(changes.revisions).every(id=>id.startsWith('8')));
+  assert(!fixture.trace.some(r=>r.path.includes('/data')));
+  await assert.rejects(api.bootstrap(lead,{ids:['7B1']}),{status:403});
 });
 
 test('Hourly Worker maintenance retries a queued image within the Free subrequest budget',async()=>{

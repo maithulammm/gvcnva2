@@ -100,6 +100,7 @@ function resetCloud() {
   cloud.baselines = {};
   cloud.summaries = {};
   cloud.checks = {};
+  cloud.syncVersion=undefined;cloud.metadataVersion=undefined;
   showSavingOverlay(false);
 }
 /**
@@ -183,11 +184,13 @@ function useBootstrap(data) {
   cloud.summaries = data.summaries || {};
   cloud.checks = data.checks || {};
   cloud.scopedSync=!!data.scopedSync;
+  if(data.metadataVersion)cloud.metadataVersion=data.metadataVersion;
   cloud.evidenceCleanup=!!data.evidenceCleanup;
   const defaults = defaultSchool();
   appData = {
     ...defaults,
-    classes: { ...defaults.classes, ...data.classes },
+    // Không giữ cả khung lớp ngoài phạm vi trong cache của tài khoản hiện tại.
+    classes: { ...data.classes },
     teachers: data.teachers || {},
     users: data.users || [],
     calendar: data.calendar || {excludedDates:[],excludedSessions:[],revision:0},
@@ -238,6 +241,7 @@ async function loadCloudBootstrap(quiet=false){
   return data;
 }
 async function connectCloud() {
+  cloud.syncVersion=undefined;cloud.metadataVersion=undefined;
   const draft = localStorage.getItem(cloudCacheKey() + "_PENDING");
   const data = await loadCloudBootstrap();
   cloud.ready = true;
@@ -378,15 +382,35 @@ async function refreshCloud(quiet = false) {
       if (cloud.worker) await cloud.worker;
     }
     cloud.busy = true;
-    let nextSyncVersion;
+    let nextSyncVersion,nextMetadataVersion;
     if(quiet&&cloud.scopedSync){
       const state=await databaseRequest('/changes','GET',undefined,{silent:true});
       if(state.supported&&state.version===cloud.syncVersion){cloud.busy=false;return;}
       nextSyncVersion=state.version;
+      nextMetadataVersion=state.metadataVersion;
+      if(state.supported&&state.metadataVersion&&state.metadataVersion===cloud.metadataVersion&&state.revisions){
+        const ids=Object.keys(state.revisions),allowed=classesForAssignment(auth.assignment);
+        // Phân công đổi phải bootstrap lại; không trộn cache từ phạm vi quyền cũ.
+        if(stableString([...ids].sort())===stableString([...allowed].sort())){
+          const changed=ids.filter(id=>state.revisions[id]!==cloud.revisions[id]);
+          const data={year:YEARS,assignment:auth.assignment,classes:{...appData.classes},
+            revisions:{...cloud.revisions},summaries:{...cloud.summaries},checks:{...cloud.checks},
+            teachers:appData.teachers,users:appData.users,calendar:appData.calendar,
+            scopedSync:cloud.scopedSync,evidenceCleanup:cloud.evidenceCleanup};
+          for(let offset=0;offset<changed.length;offset+=8){
+            const page=await databaseRequest('/bootstrap/classes?ids='+changed.slice(offset,offset+8).join(','),'GET',undefined,{silent:true});
+            if(stableString(page.assignment)!==stableString(data.assignment))throw Error('Phân công đã thay đổi trong lúc tải. Vui lòng tải lại.');
+            for(const key of ['classes','revisions','summaries','checks'])Object.assign(data[key],page[key]||{});
+          }
+          useBootstrap(data);cloud.syncVersion=nextSyncVersion;cloud.metadataVersion=nextMetadataVersion;
+          cloud.busy=false;if(changed.length)render();return;
+        }
+      }
     }
     const data = await loadCloudBootstrap(quiet);
     useBootstrap(data);
     cloud.syncVersion=nextSyncVersion;
+    cloud.metadataVersion=nextMetadataVersion;
     cloud.unassignedDrafts = {};
     storePendingDrafts();
     cloud.busy = false;
