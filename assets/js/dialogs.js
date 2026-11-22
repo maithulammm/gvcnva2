@@ -26,12 +26,15 @@ async function appPrompt(message,value=''){return await appDialog(message,'promp
 function showNextAppDialog() {
   if(appDialogs.active||!appDialogs.queue.length)return;
   const entry=appDialogs.active=appDialogs.queue.shift(),prompting=entry.kind==='prompt';
-  $('appDialogTitle').textContent=entry.kind==='alert'?'Thông báo':prompting?'Nhập nội dung xác nhận':'Xác nhận thao tác';
+  const exporting=entry.kind==='export';
+  $('appDialogTitle').textContent=exporting?'Xuất lịch gặp':entry.kind==='alert'?'Thông báo':prompting?'Nhập nội dung xác nhận':'Xác nhận thao tác';
+  $('appDialogWord').hidden=!exporting;
   $('appDialogMessage').textContent=entry.message;
   $('appDialogInputWrap').hidden=!prompting;
   $('appDialogInput').value=entry.value;
   $('appDialogCancel').hidden=entry.kind==='alert';
-  $('appDialogAccept').textContent=entry.kind==='alert'?'Đóng':'Xác nhận';
+  $('appDialogCancel').textContent=exporting?'Đóng':'Hủy';
+  $('appDialogAccept').textContent=exporting?'Excel (.xlsx)':entry.kind==='alert'?'Đóng':'Xác nhận';
   $('appDialog').showModal();
   (prompting?$('appDialogInput'):entry.kind==='alert'?$('appDialogAccept'):$('appDialogCancel')).focus();
 }
@@ -46,7 +49,7 @@ function finishAppDialog(accepted) {
     accepted=false;
     toast('Phiên hoặc dữ liệu đã thay đổi. Vui lòng mở lại thao tác để xác nhận.');
   }
-  const result=entry.kind==='prompt'?(accepted?$('appDialogInput').value:null):!!accepted;
+  const result=entry.kind==='export'?(accepted?(accepted==='word'?'word':'excel'):null):entry.kind==='prompt'?(accepted?$('appDialogInput').value:null):!!accepted;
   appDialogs.active=null;$('appDialog').close();entry.resolve(result);
   if(entry.focus?.isConnected)entry.focus.focus({preventScroll:true});
   showNextAppDialog();

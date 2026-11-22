@@ -1005,6 +1005,18 @@ test('failed form persistence keeps the draft and retry does not duplicate a mee
   assert.equal(f.run('mdata().meetings.length'),1);
   assert(!f.memory.has(key));
 });
+test('schedule export picker supports Word, Excel and cancellation',async()=>{
+  const f=frontend();await f.login();
+  let choice=f.run("appDialog('Choose format','export')");
+  assert.equal(f.el('appDialogWord').hidden,false);
+  assert.equal(f.el('appDialogAccept').textContent,'Excel (.xlsx)');
+  f.run("finishAppDialog('word')");assert.equal(await choice,'word');
+  choice=f.run("appDialog('Choose format','export')");
+  f.run('finishAppDialog(true)');assert.equal(await choice,'excel');
+  choice=f.run("appDialog('Choose format','export')");
+  f.run('finishAppDialog(false)');assert.equal(await choice,null);
+});
+
 test('planned schedule XLSX groups all visits per student and preserves detailed goals and notes',async()=>{
   const f=frontend();await f.login();
   f.run(`cls().students=[{id:'S1',name:'Nguyễn <An> & Bình',code:''},{id:'S2',name:'=Student',code:''},{id:'S3',name:'Not scheduled',code:''}];
@@ -1015,7 +1027,7 @@ test('planned schedule XLSX groups all visits per student and preserves detailed
     mdata().schedule.S2={planTime:'Tuần 4',goal:'Giữ nội dung cũ',note:'Legacy note'};`);
   const before=f.run('JSON.stringify(appData)');
   let exported,filename;f.ctx.downloadFile=(blob,name)=>{exported=blob;filename=name;};
-  f.run('exportSchedule()');assert(exported);assert.match(filename,/Lich_gap_6A1_T11-2026.xlsx/);
+  f.run("exportSchedule('excel')" );assert(exported);assert.match(filename,/Lich_gap_6A1_T11-2026.xlsx/);
   f.ctx.buffer=await exported.arrayBuffer();const files=await f.run('readZip(buffer)');
   const parse=file=>new DOMParser().parseFromString(new TextDecoder().decode(files[file]),'application/xml');
   const main=parse('xl/worksheets/sheet1.xml'),detail=parse('xl/worksheets/sheet2.xml');
@@ -1030,11 +1042,24 @@ test('planned schedule XLSX groups all visits per student and preserves detailed
   assert.equal(value(detail,'F3'),'Ghi chú riêng');assert.equal(value(detail,'E5'),'Giữ nội dung cũ');
   assert.equal(main.getElementsByTagName('f').length,0);assert.equal(detail.getElementsByTagName('f').length,0);
   assert.equal(f.run('JSON.stringify(appData)'),before);
-  assert(f.run('renderM01()').includes('Xuất Excel lịch gặp'));
-  const styles=parse('xl/styles.xml');assert.equal(styles.getElementsByTagName('cellXfs')[0].getAttribute('count'),'7');
+  assert(f.run('renderM01()').includes('Xuất lịch gặp'));
+  const styles=parse('xl/styles.xml');assert.equal(styles.getElementsByTagName('cellXfs')[0].getAttribute('count'),'10');
   assert(Array.from(styles.getElementsByTagName('color')).every(c=>c.getAttribute('rgb')==='FF000000'));
-  f.run('mdata().schedule={};exportSchedule()');assert(f.alerts.some(s=>s.includes('Chưa có lịch')));
-  assert(!f.run('renderM01()').includes('Xuất Excel lịch gặp'));
+  assert.equal(main.getElementsByTagName('pageSetup')[0].getAttribute('fitToHeight'),'1');
+  assert.equal(styles.getElementsByTagName('borders')[0].childNodes.length,5);
+  const word= f.run('buildScheduleWord()');
+  f.ctx.wordBuffer=await word.arrayBuffer();
+  const wordFiles=await f.run('readZip(wordBuffer)');
+  const wordXml=new TextDecoder().decode(wordFiles['word/document.xml']);
+  const doc=new DOMParser().parseFromString(wordXml,'application/xml');
+  assert.equal(doc.getElementsByTagName('w:tr').length,3);
+  assert.equal(doc.getElementsByTagName('w:pgSz')[0].getAttribute('w:w'),'11906');
+  assert.equal(doc.getElementsByTagName('w:tblBorders')[0].childNodes.length,6);
+  assert.match(doc.documentElement.textContent,/Nguyễn <An> & Bình/);
+  assert.match(doc.documentElement.textContent,/25\/11\/2026/);
+  assert.equal(f.run('JSON.stringify(appData)'),before);
+  f.run('mdata().schedule={};exportSchedule("excel")');assert(f.alerts.some(s=>s.includes('Chưa có lịch')));
+  assert(!f.run('renderM01()').includes('Xuất lịch gặp'));
 });
 
 test('classes above 28 students save to Firebase and export all students across every month',async()=>{

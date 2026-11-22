@@ -17,7 +17,7 @@ function renderM01() {
   const c=cls(),m=mdata(),canEdit=editable();
   return `<section class="m01-section"><div class="section-head"><h2>Lịch gặp của lớp ${esc(c.id)} · ${esc(ui.month)}</h2><div class="actions">
     <span class="pill">${monthlyAppointments().length} lịch · ${plannedStudentIds(c,m).length}/${c.students.length} HS</span>
-    ${canEdit?btn('Tự động xếp lịch tháng','autoScheduleMonth()','primary'):''}${monthlyAppointments().length?btn('Xuất Excel lịch gặp','exportSchedule()'):''}${btn('Đến Mẫu 02',"navTo('m02')")}</div></div>
+    ${canEdit?btn('Tự động xếp lịch tháng','autoScheduleMonth()','primary'):''}${monthlyAppointments().length?btn('Xuất lịch gặp','exportSchedule()'):''}${btn('Đến Mẫu 02',"navTo('m02')")}</div></div>
     <div class="card no-pad"><div class="table-wrap"><table class="m01-table"><thead><tr><th>${canEdit?'<input type="checkbox" data-schedule-select-all aria-label="Chọn tất cả học sinh đang hiển thị" onchange="selectAllScheduleStudents(this.checked)"> ':''}STT</th><th>Học sinh</th><th>Lịch dự kiến</th><th>Mục tiêu</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody>
     ${c.students.map((student,index)=>{
       const appointments=studentAppointments(c,ui.month,student.id);
