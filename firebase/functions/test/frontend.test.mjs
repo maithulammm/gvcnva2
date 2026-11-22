@@ -1164,6 +1164,16 @@ test('planned schedule XLSX groups all visits per student and preserves detailed
   const doc=new DOMParser().parseFromString(wordXml,'application/xml');
   assert.equal(doc.getElementsByTagName('w:tr').length,3);
   assert.equal(doc.getElementsByTagName('w:pgSz')[0].getAttribute('w:w'),'11906');
+  const title=doc.getElementsByTagName('w:p')[0];
+  assert.match(title.textContent,/CÁ NHÂN VỚI HỌC SINH LỚP/);
+  assert.equal(title.getElementsByTagName('w:br').length,0);
+  const widths=Array.from(doc.getElementsByTagName('w:gridCol')).map(c=>Number(c.getAttribute('w:w')));
+  assert.deepEqual(widths,[500,3050,1700,1450,4100]);
+  assert.equal(doc.getElementsByTagName('w:tblPr')[0].getElementsByTagName('w:jc')[0].getAttribute('w:val'),'center');
+  const header=doc.getElementsByTagName('w:tr')[0];
+  assert(Array.from(header.getElementsByTagName('w:jc')).every(c=>c.getAttribute('w:val')==='center'));
+  const margins=doc.getElementsByTagName('w:pgMar')[0];
+  assert(widths.reduce((a,b)=>a+b,0)<=11906-Number(margins.getAttribute('w:left'))-Number(margins.getAttribute('w:right')));
   assert.equal(doc.getElementsByTagName('w:tblBorders')[0].childNodes.length,6);
   assert.match(doc.documentElement.textContent,/Nguyễn <An> & Bình/);
   assert.match(doc.documentElement.textContent,/25\/11\/2026/);
