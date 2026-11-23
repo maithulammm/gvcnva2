@@ -269,6 +269,7 @@ function handleMicrosoftLogoutStorage(event) {
  * hiệu lực.
  */
 function lockUi() {
+  if(typeof closeGvcnTour==='function')closeGvcnTour(false);
   ui.storageStatus = null;
   ui.storageStatusLoading = false;
   clearEvidenceImages();
@@ -411,6 +412,7 @@ async function authenticatedStart(
     }
     render();
     document.body.classList.add("auth-ready");
+    if(typeof maybeStartGvcnTour==='function')requestAnimationFrame(()=>maybeStartGvcnTour());
     rememberMicrosoftAccount(account, fresh);
     handleStorageReturn();
   } catch (e) {

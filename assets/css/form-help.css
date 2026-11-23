@@ -35,6 +35,20 @@ body:has(#formHelp[open]){overflow:hidden;}
 .guide-example{padding:12px 14px;margin-bottom:12px;border-radius:10px;background:var(--soft);font-size:13px;color:var(--ink);}
 .form-help-dialog .app-dialog-actions{background:var(--surface);border-top:1px solid var(--line);}
 .dashboard-guide{padding:0;margin-bottom:16px;}
+.gvcn-tour[open]{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;overflow:hidden;color:var(--text);}
+.gvcn-tour::backdrop{background:transparent;}
+.tour-spot{position:fixed;border:3px solid #ffcd32;border-radius:10px;box-shadow:0 0 0 9999px #20102dbb;pointer-events:none;}
+.tour-card{position:fixed;width:min(420px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;box-sizing:border-box;background:var(--surface,#fff);color:var(--text,#291835);border:1px solid var(--border,#ddd);border-radius:16px;padding:20px;box-shadow:0 12px 45px #0004;}
+.tour-card h2{font-size:19px;line-height:1.4;margin:8px 0;color:var(--primary);}
+.tour-card p{font-size:14px;line-height:1.65;margin:10px 0 16px;}
+.tour-card small{font-size:11px;font-weight:800;color:var(--primary);}
+.tour-arrow{display:block;color:var(--primary);font-size:28px;font-weight:bold;line-height:1;}
+.tour-above .tour-arrow{transform:rotate(180deg);}
+.tour-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.tour-card .btn{min-height:44px;font-size:13px;}
+.tour-end{left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 9999px #20102dbb;}
+.tour-preference{display:flex;align-items:flex-start;gap:12px;padding:16px;border:2px solid var(--primary);border-radius:12px;background:var(--primary-soft);font-size:14px;line-height:1.5;cursor:pointer;}
+.tour-preference input{flex:0 0 22px;width:22px;height:22px;margin-top:0;}
 .dashboard-guide>summary{display:flex;align-items:center;gap:12px;min-height:64px;padding:12px 16px;cursor:pointer;list-style:none;}
 .dashboard-guide>summary::-webkit-details-marker{display:none;}
 .dashboard-guide>summary>span:nth-child(2){min-width:0;flex:1;}

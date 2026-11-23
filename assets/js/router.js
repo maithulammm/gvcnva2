@@ -152,7 +152,7 @@ function render() {
 </svg></span><span class="nav-text">Quản trị viên</span></summary><div class="admin-nav-links">${permitted.filter(([k])=>adminPages.includes(k)).map(navButton).join('')}</div></details>`:'');
   const head = HEADINGS[ui.page];
   $("pageTitle").textContent = head[0];
-  $('formHelpButton').hidden=!FORM_HELP[ui.page];
+  $('formHelpButton').hidden=!FORM_HELP[ui.page]&&!(ui.page==='dashboard'&&canViewPersonal());
   $("pageTitle").title = head[0];
   $("pageSubtitle").textContent = head[1];
   $("pageSubtitle").hidden = !head[1];

@@ -99,6 +99,8 @@ function formHelpKey(page){return 'VA_GVCN_HELP_V1_'+encodeURIComponent(auth.ema
  * Tự mở khi vào mẫu nếu chưa bỏ qua; nút ! luôn có thể mở lại thủ công.
  */
 function openFormHelp(page=ui.page,automatic=false){
+  if(typeof gvcnTour!=='undefined'&&gvcnTour)return;
+  if(page==='dashboard'){startGvcnTour();return;}
   if(!auth.account||!FORM_HELP[page]||ui.page!==page)return;
   let suppressed=false;try{suppressed=localStorage.getItem(formHelpKey(page))==='1';}catch{}
   if(automatic&&suppressed)return;
@@ -108,6 +110,75 @@ function openFormHelp(page=ui.page,automatic=false){
   $('formHelpNever').checked=suppressed;
   if(!$('formHelp').open)$('formHelp').showModal();
   $('formHelpBody').scrollTop=0;$('formHelpClose').focus();
+}
+
+// Hướng dẫn chỉ điều hướng và chỉ điểm thành phần, tuyệt đối không thêm/sửa dữ liệu.
+let gvcnTour=null;
+function gvcnTourKey(){return 'VA_GVCN_SCREEN_TOUR_V1_'+encodeURIComponent(auth.email);}
+function maybeStartGvcnTour(){
+  if(!auth.account||!hasAppRole('gvcn')||isRolePreview())return;
+  try{if(localStorage.getItem(gvcnTourKey())==='1')return;}catch{}
+  startGvcnTour();
+}
+function startGvcnTour(){
+  if(gvcnTour||!auth.account||!canViewPersonal()||!document.createElement)return;
+  closeFormHelp(false);closeMobileNavigation();
+  const dialog=document.createElement('dialog');dialog.className='gvcn-tour';
+  dialog.setAttribute('aria-label','Hướng dẫn sử dụng từng bước');
+  document.body.append(dialog);
+  gvcnTour={dialog,owner:auth.email,origin:ui.page,index:0,steps:[
+    ['dashboard','#monthSel','Chọn tháng báo cáo','Đây là tháng bạn đang nhập. Kiểm tra đúng lớp và tháng trước khi làm việc.'],
+    ['dashboard','.kpis','Đọc tiến độ lớp','Các ô này tổng hợp số học sinh đã gặp, lượt gặp thực tế / dự kiến và kết nối phụ huynh. Lập lịch chưa được tính là đã gặp.'],
+    ['m01','.m01-section .section-head .actions','Bước 1 · Xếp lịch gặp','Tự động xếp lịch tháng sẽ phân lịch theo danh sách và né lịch nghỉ. Bạn cũng có thể hẹn từng học sinh bằng nút +.'],
+    ['m01','#view .table-wrap','Chỉnh từng lịch hẹn','Bấm bút cạnh mỗi lần gặp để đổi ngày hoặc giờ. Nút + thêm lịch mới. Chỉ ghi nhận cuộc gặp sau khi đã gặp thực tế.'],
+    ['m02','#view .section-head','Bước 2 · Ghi nhận cuộc gặp','Từ lịch dự kiến, chọn Ghi nhận đã gặp. Kiểm tra thông tin → nhận xét lần trước → nội dung mới → mục tiêu tiếp theo, rồi Lưu thông tin. Có thể thêm lượt gặp ngoài lịch.'],
+    ['m03','#view .section-head','Bước 3 · Kết nối phụ huynh','Ghi lần kết nối đã thực hiện. Mặc định Tin nhắn và Mẹ; đổi nếu cần. Nội dung và phản hồi không bắt buộc. Có thể thêm tối đa 2 ảnh rồi lưu.'],
+    ['m04','#view','Bước 4 · Rà soát hỗ trợ','Mỗi tháng cần phân biệt Chưa rà soát và Không phát sinh hỗ trợ trong tháng. Nếu có phát sinh, lập kế hoạch cụ thể; không tạo trường hợp giả để đủ biểu mẫu.'],
+    ['m05','#view .section-head','Bước 5 · Theo dõi khi cần','Chỉ mở phiếu cho học sinh cần theo dõi liên tục. Mã tự tạo. Liên kết cuộc gặp ở Mẫu 02; không cần mở phiếu cho mọi học sinh.'],
+    ['check','#view','Bước 6 · Kiểm tra và gửi','Cuối tháng, rà soát lỗi và điểm cần chú ý tại đây. Khi hoàn tất, gửi BGH xem xét. Chờ lưu thành công trước khi thao tác tiếp.']
+  ]};
+  dialog.addEventListener('cancel',e=>{e.preventDefault();showGvcnTourEnd();});
+  dialog.showModal();showGvcnTourStep();
+  window.addEventListener('resize',positionGvcnTour);
+  window.addEventListener('scroll',positionGvcnTour,true);
+}
+function showGvcnTourStep(){
+  const t=gvcnTour;if(!t)return;
+  if(auth.email!==t.owner){closeGvcnTour(false);return;}
+  const [page,selector,title,body]=t.steps[t.index];
+  navTo(page);t.selector=selector;t.ending=false;
+  t.dialog.innerHTML=`<div class="tour-spot" aria-hidden="true"></div><section class="tour-card" aria-labelledby="tourTitle"><span class="tour-arrow" aria-hidden="true">↑</span><small>HƯỚNG DẪN GVCN · ${t.index+1}/${t.steps.length}</small><h2 id="tourTitle">${esc(title)}</h2><p>${esc(body)}</p><div class="tour-actions"><button class="btn" onclick="showGvcnTourEnd()">Bỏ qua hướng dẫn</button>${t.index?'<button class="btn" onclick="advanceGvcnTour(-1)">Quay lại</button>':''}<button class="btn primary" onclick="advanceGvcnTour(1)">${t.index===t.steps.length-1?'Hoàn tất':'Tiếp →'}</button></div></section>`;
+  const target=document.querySelector(selector);target?.scrollIntoView({block:'center',behavior:'instant'});
+  requestAnimationFrame(()=>{positionGvcnTour();t.dialog.querySelector('.primary')?.focus({preventScroll:true});});
+}
+function advanceGvcnTour(delta){if(!gvcnTour)return;gvcnTour.index+=delta;if(gvcnTour.index>=gvcnTour.steps.length)showGvcnTourEnd();else showGvcnTourStep();}
+/** Đặt thẻ trong viewport, đổi phía mũi tên khi phần dưới không đủ chỗ trên điện thoại. */
+function positionGvcnTour(){
+  const t=gvcnTour;if(!t||t.ending)return;
+  const card=t.dialog.querySelector('.tour-card'),spot=t.dialog.querySelector('.tour-spot');
+  if(!card||!spot)return;
+  const r=document.querySelector(t.selector)?.getBoundingClientRect();
+  const w=innerWidth,h=innerHeight,ch=card.offsetHeight;
+  const visible=r&&r.width&&r.height;
+  const top=visible?Math.max(8,Math.min(r.top,h-60)):60;
+  const bottom=visible?Math.min(h-8,Math.max(top+32,r.bottom)):100;
+  Object.assign(spot.style,{left:(visible?Math.max(8,r.left-4):16)+'px',top:top+'px',width:(visible?Math.min(r.width+8,w-16):w-32)+'px',height:Math.min(bottom-top,h*.35)+'px'});
+  const below=bottom+20+ch<h;
+  card.style.top=Math.max(12,Math.min(h-ch-12,below?bottom+20:top-ch-20))+'px';
+  card.style.left=Math.max(12,Math.min(w-card.offsetWidth-12,visible?r.left:12))+'px';
+  card.classList.toggle('tour-above',!below);
+}
+function showGvcnTourEnd(){
+  const t=gvcnTour;if(!t)return;t.ending=true;
+  t.dialog.innerHTML='<section class="tour-card tour-end" aria-labelledby="tourTitle"><h2 id="tourTitle">Kết thúc hướng dẫn</h2><p>Bạn có thể mở lại bằng nút ! ở tiêu đề Tổng quan.</p><label class="tour-preference"><input type="checkbox" id="tourNever"> <strong>Không hiển thị lại hướng dẫn cho tài khoản này trên thiết bị này</strong></label><p class="hint">Tích ô trên và bấm Xác nhận nếu bạn đã nắm các bước.</p><button class="btn primary" onclick="closeGvcnTour(true)">Xác nhận & đóng</button></section>';
+  t.dialog.querySelector('.primary').focus();
+}
+function closeGvcnTour(remember=false){
+  const t=gvcnTour;if(!t)return;
+  if(remember&&auth.email===t.owner&&t.dialog.querySelector('#tourNever')?.checked)try{localStorage.setItem(gvcnTourKey(),'1');}catch{}
+  gvcnTour=null;t.dialog.close();t.dialog.remove();
+  window.removeEventListener('resize',positionGvcnTour);window.removeEventListener('scroll',positionGvcnTour,true);
+  if(auth.account&&auth.email===t.owner)navTo(t.origin);
 }
 /**
  * Đóng và ghi lựa chọn nếu cần; khi khóa phiên truyền remember=false để không ghi lựa chọn ngoài ý
