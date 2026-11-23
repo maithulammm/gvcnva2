@@ -21,7 +21,7 @@
     "EVIDENCE_AUTH_MODE": "delegated",
     "MICROSOFT_TENANT_ID": "22215a7f-b9e3-4b53-bd27-3a317311e6ca",
     "MICROSOFT_CLIENT_ID": "94c476b3-4723-4161-9dea-d64ff8bf505c",
-    "GVCN_ALLOWED_ORIGINS": "https://gvcnva2.lammt.workers.dev,https://maithulammm.github.io",
+    "GVCN_ALLOWED_ORIGINS": "https://gvcnva2.lammt.workers.dev,https://maithulammm.github.io,https://va2gvcn.vercel.app",
     "GVCN_ADMIN_EMAIL": "lammt@vietanhschool.edu.vn"
   }
 }
