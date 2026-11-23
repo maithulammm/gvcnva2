@@ -100,7 +100,8 @@ function formHelpKey(page){return 'VA_GVCN_HELP_V1_'+encodeURIComponent(auth.ema
  */
 function openFormHelp(page=ui.page,automatic=false){
   if(typeof gvcnTour!=='undefined'&&gvcnTour)return;
-  if(page==='dashboard'){startGvcnTour();return;}
+  // Chỉ nút ! mới mở lại tour: điều hướng về Tổng quan không khởi động tour mới.
+  if(page==='dashboard'){if(!automatic)startGvcnTour();return;}
   if(!auth.account||!FORM_HELP[page]||ui.page!==page)return;
   let suppressed=false;try{suppressed=localStorage.getItem(formHelpKey(page))==='1';}catch{}
   if(automatic&&suppressed)return;
@@ -114,9 +115,11 @@ function openFormHelp(page=ui.page,automatic=false){
 
 // Hướng dẫn chỉ điều hướng và chỉ điểm thành phần, tuyệt đối không thêm/sửa dữ liệu.
 let gvcnTour=null;
+const dismissedGvcnTours=new Set();
 function gvcnTourKey(){return 'VA_GVCN_SCREEN_TOUR_V1_'+encodeURIComponent(auth.email);}
 function maybeStartGvcnTour(){
   if(!auth.account||!hasAppRole('gvcn')||isRolePreview())return;
+  if(dismissedGvcnTours.has(auth.email))return;
   try{if(localStorage.getItem(gvcnTourKey())==='1')return;}catch{}
   startGvcnTour();
 }
@@ -175,10 +178,14 @@ function showGvcnTourEnd(){
 }
 function closeGvcnTour(remember=false){
   const t=gvcnTour;if(!t)return;
-  if(remember&&auth.email===t.owner&&t.dialog.querySelector('#tourNever')?.checked)try{localStorage.setItem(gvcnTourKey(),'1');}catch{}
+  if(remember&&auth.email===t.owner){
+    dismissedGvcnTours.add(t.owner);
+    if(t.dialog.querySelector('#tourNever')?.checked)try{localStorage.setItem(gvcnTourKey(),'1');}catch{}
+  }
   gvcnTour=null;t.dialog.close();t.dialog.remove();
   window.removeEventListener('resize',positionGvcnTour);window.removeEventListener('scroll',positionGvcnTour,true);
-  if(auth.account&&auth.email===t.owner)navTo(t.origin);
+  // Trở về trang ban đầu mà không bật hướng dẫn khác ngay sau khi người dùng đã đóng.
+  if(remember&&auth.account&&auth.email===t.owner)navTo(t.origin,{skipHelp:true});
 }
 /**
  * Đóng và ghi lựa chọn nếu cần; khi khóa phiên truyền remember=false để không ghi lựa chọn ngoài ý

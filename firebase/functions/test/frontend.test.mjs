@@ -8,6 +8,27 @@ import {memoryDatabase} from './helpers.mjs';
 import {summary,validateReport} from '../model.mjs';
 
 const projectRoot=new URL('../../../',import.meta.url);
+
+test('closing walkthrough does not restart it through dashboard navigation',async()=>{
+  const f=frontend();await f.login();
+  f.run(`globalThis.tourStarts=0;startGvcnTour=()=>{tourStarts++};
+    navTo('dashboard');navTo('dashboard');`);
+  assert.equal(f.run('tourStarts'),0);
+  f.run(`openFormHelp('dashboard',false)`);
+  assert.equal(f.run('tourStarts'),1);
+});
+
+test('walkthrough confirmation preserves suppression and restores page without help',async()=>{
+  const f=frontend();await f.login();
+  f.run(`window.removeEventListener=()=>{};
+    gvcnTour={owner:auth.email,origin:'dashboard',dialog:{querySelector:()=>({checked:true}),close(){},remove(){}}};
+    closeGvcnTour(true);`);
+  assert.equal(f.run('gvcnTour'),null);
+  assert.equal(f.run("localStorage.getItem(gvcnTourKey())"),'1');
+  assert.equal(f.run('dismissedGvcnTours.has(auth.email)'),true);
+  f.run(`globalThis.tourStarts=0;startGvcnTour=()=>{tourStarts++};maybeStartGvcnTour();navTo('dashboard');`);
+  assert.equal(f.run('tourStarts'),0);
+});
 const entryHtml=fs.readFileSync(new URL('index.html',projectRoot),'utf8');
 const scripts=[...entryHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .map(m=>/\bsrc="([^"]+)"/.exec(m[1])?.[1]).filter(src=>src&&!/^https?:/.test(src))

@@ -15,7 +15,7 @@ function markChanged() {
  * Đóng hướng dẫn/menu cũ, đổi trang rồi mở hướng dẫn của mẫu nếu chưa chọn bỏ qua; không lưu thay
  * đổi nghiệp vụ.
  */
-function navTo(page) {
+function navTo(page,{skipHelp=false}={}) {
   clearEvidenceImages();
   closeFormHelp();
   closeMobileNavigation();
@@ -26,7 +26,7 @@ function navTo(page) {
   render();
   window.scrollTo?.({top:0,behavior:'auto'});
   $('pageTitle').focus({preventScroll:true});
-  openFormHelp(ui.page,true);
+  if(!skipHelp)openFormHelp(ui.page,true);
 }
 /**
  * Chỉ Admin thật được đổi chế độ; đóng popup cũ, xóa trạng thái phục hồi và chuyển phạm vi mô
