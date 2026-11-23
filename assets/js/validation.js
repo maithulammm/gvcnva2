@@ -131,7 +131,6 @@ function validations(c, month) {
       !x.participation ||
       !x.progressEvidence ||
       !x.goal ||
-      !x.action ||
       !x.cooperation ||
       !x.needsCoop
     )

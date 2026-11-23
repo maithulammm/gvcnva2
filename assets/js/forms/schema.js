@@ -51,7 +51,6 @@ const FIELDS = {
       ["Chưa đủ căn cứ", "Có", "Không"],
     ],
     ["goal", "Mục tiêu thống nhất và thời hạn", "textarea", 1],
-    ["action", "Hành động / thời hạn rà soát", "textarea", 1],
     [
       "cooperation",
       "Người hoặc bộ phận phối hợp (ghi Chưa cần nếu không có)",

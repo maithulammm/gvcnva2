@@ -191,7 +191,7 @@ export function validateReport(c,month) {
   const missing=(x,keys)=>keys.some(k=>!x[k]);
   for(const [i,r] of m.meetings.entries()) {
     if(!r.actual) add('K2',`M02 lượt ${i+1} thiếu thời gian thực tế.`);
-    if(missing(r,['studentId','actual','concern','participation','progressEvidence','goal','action','cooperation','needsCoop'])) add('K3',`M02 lượt ${i+1} thiếu thông tin.`);
+    if(missing(r,['studentId','actual','concern','participation','progressEvidence','goal','cooperation','needsCoop'])) add('K3',`M02 lượt ${i+1} thiếu thông tin.`);
     if(r.profileId && (missing(r,['profileProgress','profileNext']) || !c.profiles.some(p=>p.id===r.profileId && p.studentId===r.studentId))) add('K6',`M05 lượt ${i+1} thiếu chi tiết hoặc liên kết.`);
   }
   for(const [i,r] of m.connections.entries()) if(missing(r,['studentId','date','channel','recipient'])) add('K4',`M03 lượt ${i+1} thiếu thông tin.`);
