@@ -65,37 +65,13 @@ function meetingEditorValues(record) {
  */
 function meetingTimeControls(record) {
   const v=meetingEditorValues(record),legacy=ui.editing.id&&!v.actualDateTime&&record.actual;
-  return `<div class="actual-time-picker"><div id="actualMeetingCalendar">${renderActualMeetingCalendar(v.actualDate)}</div><div class="actual-time-fields"><div class="meeting-session-choices" role="group" aria-label="Chọn giờ gặp thực tế">${[['09:55','Sáng · 09:55'],['15:00','Chiều · 15:00'],['other','Giờ khác']].map(([key,label])=>`<button type="button" class="schedule-choice" data-actual-session="${key}" aria-pressed="${key==='other'?!['09:55','15:00'].includes(v.actualTime):v.actualTime===key}" onclick="chooseActualSession('${key}')">${label}</button>`).join('')}</div><div class="meeting-time"><div class="meeting-date-clock">
-    <label>Ngày gặp<input type="date" name="actualDate" value="${esc(v.actualDate)}" onchange="refreshActualMeetingCalendar();updatePreviousMeetingPanel()" ${legacy?'':'required'}></label>
+  return `<div class="meeting-session-choices" role="group" aria-label="Chọn giờ gặp thực tế">${[['09:55','Sáng · 09:55'],['15:00','Chiều · 15:00'],['other','Giờ khác']].map(([key,label])=>`<button type="button" class="schedule-choice" data-actual-session="${key}" aria-pressed="${key==='other'?!['09:55','15:00'].includes(v.actualTime):v.actualTime===key}" onclick="chooseActualSession('${key}')">${label}</button>`).join('')}</div><div class="meeting-time"><div class="meeting-date-clock">
+    <label>Ngày gặp<input type="date" name="actualDate" value="${esc(v.actualDate)}" onchange="updatePreviousMeetingPanel()" ${legacy?'':'required'}></label>
     <label>Giờ (24 giờ)<input type="text" name="actualTime" value="${esc(v.actualTime)}" onchange="updatePreviousMeetingPanel()" placeholder="HH:mm" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" maxlength="5" title="Nhập giờ 24 giờ, ví dụ 09:55 hoặc 15:00" ${legacy?'':'required'}></label></div>
-    <label>Địa điểm<input type="text" name="actualLocation" value="${esc(v.actualLocation)}" required maxlength="200"></label></div></div></div>
+    <label>Địa điểm<input type="text" name="actualLocation" value="${esc(v.actualLocation)}" required maxlength="200"></label></div>
     ${legacy?`<p class="help">Thời gian đã lưu: ${esc(displayDateText(record.actual))}. Để trống ngày giờ để giữ nguyên.</p>`:''}
     <input type="hidden" name="actualDateTime" value="${esc(v.actualDateTime)}">
     <input type="hidden" name="actual" value="${esc(record.actual||'')}">`;
-}
-/** Lịch gặp thực tế không chặn ngày nghỉ/cuối tuần: đây là việc đã diễn ra, không phải lập lịch. */
-function renderActualMeetingCalendar(selected=''){
-  const fallback=scheduleMonthDates()[0].slice(0,7);
-  const month=ui.editing.actualCalendarMonth||(/^\d{4}-\d{2}-\d{2}$/.test(selected)?selected.slice(0,7):fallback);
-  ui.editing.actualCalendarMonth=month;
-  const [year,number]=month.split('-').map(Number),days=new Date(year,number,0).getDate(),offset=(new Date(year,number-1,1).getDay()+6)%7;
-  return `<div class="actual-calendar-head"><button type="button" class="btn small" aria-label="Tháng trước" onclick="moveActualMeetingMonth(-1)">‹</button><b>Tháng ${String(number).padStart(2,'0')}/${year}</b><button type="button" class="btn small" aria-label="Tháng sau" onclick="moveActualMeetingMonth(1)">›</button></div><div class="actual-calendar-grid" role="group" aria-label="Chọn ngày gặp thực tế">${['T2','T3','T4','T5','T6','T7','CN'].map(d=>`<span>${d}</span>`).join('')}${'<span aria-hidden="true"></span>'.repeat(offset)}${Array.from({length:days},(_,i)=>{const date=month+'-'+String(i+1).padStart(2,'0');return `<button type="button" aria-label="${i+1}/${String(number).padStart(2,'0')}/${year}" aria-pressed="${date===selected}" onclick="chooseActualMeetingDate('${date}')">${i+1}</button>`;}).join('')}</div>`;
-}
-function refreshActualMeetingCalendar(){
-  const input=$('entryForm').querySelector('[name="actualDate"]');
-  if(input?.value)ui.editing.actualCalendarMonth=input.value.slice(0,7);
-  $('actualMeetingCalendar').innerHTML=renderActualMeetingCalendar(input?.value||'');
-}
-function chooseActualMeetingDate(date){
-  if(ui.editing?.type!=='m02'||!editorContextCurrent()||!editable())return;
-  $('entryForm').querySelector('[name="actualDate"]').value=date;
-  refreshActualMeetingCalendar();updatePreviousMeetingPanel();saveEditorDraft();
-}
-function moveActualMeetingMonth(delta){
-  if(ui.editing?.type!=='m02'||!editorContextCurrent()||!editable())return;
-  const [y,m]=ui.editing.actualCalendarMonth.split('-').map(Number),next=new Date(y,m-1+delta,1);
-  ui.editing.actualCalendarMonth=next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0');
-  $('actualMeetingCalendar').innerHTML=renderActualMeetingCalendar($('entryForm').querySelector('[name="actualDate"]').value);
 }
 /**
  * Điền giờ mặc định hoặc cho nhập giờ khác; cập nhật phần tham khảo lịch sử và giữ bản nháp.
