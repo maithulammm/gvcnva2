@@ -123,7 +123,7 @@ function databaseRequest(path, method = "GET", body, {silent=false} = {}) {
  * Gửi Bearer ID token đến API, giới hạn thời gian chờ và kiểm tra phiên trước/sau request; không
  * truy cập RTDB trực tiếp từ trình duyệt.
  */
-async function performDatabaseRequest(path, method = "GET", body) {
+async function performDatabaseRequest(path, method = "GET", body, attempt=0) {
   const epoch = cloud.epoch;
   if (!auth.client || !auth.account)
     throw Error("Cần đăng nhập Microsoft trước khi kết nối dữ liệu.");
@@ -142,7 +142,7 @@ async function performDatabaseRequest(path, method = "GET", body) {
     });
     let data;
     try { data=await response.json(); }
-    catch { throw Error('Máy chủ trả về dữ liệu chưa hợp lệ. Vui lòng thử lại.'); }
+    catch { throw Object.assign(Error('Máy chủ trả về dữ liệu chưa hợp lệ. Vui lòng thử lại.'),{status:response.status>=400?response.status:502}); }
     if (epoch !== cloud.epoch) throw Error("Phiên làm việc đã thay đổi.");
     if (!response.ok)
       throw Object.assign(
@@ -154,6 +154,10 @@ async function performDatabaseRequest(path, method = "GET", body) {
       );
     return data;
   } catch (error) {
+    // Đọc có thể thử lại một lần; không tự lặp thao tác ghi khi mất mạng và chưa biết đã lưu hay chưa.
+    if(method==='GET'&&attempt===0&&epoch===cloud.epoch&&!controller.signal.aborted&&
+      (error instanceof TypeError||[429,502,503,504].includes(error.status)))
+      return performDatabaseRequest(path,method,body,attempt+1);
     if (error.name === "AbortError")
       throw Error(
         "Kết nối Firebase quá thời gian chờ. Bản đang sửa vẫn được giữ trên trình duyệt.",

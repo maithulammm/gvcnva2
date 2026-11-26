@@ -40,11 +40,19 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
   }
   async function request(path,method,headers={},body) {
     try {
-      const response=await fetchImpl(`${DATABASE_URL}/${path}.json`,{method,
-        headers:{Authorization:`Bearer ${await accessToken()}`,...headers},
-        ...(body!==undefined?{body:JSON.stringify(body)}:{})});
-      requireValue(response.ok||response.status===412,'Không thể đọc/ghi Firebase. Kiểm tra quyền của tài khoản dịch vụ.',503);
-      return response;
+      for(let attempt=0;attempt<2;attempt++){
+        const token=await accessToken();
+        const response=await fetchImpl(`${DATABASE_URL}/${path}.json`,{method,
+          headers:{Authorization:`Bearer ${token}`,...headers},
+          ...(body!==undefined?{body:JSON.stringify(body)}:{})});
+        // Chỉ làm mới khi Firebase đã xác nhận từ chối xác thực, giữ nguyên ETag và nội dung gửi.
+        if(response.status===401&&attempt===0){
+          if(cached?.token===token)cached=null;
+          await response.body?.cancel();continue;
+        }
+        requireValue(response.ok||response.status===412,'Không thể đọc/ghi Firebase. Kiểm tra quyền của tài khoản dịch vụ.',503);
+        return response;
+      }
     } catch(error) {
       if(error.status)throw error;
       throw Object.assign(new Error('Kết nối Firebase tạm thời gián đoạn. Dữ liệu chưa được xác nhận lưu; hãy thử đồng bộ lại.'),{status:503});

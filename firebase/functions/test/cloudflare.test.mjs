@@ -13,6 +13,31 @@ const configured={MICROSOFT_TENANT_ID:'22215a7f-b9e3-4b53-bd27-3a317311e6ca',
   MICROSOFT_CLIENT_ID:'94c476b3-4723-4161-9dea-d64ff8bf505c',GVCN_ALLOWED_ORIGINS:origin,
   FIREBASE_SERVICE_ACCOUNT:JSON.stringify(credentials)};
 
+test('Firebase rejected cached credentials are renewed once; permission errors and uncertain writes are not retried',async()=>{
+  const f=restFixture({keep:'value'});let firebaseCalls=0;
+  const db=createFirebaseRestDatabase(configured,{fetchImpl:async(url,options)=>{
+    if(String(url).includes('.firebasedatabase.app/')){
+      firebaseCalls++;if(firebaseCalls===1)return Response.json({error:'Expired'},{status:401});
+    }
+    return f.fetch(url,options);
+  }});
+  assert.deepEqual((await db.ref(ROOT).get()).val(),{keep:'value'});
+  assert.equal(firebaseCalls,2);assert.equal(f.counts().tokens,2);
+  let denied=0;
+  const blocked=createFirebaseRestDatabase(configured,{fetchImpl:async(url,options)=>{
+    if(String(url).includes('.firebasedatabase.app/')){denied++;return Response.json({error:'Denied'},{status:403});}
+    return f.fetch(url,options);
+  }});
+  await assert.rejects(blocked.ref(ROOT).get(),{status:503});assert.equal(denied,1);
+  let writes=0;
+  const uncertain=createFirebaseRestDatabase(configured,{fetchImpl:async(url,options)=>{
+    if(options.method==='PUT'){writes++;throw TypeError('Disconnected after send');}
+    return f.fetch(url,options);
+  }});
+  await assert.rejects(uncertain.ref(ROOT).transaction(raw=>({...raw,edit:true})),{status:503});
+  assert.equal(writes,1);assert.deepEqual(f.state(),{keep:'value'});
+});
+
 test('scoped bootstrap backfills November inside class transaction and does not rewrite other months or repeat writes',async()=>{
   const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},fixture=restFixture();
   const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}));

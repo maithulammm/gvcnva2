@@ -900,6 +900,16 @@ test('API 401 refreshes token once and retries identical save body; repeated 401
   await assert.rejects(f.run(`databaseRequest('/bootstrap')`),e=>e.status===403);assert.equal(calls.length,1);
 });
 
+test('opening data retries a transient read once but never replays an uncertain write',async()=>{
+  const f=frontend();await f.login();let calls=0;
+  f.ctx.fetch=async()=>{calls++;return {status:calls===1?503:200,ok:calls!==1,json:async()=>({ok:true})};};
+  await f.run(`databaseRequest('/bootstrap')`);assert.equal(calls,2);
+  calls=0;f.ctx.fetch=async()=>{calls++;return {status:503,ok:false,json:async()=>({error:'Temporary'})};};
+  await assert.rejects(f.run(`databaseRequest('/bootstrap')`),e=>e.status===503);assert.equal(calls,2);
+  calls=0;
+  await assert.rejects(f.run(`databaseRequest('/classes/6A1','PUT',{revision:1})`),e=>e.status===503);assert.equal(calls,1);
+});
+
 test('concurrent photo and data requests share forced renewal after 401',async()=>{
   const f=frontend();await f.login();let forced=0,release,entered;
   const started=new Promise(resolve=>entered=resolve),gate=new Promise(resolve=>release=resolve);
