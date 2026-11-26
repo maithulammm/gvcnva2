@@ -80,7 +80,9 @@ const ROLE_NAMES = {
   admin: "Quản trị viên",
 };
 
+VIEW_LIST.push(['maintenance','⚙','Bảo trì']);
 const HEADINGS = {
+  maintenance:['Bảo trì hệ thống',''],
   calendar: ["Lịch không gặp", ""],
   work: ["Công việc tháng", ""],
   teachers: [

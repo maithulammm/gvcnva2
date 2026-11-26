@@ -13,9 +13,9 @@ const MAX_BODY_BYTES=5*1024*1024;
  * Handler API dùng chung cho các nền tảng: kiểm tra origin, token, kích thước JSON rồi mới gọi
  * service nghiệp vụ; CORS không thay thế xác thực.
  */
-export function createApiHandler({getDatabase,getMigrationSource,getMigrationTarget,getHistoryStore=()=>null,getRevisionCache=()=>null,getMetrics=async()=>({enabled:false,rows:[]}),databaseConfigured=()=>true,env=process.env}) {
+export function createApiHandler({getDatabase,getMigrationSource,getMigrationTarget,getHistoryStore=()=>null,getRevisionCache=()=>null,getMetrics=async()=>({enabled:false,rows:[]}),maintenance=null,identityVerifier=null,databaseConfigured=()=>true,env=process.env}) {
   let service;
-  let verifyIdentity;
+  let verifyIdentity=identityVerifier;
   let evidenceStore;
   let evidenceOAuth;
   const getService=()=>service ||= createService(getDatabase(),{adminEmail:(env.GVCN_ADMIN_EMAIL||'lammt@vietanhschool.edu.vn').toLowerCase().trim(),historyStore:getHistoryStore(),revisionCache:getRevisionCache()});
@@ -32,6 +32,7 @@ export function createApiHandler({getDatabase,getMigrationSource,getMigrationTar
       headers['Access-Control-Allow-Headers']='Authorization,Content-Type';
       if(method==='OPTIONS') return respond(204,null);
       const route=String(path||'/').replace(/\/$/,'')||'/';
+      if(method==='GET'&&route==='/maintenance')return respond(200,maintenance?await maintenance.read():{enabled:false,message:'',revision:0});
       if(method==='GET'&&route==='/health') {
         const health=deploymentStatus(env,{databaseConfigured:databaseConfigured()});
         return respond(health.configured?200:503,{...health,meetingPaperEvidence:true,novemberMeetingBackfill:true,
@@ -50,8 +51,17 @@ export function createApiHandler({getDatabase,getMigrationSource,getMigrationTar
       const identity=await verifyIdentity(token);
       requireValue(rawBodyLength<=MAX_BODY_BYTES,'Dữ liệu gửi lên vượt giới hạn 5 MB.',413);
       getService();
+      if(maintenance){
+        const state=await maintenance.read();
+        if(state.enabled&&!await service.maintenanceAdmin(identity))
+          return respond(503,{error:state.message,code:'MAINTENANCE',maintenance:state});
+      }
       let result;
-      if(method==='GET'&&route==='/metrics'){
+      if(method==='PUT'&&route==='/maintenance'){
+        await service.integrationAdmin(identity);requireValue(maintenance,'Chưa cấu hình bảo trì.',503);
+        result=await maintenance.write(body);
+      }
+      else if(method==='GET'&&route==='/metrics'){
         await service.integrationAdmin(identity);result=await getMetrics();
       }
       else if(method==='POST'&&route==='/supabase/stage'){

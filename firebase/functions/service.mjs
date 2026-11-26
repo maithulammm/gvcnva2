@@ -346,6 +346,10 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       const s=db.scoped?await context(identity,{includeCalendar:false}):normalizeSchool((await ref.get()).val());
       requireValue(hasRole(assignmentFor(s,identity),'admin'),'Chỉ QTV được kiểm tra kết nối dữ liệu.',403);
     },
+    async maintenanceAdmin(identity){
+      const s=db.scoped?await context(identity,{includeCalendar:false}):normalizeSchool((await ref.get()).val());
+      return hasRole(assignmentFor(s,identity),'admin');
+    },
     async storageState(){return db.scoped?(await read('storageAuth')||{}):normalizeSchool((await ref.get()).val()).storageAuth||{};},
     async createStorageFlow(identity,key,sealed,expiresAt){
       await mutate(identity,null,(s,u)=>{

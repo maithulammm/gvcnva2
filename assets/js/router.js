@@ -137,11 +137,11 @@ function render() {
   renderSelectors();
   let allowed = canViewPersonal();
   let permitted = VIEW_LIST.filter(([k]) =>
-    ["students", "teachers", "database", "users", "export", "calendar"].includes(k)
+    ["students", "teachers", "database", "users", "export", "calendar", "maintenance"].includes(k)
       ? hasAppRole("admin")
       : allowed || k==="dashboard" || k==="check"&&hasAppRole("bgh"),
   );
-  const adminPages=['students','teachers','users','database','export','calendar'];
+  const adminPages=['students','teachers','users','database','export','calendar','maintenance'];
   if (!permitted.some((x) => x[0] === ui.page)) ui.page = "dashboard";
   const navButton=([k,i,s])=>
     `<button class="${ui.page===k?'active':''}" aria-label="${esc(s)}" title="${esc(s)}" ${ui.page===k?'aria-current="page"':''} onclick="navTo('${k}')"><span class="ico" aria-hidden="true">${i}</span><span class="nav-text">${esc(s)}</span></button>`;
@@ -162,6 +162,7 @@ function render() {
     teachers: renderTeachers,
     users: renderUsers,
     database: renderDatabase,
+    maintenance: renderMaintenance,
     calendar: renderSchoolCalendar,
     m01: renderM01,
     m02: renderM02,
@@ -178,4 +179,5 @@ function render() {
   updateStorageNotice();
   refreshButtonChoices();
   if(ui.page==='database'&&!ui.storageStatus&&!ui.storageStatusLoading)loadStorageStatus();
+  if(ui.page==='maintenance')checkMaintenance();
 }

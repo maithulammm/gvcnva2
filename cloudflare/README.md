@@ -121,6 +121,20 @@ Tài liệu: [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/bu
 
 ## Đồng bộ bản ghi và thống kê API
 
+### Bảo trì
+
+- Migration D1 `0004_maintenance.sql` khởi tạo trạng thái tắt. QTV → Bảo trì có
+  thông báo tùy chỉnh và nút bật/tắt, xác nhận trước khi thay đổi.
+- Trạng thái lấy trực tiếp từ D1; API chặn tài khoản ngoài QTV với HTTP 503,
+  mã `MAINTENANCE`, kể cả đọc biểu mẫu, lưu hoặc tải ảnh. QTV thực được miễn
+  chặn dù đang xem thử vai trò. GVCN không thể tự tắt bằng cách gọi API.
+- Trang kiểm tra mỗi 15 giây qua endpoint công khai chỉ chứa thông báo/trạng
+  thái. Dialog toàn màn hình không đóng bằng Escape; tắt thì tự gỡ chặn.
+- Giữ bản nhập cục bộ và bản chờ; phần chờ do bảo trì cần bấm thử đồng bộ lại
+  sau khi mở. Không tự phát lại một lượt ghi chưa biết kết quả.
+- Đây không phải khóa cutover: request đã vào trước lúc bật và tác vụ Scheduled
+  có thể hoàn tất. Chuyển nguồn dữ liệu cần cơ chế chờ cạn giao dịch riêng.
+
 ### Chuẩn bị chuyển nguồn sang Supabase
 
 1. Giữ `GVCN_DATA_SOURCE` chưa đặt (mặc định Firebase). Không đổi tên hoặc xóa

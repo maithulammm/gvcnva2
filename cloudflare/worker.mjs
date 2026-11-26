@@ -9,6 +9,7 @@ import {createD1History} from './d1-history.mjs';
 import {recordMetric,readMetrics} from './metrics.mjs';
 import {createRevisionCache} from './revision-cache.mjs';
 import {createSupabaseDatabase} from './supabase-database.mjs';
+import {createMaintenance} from './maintenance.mjs';
 /**
  * Tách tài nguyên giao diện và /api; chuyển Request của Workers sang handler dùng chung, còn
  * scheduled chạy sao lưu định kỳ.
@@ -50,7 +51,7 @@ export function createWorker({createDatabase=createFirebaseRestDatabase}={}) {
     }
     let handle=handlers.get(env);
     if(!handle) {
-      handle=createApiHandler({env,getDatabase:()=>database(env),getMigrationSource:()=>createDatabase(env),getMigrationTarget:()=>createSupabaseDatabase(env,{requireVerified:false}),getHistoryStore:()=>createD1History(env.GVCN_HISTORY),getRevisionCache:()=>createRevisionCache(env.GVCN_HISTORY),getMetrics:()=>readMetrics(env.GVCN_HISTORY),databaseConfigured:()=>env.GVCN_DATA_SOURCE==='supabase'?!!(env.SUPABASE_URL&&env.SUPABASE_SECRET_KEY):serviceAccountConfigured(env)});
+      handle=createApiHandler({env,maintenance:createMaintenance(env.GVCN_HISTORY),getDatabase:()=>database(env),getMigrationSource:()=>createDatabase(env),getMigrationTarget:()=>createSupabaseDatabase(env,{requireVerified:false}),getHistoryStore:()=>createD1History(env.GVCN_HISTORY),getRevisionCache:()=>createRevisionCache(env.GVCN_HISTORY),getMetrics:()=>readMetrics(env.GVCN_HISTORY),databaseConfigured:()=>env.GVCN_DATA_SOURCE==='supabase'?!!(env.SUPABASE_URL&&env.SUPABASE_SECRET_KEY):serviceAccountConfigured(env)});
       handlers.set(env,handle);
     }
     let body={},bodyError,rawBodyLength=0;

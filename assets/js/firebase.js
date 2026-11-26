@@ -155,18 +155,19 @@ async function performDatabaseRequest(path, method = "GET", body, attempt=0) {
     try { data=await response.json(); }
     catch { throw Object.assign(Error('Máy chủ trả về dữ liệu chưa hợp lệ. Vui lòng thử lại.'),{status:response.status>=400?response.status:502}); }
     if (epoch !== cloud.epoch) throw Error("Phiên làm việc đã thay đổi.");
+    if(data?.code==='MAINTENANCE'){cloud.maintenanceBlocked=true;applyMaintenance(data.maintenance);}
     if (!response.ok)
       throw Object.assign(
         new Error(
           data.error ||
             "API Firebase chưa sẵn sàng (HTTP " + response.status + ").",
         ),
-        { status: response.status },
+        { status: response.status,code:data.code },
       );
     return data;
   } catch (error) {
     // Đọc có thể thử lại một lần; không tự lặp thao tác ghi khi mất mạng và chưa biết đã lưu hay chưa.
-    if(method==='GET'&&attempt===0&&epoch===cloud.epoch&&!controller.signal.aborted&&
+    if(method==='GET'&&error.code!=='MAINTENANCE'&&attempt===0&&epoch===cloud.epoch&&!controller.signal.aborted&&
       (error instanceof TypeError||[429,502,503,504].includes(error.status)))
       return performDatabaseRequest(path,method,body,attempt+1);
     if (error.name === "AbortError")
@@ -194,6 +195,7 @@ function useBootstrap(data) {
   cloud.readInterrupted=false;
   cloud.assignment = data.assignment;
   auth.assignment = data.assignment;
+  if(typeof applyMaintenance==='function')applyMaintenance(maintenanceState);
   ui.role = data.assignment.role;
   cloud.revisions = data.revisions || {};
   cloud.summaries = data.summaries || {};

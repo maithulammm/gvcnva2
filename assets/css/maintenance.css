@@ -1,0 +1,6 @@
+dialog.maintenance-overlay{position:fixed;inset:0;box-sizing:border-box;width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;border:0;border-radius:0;background:var(--surface,#fffaf2);color:var(--text,#302037);padding:24px;text-align:center;overflow:auto}
+dialog.maintenance-overlay[open]{display:grid;place-content:center;gap:16px}
+.maintenance-overlay::backdrop{background:#302037}
+.maintenance-overlay h2{font-size:clamp(24px,5vw,38px);margin:0;color:var(--primary,#4b1d67)}
+.maintenance-overlay p{max-width:640px;margin:0 auto;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.maintenance-symbol{font-size:54px;color:var(--primary,#4b1d67)}

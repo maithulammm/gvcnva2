@@ -730,6 +730,15 @@ test('saving blocks interaction until complete while quiet polling stays nonbloc
   assert.equal(f.run('loadingCalls'),calls);assert(!f.el('requestOverlay').open);
 });
 
+test('maintenance overlay blocks non-Admin, closes when disabled, and never blocks actual Admin preview',async()=>{
+  const f=frontend();await f.login();
+  f.run(`auth.assignment={role:'gvcn',roles:['gvcn'],classId:'8C3'};applyMaintenance({enabled:true,message:'Đang bảo trì',revision:1})`);
+  assert(f.el('maintenanceOverlay').open);assert.equal(f.el('maintenanceMessage').textContent,'Đang bảo trì');
+  f.run(`applyMaintenance({enabled:false,message:'',revision:2})`);assert(!f.el('maintenanceOverlay').open);
+  f.run(`auth.assignment={role:'admin',roles:['admin']};ui.preview={role:'gvcn',roles:['gvcn'],classId:'8C3'};applyMaintenance({enabled:true,message:'Bảo trì',revision:3})`);
+  assert(!f.el('maintenanceOverlay').open);
+});
+
 test('record patch transport sends only changed notes and keeps the server month version',async()=>{
   const api=createService(memoryDatabase()),f=frontend({api});await f.login();
   f.run(`mdata().notes.summary='First';save()`);await f.run('flushCloud()');

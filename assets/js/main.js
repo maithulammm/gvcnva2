@@ -89,3 +89,4 @@ window.visualViewport?.addEventListener("resize",updateVisualViewport);
 updateVisualViewport();
 
 initializeMsLogin();
+startMaintenanceMonitor();
