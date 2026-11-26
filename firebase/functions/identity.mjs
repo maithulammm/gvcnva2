@@ -11,7 +11,19 @@ export function createIdentityVerifier({tenantId,clientId,keySet}) {
   const keys=keySet||createRemoteJWKSet(new URL(`https://login.microsoftonline.com/${tenant}/discovery/v2.0/keys`));
   return async token=>{
     let payload;
-    try { ({payload}=await jwtVerify(token,keys,{issuer:`https://login.microsoftonline.com/${tenant}/v2.0`,audience,algorithms:['RS256'],requiredClaims:['exp','iat','sub','oid','tid'],clockTolerance:10})); }
+    try {
+      for(let attempt=0;attempt<2;attempt++){
+        try{
+          ({payload}=await jwtVerify(token,keys,{issuer:`https://login.microsoftonline.com/${tenant}/v2.0`,audience,algorithms:['RS256'],requiredClaims:['exp','iat','sub','oid','tid'],clockTolerance:10}));
+          break;
+        }catch(error){
+          // Chỉ thử lại lượt lấy khóa công khai bị lỗi mạng. Chữ ký, thời hạn,
+          // issuer và audience vẫn phải được xác minh đầy đủ ở lượt tiếp theo.
+          if(attempt===0&&(error.code==='ERR_JWKS_TIMEOUT'||error instanceof TypeError&&!error.code))continue;
+          throw error;
+        }
+      }
+    }
     catch(error) {
       // Failure to fetch Microsoft's signing keys is an upstream outage, not an
       // expired teacher session. Never force logout or skip signature validation.

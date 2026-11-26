@@ -18,7 +18,7 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
   let cached,refreshing,key;
   const scopedRefreshes=new WeakMap();
   const snapshot=value=>({val:()=>structuredClone(value)});
-  // Dùng chung Promise khi nhiều request cùng cần token; không gửi private_key ra trình duyệt.
+  // Chỉ gộp công việc trong cùng request; không gửi private_key ra trình duyệt.
   async function accessToken() {
     if(cached&&cached.until>clock()+60000)return cached.token;
     // Reuse finished token data globally, but never await another HTTP request's
@@ -32,11 +32,29 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
         .setProtectedHeader({alg:'RS256',typ:'JWT'})
         .setIssuer(account.client_email).setAudience(TOKEN_URL)
         .setIssuedAt(now).setExpirationTime(now+3600).sign(key);
-      const response=await tracePhase('google',()=>fetchImpl(TOKEN_URL,{method:'POST',signal:AbortSignal.timeout(15000),
-        headers:{'Content-Type':'application/x-www-form-urlencoded'},
-        body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion})}));
-      requireValue(response.ok,'Không thể xác thực tài khoản dịch vụ Firebase. Kiểm tra Secret trên Cloudflare.',503);
-      const data=await response.json();
+      // Cấp token không ghi dữ liệu nghiệp vụ: có thể thử lại một lần khi mạng
+      // gián đoạn. Hai lượt 6 giây có tổng hạn chờ thấp hơn lượt 15 giây cũ.
+      let data;
+      for(let attempt=0;attempt<2;attempt++){
+        try{
+          data=await tracePhase('google',async()=>{
+            const response=await fetchImpl(TOKEN_URL,{method:'POST',signal:AbortSignal.timeout(6000),
+              headers:{'Content-Type':'application/x-www-form-urlencoded'},
+              body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion})});
+            if(!response.ok){
+              await response.body?.cancel();
+              throw Object.assign(new Error('Không thể xác thực tài khoản dịch vụ Firebase. Kiểm tra Secret trên Cloudflare.'),{status:503,retryable:response.status>=500,upstream:'google',upstreamStatus:response.status});
+            }
+            return response.json();
+          });
+          break;
+        }catch(error){
+          const transient=error.retryable||['AbortError','TimeoutError','TypeError'].includes(error.name);
+          if(attempt===0&&transient)continue;
+          if(error.status)throw error;
+          throw Object.assign(new Error('Chưa lấy được token kết nối Firebase từ Google do gián đoạn mạng. Vui lòng thử lại; không cần đăng nhập lại Microsoft.'),{status:503,upstream:'google',kind:error.name});
+        }
+      }
       requireValue(typeof data.access_token==='string'&&data.access_token&&Number(data.expires_in)>60,'Google không cấp phiên kết nối Firebase hợp lệ.',503);
       cached={token:data.access_token,until:clock()+Math.min(Number(data.expires_in),3600)*1000};
       return cached.token;
@@ -62,7 +80,7 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
     } catch(error) {
       const kind=String(error.message||'').includes('different request')?'cross_request_io':
         ['AbortError','TimeoutError'].includes(error.name)?'timeout':error.name==='TypeError'?'network':'upstream';
-      console.warn('GVCN_FIREBASE_FAILURE',JSON.stringify({requestId:requestScope()?.id,kind,method,status:error.status||503}));
+      console.warn('GVCN_FIREBASE_FAILURE',JSON.stringify({requestId:requestScope()?.id,kind:error.kind||kind,upstream:error.upstream||'firebase',upstreamStatus:error.upstreamStatus,method,status:error.status||503}));
       if(error.status)throw error;
       throw Object.assign(new Error('Kết nối Firebase tạm thời gián đoạn. Dữ liệu chưa được xác nhận lưu; hãy thử đồng bộ lại.'),{status:503});
     }

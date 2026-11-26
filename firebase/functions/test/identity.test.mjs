@@ -20,6 +20,20 @@ test('signing-key network failures do not incorrectly expire teacher sessions',a
     await assert.rejects(unavailable(await token()),e=>e.status===503);
   }
 });
+test('Microsoft signing-key timeout is retried once without skipping signature validation',async()=>{
+  let calls=0;
+  const resilient=createIdentityVerifier({tenantId,clientId,keySet:async()=>{
+    if(++calls===1)throw Object.assign(new Error('timeout'),{code:'ERR_JWKS_TIMEOUT'});
+    return publicKey;
+  }});
+  assert.equal((await resilient(await token())).email,'lammt@vietanhschool.edu.vn');
+  assert.equal(calls,2);
+  calls=0;
+  const invalid=createIdentityVerifier({tenantId,clientId,keySet:async()=>{calls++;return publicKey;}});
+  const other=await generateKeyPair('RS256');
+  await assert.rejects(invalid(await token({},other.privateKey)),{status:401});
+  assert.equal(calls,1);
+});
 test('invalid signature, wrong audience/issuer, expired token and missing oid are rejected',async()=>{
   const other=await generateKeyPair('RS256');
   for(const signed of [await token({},other.privateKey),await token({aud:'another-app'}),await token({iss:'https://example.com'}),await token({exp:1}),await token({oid:undefined})])

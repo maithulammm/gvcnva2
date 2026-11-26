@@ -14,6 +14,29 @@ const configured={MICROSOFT_TENANT_ID:'22215a7f-b9e3-4b53-bd27-3a317311e6ca',
   MICROSOFT_CLIENT_ID:'94c476b3-4723-4161-9dea-d64ff8bf505c',GVCN_ALLOWED_ORIGINS:origin,
   FIREBASE_SERVICE_ACCOUNT:JSON.stringify(credentials)};
 
+test('Google token acquisition retries transient failures once and never retries invalid credentials',async()=>{
+  for(const failure of [()=>{throw new DOMException('Timed out','TimeoutError');},()=>{throw new TypeError('network lost');},()=>Response.json({}, {status:503})]){
+    const f=restFixture({retained:true});let attempts=0;
+    const db=createFirebaseRestDatabase(configured,{fetchImpl:async(url,options)=>{
+      if(url==='https://oauth2.googleapis.com/token'){
+        if(++attempts===1)return failure();
+      }
+      return f.fetch(url,options);
+    }});
+    assert.deepEqual((await db.ref(ROOT).get()).val(),{retained:true});assert.equal(attempts,2);
+  }
+  let attempts=0,reads=0;
+  const denied=createFirebaseRestDatabase(configured,{fetchImpl:async url=>{
+    if(url==='https://oauth2.googleapis.com/token'){attempts++;return Response.json({error:'invalid_grant'},{status:400});}
+    reads++;throw Error('Must not read database');
+  }});
+  await assert.rejects(denied.ref(ROOT).get(),{status:503});assert.equal(attempts,1);assert.equal(reads,0);
+  attempts=0;
+  const offline=createFirebaseRestDatabase(configured,{fetchImpl:async()=>{attempts++;throw new DOMException('Timed out','TimeoutError');}});
+  await assert.rejects(offline.ref(ROOT).get(),e=>e.status===503&&e.upstream==='google'&&/Google/.test(e.message));
+  assert.equal(attempts,2);
+});
+
 test('concurrent HTTP scopes do not share an in-flight Google fetch but reuse completed token data',async()=>{
   const fixture=restFixture(),owners=[];let release,entered;
   const gate=new Promise(resolve=>{release=resolve;}),started=new Promise(resolve=>{entered=resolve;});
