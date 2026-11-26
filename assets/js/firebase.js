@@ -108,15 +108,26 @@ function resetCloud() {
  * lỗi.
  */
 function databaseRequest(path, method = "GET", body, {silent=false} = {}) {
+  // Share only identical in-flight reads, not stored responses. A newly queued
+  // write changes the generation so a later read cannot reuse a pre-write read.
+  if(method!=='GET')databaseWriteGeneration++;
+  const readKey=method==='GET'?cloud.epoch+':'+databaseWriteGeneration+':'+path:null;
+  if(readKey&&databaseReads.has(readKey))return databaseReads.get(readKey);
   const saving=method!=='GET'&&!path.endsWith('/evidence/cleanup');
   const epoch=cloud.epoch,release=silent&&!saving?()=>{}:beginPageLoading(saving?'Đang lưu dữ liệu, vui lòng chờ...':'Đang tải dữ liệu…');
   let completed=false;
-  const request=databaseQueue.then(()=>{
+  // Writes wait for earlier writes, never for unrelated background reads.
+  const request=(method==='GET'?databaseQueue:databaseWriteQueue).then(()=>{
     if(epoch!==cloud.epoch)throw Error('Phiên làm việc đã thay đổi.');
     return performDatabaseRequest(path,method,body);
-  }).then(data=>{completed=true;return data;}).finally(()=>release(completed));
+  }).then(data=>{completed=true;return data;}).finally(()=>{
+    if(readKey&&databaseReads.get(readKey)===request)databaseReads.delete(readKey);
+    release(completed);
+  });
   // Nuốt lỗi chỉ ở đuôi hàng đợi; Promise request trả cho nơi gọi vẫn báo lỗi đầy đủ.
-  databaseQueue=request.catch(()=>{});
+  if(method==='GET')databaseQueue=request.catch(()=>{});
+  else databaseWriteQueue=request.catch(()=>{});
+  if(readKey)databaseReads.set(readKey,request);
   return request;
 }
 /**
@@ -180,6 +191,7 @@ async function performDatabaseRequest(path, method = "GET", body, attempt=0) {
 function useBootstrap(data) {
   if (!data.assignment || data.year !== YEARS || !data.classes)
     throw Error("Dữ liệu máy chủ không đúng định dạng.");
+  cloud.readInterrupted=false;
   cloud.assignment = data.assignment;
   auth.assignment = data.assignment;
   ui.role = data.assignment.role;
@@ -187,6 +199,7 @@ function useBootstrap(data) {
   cloud.summaries = data.summaries || {};
   cloud.checks = data.checks || {};
   cloud.scopedSync=!!data.scopedSync;
+  cloud.recordPatches=!!data.recordPatches;
   if(data.metadataVersion)cloud.metadataVersion=data.metadataVersion;
   cloud.evidenceCleanup=!!data.evidenceCleanup;
   const defaults = defaultSchool();
@@ -257,7 +270,7 @@ async function connectCloud() {
       cloud.busy ||
       cloud.worker ||
       cloud.pending.size ||
-      cloud.error
+      (cloud.error&&!cloud.readInterrupted)
     )
       return;
     refreshCloud(true);
@@ -297,6 +310,33 @@ function scheduleCloudSave() {
 /**
  * Chỉ cho một worker đồng bộ chạy. Mỗi lớp gửi kèm revision để API từ chối ghi đè dữ liệu mới hơn.
  */
+function buildRecordPatch(baseline,snapshot){
+  const {months:before,...oldMetadata}=baseline,{months:after,...newMetadata}=snapshot;
+  if(stableString(oldMetadata)!==stableString(newMetadata))return null;
+  const operations=[],monthVersions={};
+  for(const month of new Set([...Object.keys(before||{}),...Object.keys(after||{})])){
+    const old=before?.[month]||{},next=after?.[month];
+    if(stableString(old)===stableString(next))continue;
+    if(!next)return null;
+    const allowed=['meetings','connections','plans','previous','schedule','notes','approval','_revision'];
+    if(Object.keys(next).some(key=>!allowed.includes(key)&&stableString(old[key])!==stableString(next[key])))return null;
+    if(stableString(old.approval||{state:'draft',history:[]})!==stableString(next.approval||{state:'draft',history:[]}))return null;
+    monthVersions[month]=old._revision||0;
+    for(const collection of ['meetings','connections','plans','previous','schedule','notes']){
+      if(stableString(old[collection])===stableString(next[collection]))continue;
+      if(collection==='notes'){
+        operations.push({month,collection,id:'notes',operation:'upsert',value:next.notes||{}});continue;
+      }
+      const keyed=value=>collection==='schedule'?(value||{}):Object.fromEntries((value||[]).map(row=>[row.id,row]));
+      const left=keyed(old[collection]),right=keyed(next[collection]);
+      if(Object.keys(left).includes('undefined')||Object.keys(right).includes('undefined'))return null;
+      for(const id of new Set([...Object.keys(left),...Object.keys(right)]))if(stableString(left[id])!==stableString(right[id]))
+        operations.push({month,collection,id,operation:right[id]===undefined?'delete':'upsert',...(right[id]===undefined?{}:{value:right[id]})});
+    }
+  }
+  return operations.length&&operations.length<=2000?{monthVersions,operations}:null;
+}
+
 async function flushCloud() {
   clearTimeout(cloud.timer);
   if (cloud.worker) return cloud.worker;
@@ -313,7 +353,8 @@ async function flushCloud() {
         const baseline=JSON.parse(cloud.baselines[id]||'{}');
         const partialMonths=cloud.scopedSync;
         const payload=partialMonths?{...snapshot,months:Object.fromEntries(Object.entries(snapshot.months||{}).filter(([month,value])=>stableString(value)!==stableString(baseline.months?.[month]||{})))}:snapshot;
-        const result = await databaseRequest("/classes/" + id, "PUT", {
+        const patch=cloud.recordPatches?buildRecordPatch(baseline,snapshot):null;
+        const result = await databaseRequest("/classes/" + id, "PUT", patch?{patch}:{
           classData: payload,
           partialMonths,
           revision: cloud.revisions[id] || 0,
@@ -338,7 +379,7 @@ async function flushCloud() {
       localStorage.setItem(cloudCacheKey(), JSON.stringify(appData));
       cloud.lastSync = new Date().toLocaleTimeString("vi-VN");
     } catch (error) {
-      if (epoch === cloud.epoch) cloud.error = error.message;
+      if (epoch === cloud.epoch) {cloud.error = error.message;cloud.readInterrupted=false;}
       throw error;
     } finally {
       if (epoch === cloud.epoch) {
@@ -367,12 +408,14 @@ async function retryCloud() {
  */
 async function refreshCloud(quiet = false) {
   if (!cloud.ready || cloud.busy) return;
+  const readGeneration=databaseWriteGeneration;
+  const superseded=()=>quiet&&(readGeneration!==databaseWriteGeneration||cloud.pending.size||cloud.worker);
   try {
     scanPendingClasses();
     if (
       cloud.pending.size ||
       cloud.worker ||
-      cloud.error ||
+      (cloud.error&&!cloud.readInterrupted) ||
       Object.keys(cloud.unassignedDrafts).length
     ) {
       if (quiet) return;
@@ -388,7 +431,11 @@ async function refreshCloud(quiet = false) {
     let nextSyncVersion,nextMetadataVersion;
     if(quiet&&cloud.scopedSync){
       const state=await databaseRequest('/changes','GET',undefined,{silent:true});
-      if(state.supported&&state.version===cloud.syncVersion){cloud.busy=false;return;}
+      if(superseded())return;
+      if(state.supported&&state.version===cloud.syncVersion){
+        if(cloud.readInterrupted){cloud.error='';cloud.readInterrupted=false;updateStorageNotice();}
+        cloud.busy=false;return;
+      }
       nextSyncVersion=state.version;
       nextMetadataVersion=state.metadataVersion;
       if(state.supported&&state.metadataVersion&&state.metadataVersion===cloud.metadataVersion&&state.revisions){
@@ -399,18 +446,20 @@ async function refreshCloud(quiet = false) {
           const data={year:YEARS,assignment:auth.assignment,classes:{...appData.classes},
             revisions:{...cloud.revisions},summaries:{...cloud.summaries},checks:{...cloud.checks},
             teachers:appData.teachers,users:appData.users,calendar:appData.calendar,
-            scopedSync:cloud.scopedSync,evidenceCleanup:cloud.evidenceCleanup};
+            scopedSync:cloud.scopedSync,recordPatches:cloud.recordPatches,evidenceCleanup:cloud.evidenceCleanup};
           for(let offset=0;offset<changed.length;offset+=8){
             const page=await databaseRequest('/bootstrap/classes?ids='+changed.slice(offset,offset+8).join(','),'GET',undefined,{silent:true});
             if(stableString(page.assignment)!==stableString(data.assignment))throw Error('Phân công đã thay đổi trong lúc tải. Vui lòng tải lại.');
             for(const key of ['classes','revisions','summaries','checks'])Object.assign(data[key],page[key]||{});
           }
+          if(superseded())return;
           useBootstrap(data);cloud.syncVersion=nextSyncVersion;cloud.metadataVersion=nextMetadataVersion;
           cloud.busy=false;if(changed.length)render();return;
         }
       }
     }
     const data = await loadCloudBootstrap(quiet);
+    if(superseded())return;
     useBootstrap(data);
     cloud.syncVersion=nextSyncVersion;
     cloud.metadataVersion=nextMetadataVersion;
@@ -425,6 +474,9 @@ async function refreshCloud(quiet = false) {
       loginStatus(error.message, true);
     } else {
       cloud.error = error.message;
+      // Retry background reads on the next poll. Pending edits still prevent
+      // refresh, and a failed write is never automatically resubmitted here.
+      cloud.readInterrupted=quiet;
       updateStorageNotice();
       if (!quiet) appAlert(error.message);
     }

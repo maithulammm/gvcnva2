@@ -13,6 +13,13 @@ async function token(overrides={},key=privateKey) {
 test('valid signed Microsoft identity is accepted and bound to oid',async()=>{
   const identity=await verify(await token());assert.equal(identity.email,'lammt@vietanhschool.edu.vn');assert.equal(identity.oid,'33333333-3333-3333-3333-333333333333');
 });
+
+test('signing-key network failures do not incorrectly expire teacher sessions',async()=>{
+  for(const error of [new TypeError('fetch failed'),Object.assign(new Error('timeout'),{code:'ERR_JWKS_TIMEOUT'})]){
+    const unavailable=createIdentityVerifier({tenantId,clientId,keySet:async()=>{throw error;}});
+    await assert.rejects(unavailable(await token()),e=>e.status===503);
+  }
+});
 test('invalid signature, wrong audience/issuer, expired token and missing oid are rejected',async()=>{
   const other=await generateKeyPair('RS256');
   for(const signed of [await token({},other.privateKey),await token({aud:'another-app'}),await token({iss:'https://example.com'}),await token({exp:1}),await token({oid:undefined})])

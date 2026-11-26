@@ -5,6 +5,12 @@
   "compatibility_date": "2026-11-18",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  "d1_databases": [{
+    "binding": "GVCN_HISTORY",
+    "database_name": "gvcn-history",
+    "database_id": "2d31ce38-90c6-4b77-b4fe-893f3184fbbf",
+    "migrations_dir": "cloudflare/migrations"
+  }],
   "triggers": { "crons": ["0 18 * * *", "15 * * * *"] },
   "build": {
     "command": "npm run build"
@@ -17,6 +23,8 @@
     "run_worker_first": ["/", "/api", "/api/*"]
   },
   "vars": {
+    "SUPABASE_URL": "https://mncplbuswsmjwcxsreas.supabase.co",
+    "GVCN_D1_ARCHIVE_ENABLED": "true",
     "EVIDENCE_CLIENT_ID": "32d07852-5a8b-48c1-a8b4-a1141bd13725",
     "EVIDENCE_AUTH_MODE": "delegated",
     "MICROSOFT_TENANT_ID": "22215a7f-b9e3-4b53-bd27-3a317311e6ca",

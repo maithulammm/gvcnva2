@@ -729,6 +729,55 @@ test('saving blocks interaction until complete while quiet polling stays nonbloc
   await f.run('refreshCloud(true)');
   assert.equal(f.run('loadingCalls'),calls);assert(!f.el('requestOverlay').open);
 });
+
+test('record patch transport sends only changed notes and keeps the server month version',async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  f.run(`mdata().notes.summary='First';save()`);await f.run('flushCloud()');
+  const original=f.ctx.fetch,bodies=[];
+  f.ctx.fetch=async(url,options)=>{if(options.method==='PUT')bodies.push(JSON.parse(options.body));return original(url,options);};
+  f.run(`mdata().notes.summary='Second';save()`);await f.run('flushCloud()');
+  assert.equal(bodies.length,1);assert(bodies[0].patch);assert(!bodies[0].classData);
+  assert.equal(bodies[0].patch.operations.length,1);assert.equal(bodies[0].patch.operations[0].collection,'notes');
+  assert.equal(f.run('mdata()._revision'),2);
+});
+
+test('a save request starts while an unrelated background read is waiting',{timeout:2000},async()=>{
+  const f=frontend();await f.login();let release;const calls=[];
+  const gate=new Promise(resolve=>{release=resolve;});
+  f.ctx.network=async path=>{calls.push(path);if(path==='/background')await gate;return {};};
+  f.run('performDatabaseRequest=path=>network(path)');
+  const reading=f.run(`databaseRequest('/background','GET',undefined,{silent:true})`);
+  try{
+    await f.run(`databaseRequest('/classes/6A1','PUT',{}, {silent:true})`);
+    assert.deepEqual(calls,['/background','/classes/6A1']);
+  }finally{release();await reading;}
+});
+
+test('identical pending reads share one network call but reads after a write are fetched again',async()=>{
+  const f=frontend();await f.login();let release;const calls=[];
+  const gate=new Promise(resolve=>{release=resolve;});
+  f.ctx.network=async path=>{calls.push(path);if(path==='/calendar')await gate;return {};};
+  f.run('performDatabaseRequest=path=>network(path)');
+  const first=f.run(`databaseRequest('/calendar','GET',undefined,{silent:true})`);
+  const duplicate=f.run(`databaseRequest('/calendar','GET',undefined,{silent:true})`);
+  assert.equal(first,duplicate);
+  await f.run(`databaseRequest('/classes/6A1','PUT',{}, {silent:true})`);
+  const after=f.run(`databaseRequest('/calendar','GET',undefined,{silent:true})`);
+  assert.notEqual(first,after);release();await Promise.all([first,duplicate,after]);
+  assert.equal(calls.filter(path=>path==='/calendar').length,2);
+});
+
+test('background refresh cannot replace a new unsaved edit made while its read is waiting',{timeout:3000},async()=>{
+  const api=createService(memoryDatabase()),f=frontend({api});await f.login();
+  const original=f.ctx.fetch;let release,started;
+  const gate=new Promise(resolve=>{release=resolve;}),waiting=new Promise(resolve=>{started=resolve;});
+  f.ctx.fetch=async(url,options)=>{if(new URL(url).pathname.endsWith('/bootstrap')){started();await gate;}return original(url,options);};
+  const refreshing=f.run('refreshCloud(true)');await waiting;
+  f.run(`cls().students.push({id:'IN_PROGRESS',name:'Pending edit',code:''});save()`);
+  release();await refreshing;
+  assert.equal(f.run(`cls().students.find(row=>row.id==='IN_PROGRESS').name`),'Pending edit');
+  assert(f.run('cloud.pending.size')>0);
+});
 test('mobile menu preserves role scope, closes on navigation and clears after logout',async()=>{
   const f=frontend();await f.login();f.ctx.window.innerWidth=390;
   f.run(`auth.assignment={role:'gvcn',roles:['gvcn'],classId:'8C3'};ui.classId='8C3';render();openMobileNavigation()`);

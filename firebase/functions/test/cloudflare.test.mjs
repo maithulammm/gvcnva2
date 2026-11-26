@@ -13,6 +13,85 @@ const configured={MICROSOFT_TENANT_ID:'22215a7f-b9e3-4b53-bd27-3a317311e6ca',
   MICROSOFT_CLIENT_ID:'94c476b3-4723-4161-9dea-d64ff8bf505c',GVCN_ALLOWED_ORIGINS:origin,
   FIREBASE_SERVICE_ACCOUNT:JSON.stringify(credentials)};
 
+test('D1 archive preserves live data, supports Admin restore and retains Firebase history on failure',async()=>{
+  const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},fixture=restFixture();
+  const snapshots={},events={};let fail=false;
+  const historyStore={async write(id,rows,audit){if(fail)throw Error('D1 unavailable');Object.assign(snapshots,structuredClone(rows));Object.assign(events,audit);},
+    async read(){return {snapshots,events};},async snapshot(id,key){return snapshots[key];}};
+  const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}),{historyStore});
+  let c=(await api.bootstrap(admin)).classes['8C3'];
+  c.months={'T11/2026':{notes:{summary:'Original'}}};
+  let saved=await api.putClass(admin,'8C3',{classData:c,revision:0});
+  c=saved.data;c.months['T11/2026'].notes.summary='Edited';
+  saved=await api.putClass(admin,'8C3',{classData:c,revision:1});
+  const before=fixture.state().classes['8C3'];fail=true;
+  await assert.rejects(api.archiveClassHistory('8C3'),/D1 unavailable/);
+  assert.deepEqual(fixture.state().classes['8C3'],before);
+  fail=false;await api.archiveClassHistory('8C3');
+  const after=fixture.state().classes['8C3'];
+  assert.deepEqual(after.data,before.data);assert.equal(after.revision,before.revision);
+  assert.equal(Object.keys(after.recovery).length,0);assert.equal(Object.keys(after.recoveryBlobs).length,0);
+  assert.equal(snapshots['rev-1'].data.months.T11_2026.notes.summary,'Original');
+  assert((await api.recovery(admin,'8C3')).snapshots['rev-1']);
+  const restored=await api.restore(admin,'8C3',{key:'rev-1',revision:2});
+  assert.equal(restored.classes['8C3'].months['T11/2026'].notes.summary,'Original');
+});
+
+test('D1 archive cleanup preserves a concurrent teacher save and its new recovery blobs',async()=>{
+  const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},fixture=restFixture();
+  let interleave;
+  const historyStore={async write(){await interleave?.();}};
+  const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}),{historyStore});
+  let c=(await api.bootstrap(admin)).classes['8C3'];c.months={'T11/2026':{notes:{summary:'First'}}};
+  const saved=await api.putClass(admin,'8C3',{classData:c,revision:0});
+  interleave=async()=>{
+    const next=structuredClone(saved.data);next.months['T11/2026'].notes.summary='Concurrent';
+    await api.putClass(admin,'8C3',{classData:next,revision:1});
+  };
+  await api.archiveClassHistory('8C3');
+  const current=fixture.state().classes['8C3'];
+  assert.equal(current.revision,2);assert.equal(current.data.months.T11_2026.notes.summary,'Concurrent');
+  assert(current.recovery['rev-1']);
+  for(const hash of Object.values(current.recovery['rev-1'].monthRefs))assert(current.recoveryBlobs[hash]);
+  assert(Object.values(current.events).some(event=>event.action==='save-class:8C3'));
+});
+
+test('Record patches use independent month versions and reject stale months without losing other edits',async()=>{
+  const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},fixture=restFixture();
+  const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}));
+  const c=(await api.bootstrap(admin)).classes['8C3'];
+  const patch=(month,version,text)=>({patch:{monthVersions:{[month]:version},operations:[{month,collection:'notes',id:'notes',operation:'upsert',value:{summary:text}}]}});
+  let saved=await api.putClass(admin,'8C3',{classData:c,revision:0});
+  const a=await api.putClass(admin,'8C3',patch('T11/2026',0,'November'));
+  saved=await api.putClass(admin,'8C3',patch('T12/2026',0,'December'));
+  assert.equal(saved.data.months['T11/2026'].notes.summary,'November');
+  assert.equal(saved.data.months['T12/2026'].notes.summary,'December');
+  assert.equal(saved.data.months['T11/2026']._revision,1);
+  await assert.rejects(api.putClass(admin,'8C3',patch('T11/2026',0,'Overwrite')),{status:409});
+  assert.equal(fixture.state().classes['8C3'].revision,saved.revision);
+  // Older full-class clients must also advance the touched month version.
+  saved.data.months['T11/2026'].notes.summary='Legacy updated';
+  await api.putClass(admin,'8C3',{classData:saved.data,revision:saved.revision});
+  await assert.rejects(api.putClass(admin,'8C3',patch('T11/2026',a.data.months['T11/2026']._revision,'Stale')),{status:409});
+});
+
+test('revision polling uses D1 only for notifications and falls back to Firebase on cache errors',async()=>{
+  const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},fixture=restFixture();
+  const cached={};let fail=false;
+  const cache={now:()=>Date.now(),async read(){if(fail)throw Error('D1 offline');return cached;},async write(entries){Object.assign(cached,Object.fromEntries(entries));}};
+  const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}),{revisionCache:cache});
+  await api.bootstrap(admin);await api.changes(admin);fixture.trace.length=0;
+  await api.changes(admin);
+  assert(!fixture.trace.some(row=>row.path.endsWith('/revision')));
+  assert(fixture.trace.some(row=>row.path.startsWith('users/')));
+  fail=true;fixture.trace.length=0;await api.changes(admin);
+  assert.equal(fixture.trace.filter(row=>row.path.endsWith('/revision')).length,32);
+  cached['8C3']=999;
+  const c=(await api.bootstrap(admin)).classes['8C3'];
+  const saved=await api.putClass(admin,'8C3',{classData:c,revision:0});assert.equal(saved.revision,1);
+  await assert.rejects(api.putClass(admin,'8C3',{classData:c,revision:0}),{status:409});
+});
+
 test('Firebase rejected cached credentials are renewed once; permission errors and uncertain writes are not retried',async()=>{
   const f=restFixture({keep:'value'});let firebaseCalls=0;
   const db=createFirebaseRestDatabase(configured,{fetchImpl:async(url,options)=>{
@@ -160,6 +239,10 @@ test('Scoped saves merge only submitted months and preserve other classes, revis
   const other=JSON.stringify(fixture.state().classes['6A1']);fixture.trace.length=0;
   c={...saved.data,months:{'T11/2026':{...saved.data.months['T11/2026'],notes:{summary:'Changed November'}}}};
   saved=await api.putClass(admin,'8C3',{classData:c,revision:1,partialMonths:true});
+  // A content-only save reads assignment/calendar once and class once with ETag.
+  assert.equal(fixture.trace.filter(r=>r.method==='GET').length,3);
+  assert.equal(fixture.trace.filter(r=>r.path==='classes/8C3'&&r.method==='GET').length,1);
+  assert(!fixture.trace.some(r=>r.path==='classes/8C3/data'));
   assert.equal(saved.revision,2);assert.equal(saved.data.months['T10/2026'].notes.summary,'October retained');
   assert.equal(saved.data.months['T11/2026'].notes.summary,'Changed November');
   assert.equal(JSON.stringify(fixture.state().classes['6A1']),other);
@@ -200,7 +283,7 @@ test('Scoped photo reads fetch one evidence item and no school/class archive',as
   const state=fixture.state(),key='a'.repeat(64);state.evidence={[key]:{id:key,classId:'8C3',driveId:'drive',itemId:'item'}};
   const reads=restFixture(state),api=createService(createFirebaseRestDatabase(configured,{fetchImpl:reads.fetch}));
   assert.equal((await api.evidenceItem(admin,'8C3',key)).itemId,'item');
-  assert.deepEqual(reads.trace.map(r=>r.path).sort(),['calendar','evidence/'+key,'classes/8C3/deletedEvidence/'+key,'classes/8C3/pendingEvidenceDeletes/'+key,'users/'+Buffer.from(admin.email).toString('base64url')].sort());
+  assert.deepEqual(reads.trace.map(r=>r.path).sort(),['evidence/'+key,'classes/8C3/deletedEvidence/'+key,'classes/8C3/pendingEvidenceDeletes/'+key,'users/'+Buffer.from(admin.email).toString('base64url')].sort());
 });
 
 test('Paged reads reject data/revision pairs changed during loading',async()=>{

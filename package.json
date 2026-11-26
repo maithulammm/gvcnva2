@@ -16,6 +16,7 @@
     "jose": "^6.0.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.6.0",
     "@xmldom/xmldom": "^0.9.12",
     "wrangler": "^4.164.0"
   }

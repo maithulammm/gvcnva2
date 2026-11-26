@@ -169,12 +169,46 @@ async function importDirectoryFile(e) {
 function renderDatabase() {
   if (!hasAppRole("admin")) return "";
   return `<div class="section-head"><h2>Dữ liệu</h2></div>${renderStorageSettings()}
+    <section class="card"><h2>Thống kê API · 24 giờ</h2>${btn('Tải thống kê','loadApiMetrics()')}<div id="apiMetricsPanel"></div></section>
+    <section class="card"><h2>Supabase</h2><div class="actions">${btn('Kiểm tra kết nối Supabase','checkSupabaseConnection()')}${btn('Sao chép thử & đối chiếu','stageSupabaseData()')}</div><p id="supabaseStatus" class="help">Chưa chuyển nguồn lưu chính sang Supabase.</p></section>
     <div class="cols2"><section class="card"><h2>Kết nối dữ liệu dùng chung</h2>
     <p class="help" style="overflow-wrap:anywhere">Database: ${esc(FIREBASE_DATABASE_URL)}</p>
     ${cloud.error?`<p class="help">${esc(cloud.error)}</p>`:!cloud.ready?'<p class="help">Chưa kết nối dữ liệu dùng chung.</p>':''}
     <div class="actions">${cloud.ready ? btn("Tải dữ liệu mới", "refreshCloud()") + btn("Thử đồng bộ lại", "retryCloud()") + btn("Xuất bản lưu chờ đồng bộ", "exportPendingDrafts()") + btn("Sao lưu & lịch sử lớp đang chọn", "loadRecovery()") : btn("Bật kết nối Firebase", "enableFirebase()", "primary")}${btn("Xuất JSON sao lưu", "jsonBackup()")}</div><div id="recoveryPanel"></div></section>
     <section class="card"><h2>Chuyển dữ liệu cũ lên Firebase</h2><p class="help">Bản dữ liệu cục bộ ban đầu được giữ nguyên. Chỉ chuyển vào lớp trống; lớp đã có hồ sơ trên Firebase được bỏ qua. Thông tin và lịch sử cũ được giữ trong bản nhập.</p>
     <div class="actions">${btn("Xuất dữ liệu cục bộ ban đầu", "exportLegacyData()")}${cloud.ready ? btn("Chuyển dữ liệu cũ lên Firebase", "migrateLegacyData()", "primary") : ""}</div></section></div>`;
+}
+
+async function checkSupabaseConnection(){
+  if(!hasAppRole('admin')||!cloud.ready)return;
+  const panel=$('supabaseStatus');if(panel)panel.textContent='Đang kiểm tra kết nối Supabase…';
+  try{
+    const result=await databaseRequest('/supabase/status');
+    if(panel)panel.textContent=result.connected?(result.storageReady?'Supabase đã kết nối, có thể sao chép thử và đối chiếu.':'Supabase đã kết nối. Cần chạy migration 0002_transactional_storage.sql trước khi sao chép thử.'):'Chưa xác nhận được kết nối.';
+  }catch(error){if(panel)panel.textContent=error.message;}
+}
+
+async function loadApiMetrics(){
+  if(!hasAppRole('admin')||!cloud.ready)return;
+  const panel=$('apiMetricsPanel');if(!panel)return;
+  panel.textContent='Đang tải thống kê…';
+  try{
+    const result=await databaseRequest('/metrics');
+    panel.innerHTML=result.enabled?`<div class="table-wrap"><table><thead><tr><th>API</th><th>HTTP</th><th>Số request</th><th>TB (ms)</th><th>Lâu nhất (ms)</th><th>Chậm ≥ 3s</th></tr></thead><tbody>${result.rows.map(row=>`<tr><td>${esc(row.method+' '+row.route)}</td><td>${esc(row.status)}</td><td>${esc(row.requests)}</td><td>${esc(row.average_ms)}</td><td>${esc(row.max_ms)}</td><td>${esc(row.slow_requests)}</td></tr>`).join('')}</tbody></table></div>`:'Chưa bật thống kê API.';
+  }catch(error){panel.textContent=error.message;}
+}
+
+async function stageSupabaseData(){
+  if(!hasAppRole('admin')||!cloud.ready)return;
+  if(cloud.pending.size||cloud.worker){await appAlert('Hãy hoàn tất lưu dữ liệu đang sửa trước khi chuyển thử.');return;}
+  if(!await appConfirm('Sao chép dữ liệu Firebase sang bản thử Supabase và đối chiếu? Firebase vẫn là nguồn chính.'))return;
+  try{
+    const status=await databaseRequest('/supabase/status');
+    if(!status.storageReady)throw Error('Cần chạy migration 0002_transactional_storage.sql trên Supabase trước.');
+    const result=await databaseRequest('/supabase/stage','POST',{});
+    const panel=$('supabaseStatus');if(panel)panel.textContent=`Đối chiếu thành công: ${result.classes} lớp, ${result.students} học sinh, ${result.months} tháng/lớp. `+
+      (result.sourceUnchanged?'Nguồn Firebase không thay đổi trong lúc sao chép.':'Có lượt nhập mới tại Firebase; cần sao chép lại trong bước chuyển chính thức.')+' Chưa bật nguồn Supabase.';
+  }catch(error){await appAlert(error.message);}
 }
 
 function openClassStudents(id) {

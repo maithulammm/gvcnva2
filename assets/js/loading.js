@@ -3,6 +3,9 @@
 // Native modal stays above open editors and blocks repeated clicks.
 const pageLoading = {pending:new Map(),nextId:0,progress:0,timer:null,failed:false};
 let databaseQueue=Promise.resolve();
+let databaseWriteQueue=Promise.resolve();
+const databaseReads=new Map();
+let databaseWriteGeneration=0;
 let releaseSavingOverlay;
 /** Một màn chờ cho toàn bộ chuỗi lưu, kể cả thời gian debounce và các lớp đang chờ. */
 function showSavingOverlay(active){

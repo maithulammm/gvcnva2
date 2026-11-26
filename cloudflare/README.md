@@ -116,3 +116,69 @@ trên website mới; dữ liệu còn ở máy cũ cần xuất JSON riêng nế
 Tài liệu: [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/),
 [Secrets](https://developers.cloudflare.com/workers/configuration/secrets/),
 [Firebase REST conditional writes](https://firebase.google.com/docs/database/rest/save-data).
+
+## Kho lịch sử D1
+
+## Đồng bộ bản ghi và thống kê API
+
+### Chuẩn bị chuyển nguồn sang Supabase
+
+1. Giữ `GVCN_DATA_SOURCE` chưa đặt (mặc định Firebase). Không đổi tên hoặc xóa
+   Microsoft/Firebase/OneDrive secrets và binding lịch sử D1.
+2. Chạy `supabase/migrations/0001_gvcn_staging.sql`, rồi
+   `supabase/migrations/0002_transactional_storage.sql` trong SQL Editor.
+3. QTV → Dữ liệu → Kiểm tra kết nối Supabase → Sao chép thử & đối chiếu.
+   Bản sao thử chỉ ghi đè một bản thử có marker `staged`, không ghi đè database
+   bất kỳ và không sửa/xóa Firebase. So sánh hash toàn bộ dữ liệu đã chuẩn hóa,
+   kiểm tra nguồn có thay đổi trong lúc sao chép và trả số lớp/học sinh/tháng.
+4. ĐÂY CHƯA PHẢI CUTOVER. Trước khi chuyển chính thức phải có cơ chế chặn tất cả
+   lượt ghi, chờ các request đang chạy kết thúc, sao chép cuối cùng và đối chiếu.
+   Không tự đổi marker thành `verified` hoặc bật biến nguồn trong Dashboard.
+5. Adapter nguồn Supabase chỉ chạy khi marker đã `verified`; nếu chưa có marker,
+   báo 503 thay vì khởi tạo trường trống hoặc tự quay lại Firebase đã cũ.
+
+Các bảng `gvcn_classes`, `gvcn_class_months` tách lớp/tháng. Postgres CAS khóa
+giao dịch ngắn, so hash giá trị cũ trước khi ghi và chỉ UPDATE những tháng thay
+đổi. Nghiệp vụ phân quyền, snapshot, ảnh và liên kết M01/M02 dùng service cũ.
+Các bảng/hàm không mở cho anon/authenticated. Secret key chỉ ở backend.
+Chưa có luồng realtime/presence mới: không tạo Firebase Auth hoặc đổi đăng nhập.
+
+- Chạy migrations D1 trước khi deploy để có `gvcn_api_metrics`.
+- QTV → Dữ liệu → Thống kê API: số request theo route/phương thức/HTTP,
+  thời gian trung bình, tối đa và số lượt >= 3 giây trong 24 giờ; giữ 30 ngày.
+- Không ghi token, email, mã lớp/học sinh, nội dung hay query string vào thống kê.
+- Giao diện dùng hai hàng đợi đọc/ghi riêng; ghi không chờ lượt đọc nền, nhưng
+  vẫn tuần tự với các lượt ghi khác. Phiên đăng nhập đổi sẽ hủy công việc cũ.
+- Khi máy chủ báo `recordPatches`, chỉnh sửa nội dung tháng gửi các operation
+  upsert/delete, kèm phiên bản từng tháng `_revision`. Hai tháng khác nhau không
+  bị xung đột chỉ vì revision lớp đổi. Cùng tháng có thay đổi thì trả HTTP 409.
+- Danh sách học sinh, phân công, M05 và thay đổi cấu trúc vẫn dùng đường lưu lớp
+  hiện có. Phía Firebase hiện vẫn giữ giao dịch cấp lớp để bảo toàn liên kết,
+  kiểm tra quyền, snapshot và hàng đợi xóa ảnh. Đây chưa phải chuyển dữ liệu thật
+  sang các bảng Supabase; không được tuyên bố đã bỏ mọi lượt đọc cả lớp.
+- `gvcn_revision_cache` ở D1 giữ phiên bản lớp tối đa 60 giây cho `/changes`.
+  Phân công và phạm vi vẫn đọc mới; không cache quyền hoặc nội dung học sinh.
+  Bootstrap/lưu cập nhật cache. Cache lỗi thì đọc Firebase. Chỉ thông báo thay
+  đổi có thể trễ do TTL; kiểm tra xung đột khi lưu không dùng cache.
+- Các GET cùng URL đang chờ dùng chung một Promise. Sau khi có lượt ghi mới,
+  GET không dùng lại lượt đọc trước ghi. Refresh nền không áp dữ liệu nếu đã có
+  lượt ghi/chỉnh sửa mới trong lúc chờ, tránh ghi đè bản đang nhập.
+
+### Vận hành kho lịch sử
+
+- Binding `GVCN_HISTORY`: database `gvcn-history`, migrations tại `cloudflare/migrations`.
+- Chạy `npx wrangler d1 migrations apply gvcn-history --remote` trước khi triển khai.
+- `GVCN_D1_ARCHIVE_ENABLED=true` bật tác vụ chuyển lịch sử: 4 lớp mỗi giờ,
+  luân phiên toàn bộ 32 lớp trong 8 giờ. Không chờ D1 trong lượt lưu biểu mẫu.
+- Từng lớp được đọc riêng, ghi bản sao đầy đủ và sự kiện vào D1 rồi mới gỡ các
+  mục tương ứng khỏi nút lớp Firebase. So sánh lại từng mục trong transaction để
+  giữ lịch sử của lượt lưu đồng thời. D1 lỗi thì giữ nguyên lịch sử Firebase.
+- Dữ liệu biểu mẫu, phân công, revision, lịch nghỉ và hàng đợi xóa ảnh tiếp tục ở
+  Firebase; tệp ảnh ở OneDrive. Kho lịch sử Firebase cũ vẫn được giữ và đọc cùng D1.
+- QTV đọc/khôi phục bản sao D1 qua API hiện có; GVCN/khối trưởng không có quyền này.
+- D1 hiện giữ các mục đã chuyển, không tự xóa lịch sử đã lưu. Theo dõi dung lượng
+  D1 trước khi thiết lập chính sách lưu trữ dài hạn.
+- Dừng chuyển bằng `GVCN_D1_ARCHIVE_ENABLED=false`, nhưng giữ binding D1 để tiếp
+  tục xem/khôi phục những bản sao đã chuyển. Không tháo binding sau khi đã chuyển.
+- Health báo `d1HistoryBound` và `d1HistoryArchiving`; đây là trạng thái cấu hình,
+  không thay thế việc kiểm tra tác vụ Scheduled trong Workers Logs.

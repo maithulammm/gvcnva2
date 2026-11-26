@@ -5,18 +5,20 @@ import {DATABASE_URL,requireValue} from './model.mjs';
 import {createHash} from 'node:crypto';
 import {createEvidenceStore} from './evidence-store.mjs';
 import {createEvidenceOAuth} from './evidence-oauth.mjs';
+import {createSupabaseConnection} from './supabase.mjs';
+import {stageSupabase} from './supabase-migration.mjs';
 
 const MAX_BODY_BYTES=5*1024*1024;
 /**
  * Handler API dùng chung cho các nền tảng: kiểm tra origin, token, kích thước JSON rồi mới gọi
  * service nghiệp vụ; CORS không thay thế xác thực.
  */
-export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=process.env}) {
+export function createApiHandler({getDatabase,getMigrationSource,getMigrationTarget,getHistoryStore=()=>null,getRevisionCache=()=>null,getMetrics=async()=>({enabled:false,rows:[]}),databaseConfigured=()=>true,env=process.env}) {
   let service;
   let verifyIdentity;
   let evidenceStore;
   let evidenceOAuth;
-  const getService=()=>service ||= createService(getDatabase(),{adminEmail:(env.GVCN_ADMIN_EMAIL||'lammt@vietanhschool.edu.vn').toLowerCase().trim()});
+  const getService=()=>service ||= createService(getDatabase(),{adminEmail:(env.GVCN_ADMIN_EMAIL||'lammt@vietanhschool.edu.vn').toLowerCase().trim(),historyStore:getHistoryStore(),revisionCache:getRevisionCache()});
   const oauth=()=>evidenceOAuth ||= createEvidenceOAuth(env,getService());
   const storage=()=>evidenceStore ||= createEvidenceStore(env,{loadConnection:()=>oauth().load(),saveConnection:connection=>oauth().save(connection)});
   return async function handle({method,path,origin,authorization,rawBodyLength=0,body={},bodyError,query={}}) {
@@ -32,7 +34,8 @@ export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=pr
       const route=String(path||'/').replace(/\/$/,'')||'/';
       if(method==='GET'&&route==='/health') {
         const health=deploymentStatus(env,{databaseConfigured:databaseConfigured()});
-        return respond(health.configured?200:503,{...health,meetingPaperEvidence:true,novemberMeetingBackfill:true});
+        return respond(health.configured?200:503,{...health,meetingPaperEvidence:true,novemberMeetingBackfill:true,
+          d1HistoryBound:!!env.GVCN_HISTORY,d1HistoryArchiving:!!env.GVCN_HISTORY&&env.GVCN_D1_ARCHIVE_ENABLED==='true'});
       }
       if(method==='GET'&&route==='/evidence/oauth/callback'){
         const result=await oauth().callback(query);
@@ -48,7 +51,19 @@ export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=pr
       requireValue(rawBodyLength<=MAX_BODY_BYTES,'Dữ liệu gửi lên vượt giới hạn 5 MB.',413);
       getService();
       let result;
-      if(method==='GET'&&route==='/evidence/admin/status')result=await oauth().status(identity);
+      if(method==='GET'&&route==='/metrics'){
+        await service.integrationAdmin(identity);result=await getMetrics();
+      }
+      else if(method==='POST'&&route==='/supabase/stage'){
+        await service.integrationAdmin(identity);
+        requireValue(env.GVCN_DATA_SOURCE!=='supabase'&&getMigrationSource&&getMigrationTarget,'Không cho chuyển thử khi Supabase đã là nguồn chính.',409);
+        result=await stageSupabase(getMigrationSource(),getMigrationTarget());
+      }
+      else if(method==='GET'&&route==='/supabase/status'){
+        await service.integrationAdmin(identity);
+        result=await createSupabaseConnection(env).status();
+      }
+      else if(method==='GET'&&route==='/evidence/admin/status')result=await oauth().status(identity);
       else if(method==='POST'&&route==='/evidence/admin/connect')result=await oauth().start(identity,body.returnUrl);
       else if(method==='POST'&&/^\/evidence\/[A-Za-z0-9]+\/upload$/.test(route)){
         const id=route.split('/')[2];
