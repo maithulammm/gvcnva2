@@ -116,7 +116,7 @@ function openModal(type, id = "", seed = {}) {
     const appointments=studentAppointments(c,ui.month,id);
     const selected=seed.addAppointment?undefined:appointments.find(a=>a.id===(seed.appointmentId||appointments[0]?.id));
     ui.editing.seed={...seed,appointmentId:selected?.id||'',addAppointment:!selected};
-    rec=selected?{...selected}:{};
+    rec=selected?{...selected}:{priority:mdata(c).schedule[id]?.priority===true||appointments.some(a=>a.priority===true)};
   }
   if (!id && type === "m02") Object.assign(rec, {
     actual:workToday(), progressEvidence:"Chưa đủ căn cứ", needsCoop:"Không", cooperation:"Chưa cần", ...rec,
@@ -407,6 +407,7 @@ async function submitForm(e) {
         id: newID(),
       });
   }
+  if(type==='m02')syncActualMeetingSchedule(c,ui.month,id?lookup(type,id):m.meetings.at(-1));
   if (!save()) {
     releaseEvidenceLoading?.(false);
     Object.assign(c,beforeSave);
@@ -469,6 +470,10 @@ async function removeRecord(type, id) {
   } else {
     let key = { m02: "meetings", m03: "connections" }[type] || type;
     m[key] = m[key].filter((x) => x.id !== id);
+    if(type==='m02'){
+      const old=m.schedule[r.studentId];
+      if(old)m.schedule[r.studentId]=appointmentRollup(old,studentAppointments(c,ui.month,r.studentId).filter(a=>a.sourceMeetingId!==id));
+    }
   }
   if(!save()){Object.assign(c,beforeDelete);return;}
   render();toast('Đã xóa dữ liệu.');

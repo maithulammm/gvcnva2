@@ -25,6 +25,7 @@ const FIELDS = {
     ["code", "Mã học sinh (nếu có)", "text", 0],
   ],
   m01: [
+    ["priority","Ưu tiên","boolean",0],
     ["startTime","Giờ bắt đầu","text",0],
     ["endTime","Giờ kết thúc","text",0],
     ["date", "Ngày hẹn", "text", 1],

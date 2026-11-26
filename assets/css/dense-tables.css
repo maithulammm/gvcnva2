@@ -7,6 +7,10 @@
 .schedule-tag-other{background:#e8f1fb;border-color:#c8d8ed;color:#23517f;}
 .schedule-tag-recorded{background:#eaf5ed;color:#205a39;border-color:#c4dfcd;}
 .m01-table .m01-entry{min-height:26px;padding:1px 0;line-height:1.4;}
+.schedule-priority{display:flex;align-items:center;gap:8px;cursor:pointer;}
+.schedule-priority input[type="checkbox"]{width:20px;height:20px;flex:0 0 20px;margin:0;}
+.m01-table .m01-priority .schedule-priority{justify-content:center;margin:0;}
+@media(max-width:900px){.schedule-priority{min-height:44px;}.schedule-priority input[type="checkbox"]{width:24px;height:24px;flex-basis:24px;}}
 .m01-table .m01-appointment-line{gap:6px;align-items:center;}
 .m01-table .m01-visit-label{gap:4px;font-size:11px;}
 #view .m01-table .m01-visit-label .schedule-icon{width:24px;height:24px;min-width:24px;min-height:24px;padding:4px;border-radius:6px;}

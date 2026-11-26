@@ -1,5 +1,5 @@
 import { randomUUID,createHash } from 'node:crypto';
-import {appointmentEntries} from './appointments.mjs';
+import {appointmentEntries,actualMeetingMirror} from './appointments.mjs';
 import {evidenceReferences,evidenceStillUsed,queueRemovedEvidence,assertEvidenceNotRetired,stripRetiredEvidence} from './evidence-cleanup.mjs';
 import {YEAR,GRADES,CLASSES,MONTHS,ROOT,emailKey,list,normalizeSchool,normalizeClass,encodeClass,blankClass,
   assignmentFor,scopeFor,checkScope,requireValue,validateClass,authorizeClassEdit,emptyMonth,validateReport,summary,
@@ -576,6 +576,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
         } else authorizeClassEdit(u,old.data,c);
         validateClass(c,old.data);
         for(const [month,m] of Object.entries(c.months))for(const st of c.students)for(const a of appointmentEntries(m,st.id)){
+          if(actualMeetingMirror(m,st.id,a))continue;
           const previous=appointmentEntries(old.data.months[month],st.id).find(p=>p.id===a.id);
           if(previous?.date===a.date&&previous?.session===a.session&&previous?.startTime===a.startTime&&previous?.endTime===a.endTime)continue;
           if(a.session==='other')requireValue(!school.calendar.excludedDates.includes(a.date)&&!school.calendar.excludedSessions.some(slot=>slot.date===a.date&&(slot.session==='morning'?a.startTime<'12:00':a.endTime>'12:00')),'Khung giờ nằm trong lịch nghỉ.',409);

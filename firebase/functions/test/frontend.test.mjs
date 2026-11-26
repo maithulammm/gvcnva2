@@ -9,6 +9,51 @@ import {summary,validateReport} from '../model.mjs';
 
 const projectRoot=new URL('../../../',import.meta.url);
 
+test('priority pupils receive three appointments before ordinary second-round allocation is exhausted',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=Array.from({length:23},(_,i)=>({id:'S'+i,name:'Student '+i}));
+    mdata().schedule.S0=appointmentRollup({},[{id:'P',date:'2026-11-02',session:'morning',planTime:'02/11/2026 · Sáng 9:55–10:15',priority:true}]);
+    globalThis.prioritized=buildAutomaticSchedule().classData;`);
+  assert.equal(f.run("studentAppointments(prioritized,ui.month,'S0').length"),3);
+  assert.equal(f.run("prioritized.students.every(s=>studentAppointments(prioritized,ui.month,s.id).length>=1)"),true);
+  assert.equal(f.run("studentAppointments(prioritized,ui.month,'S0')[0].id"),'P');
+});
+
+test('unplanned actual meetings sync once into M01 and retain linkage on edits',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student'}];
+    mdata().meetings=[{id:'R',studentId:'S1',actualDateTime:'2026-11-22T18:30',actual:'22/11/2026 18:30 · Phòng 8C3'}];
+    syncActualMeetingSchedule(cls(),ui.month,mdata().meetings[0]);
+    globalThis.firstAppointment=mdata().meetings[0].appointmentId;
+    syncActualMeetingSchedule(cls(),ui.month,mdata().meetings[0]);`);
+  assert.equal(f.run("studentAppointments(cls(),ui.month,'S1').length"),1);
+  assert.equal(f.run("studentAppointments(cls(),ui.month,'S1')[0].sourceMeetingId"),'R');
+  assert.equal(f.run('mdata().meetings.length'),1);
+  f.run(`mdata().meetings[0].actualDateTime='2026-11-23T09:55';syncActualMeetingSchedule(cls(),ui.month,mdata().meetings[0]);`);
+  assert.equal(f.run("studentAppointments(cls(),ui.month,'S1')[0].date"),'2026-11-23');
+  assert.equal(f.run('mdata().meetings[0].appointmentId===firstAppointment'),true);
+  assert.equal(f.run("renderPendingMeetings(cls(),mdata())"),'');
+});
+
+test('M01 priority toggles one appointment without changing its legacy content or actual meetings',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student'}];
+    mdata().schedule.S1={appointments:[{id:'A1',date:'2026-11-02',session:'morning',planTime:'02/11/2026 · Sáng 9:55–10:15',goal:'Nội dung cũ',topics:['Vở ghi'],note:'Ghi chú'},
+      {id:'A2',date:'2026-11-03',session:'afternoon',planTime:'03/11/2026 · Chiều 15:00–15:20',priority:true}]};
+    globalThis.meetingBaseline=JSON.stringify(mdata().meetings);
+    setAppointmentPriority('S1','A1',true);`);
+  assert.equal(f.run("studentAppointments(cls(),ui.month,'S1')[0].priority"),true);
+  assert.equal(f.run("studentAppointments(cls(),ui.month,'S1')[0].goal"),'Nội dung cũ');
+  assert.equal(f.run("studentAppointments(cls(),ui.month,'S1')[1].priority"),true);
+  assert.equal(f.run('JSON.stringify(mdata().meetings)===meetingBaseline'),true);
+  f.run("setAppointmentPriority('S1','A1',false)");
+  assert.equal(f.run("studentAppointments(cls(),ui.month,'S1')[0].priority"),false);
+  assert.equal(f.run("scheduleEditorState({priority:'1'}).priority"),true);
+  f.run("openStudentAppointment('S1','A1')");
+  assert.match(f.el('modalBody').innerHTML,/name="priority"/);
+  assert.doesNotMatch(f.el('modalBody').innerHTML,/Mục tiêu cuộc gặp/);
+});
+
 test('closing walkthrough does not restart it through dashboard navigation',async()=>{
   const f=frontend();await f.login();
   f.run(`globalThis.tourStarts=0;startGvcnTour=()=>{tourStarts++};
