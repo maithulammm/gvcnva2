@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {generateKeyPair,exportPKCS8,jwtVerify} from 'jose';
+import {generateKeyPair,exportPKCS8,exportJWK,SignJWT,jwtVerify} from 'jose';
 import {createWorker} from '../../../cloudflare/worker.mjs';
 import {createFirebaseRestDatabase} from '../../../cloudflare/firebase-rest.mjs';
 import {createService} from '../service.mjs';
@@ -13,6 +13,43 @@ const credentials={type:'service_account',project_id:'gvcn-3bdf9',client_email:'
 const configured={MICROSOFT_TENANT_ID:'22215a7f-b9e3-4b53-bd27-3a317311e6ca',
   MICROSOFT_CLIENT_ID:'94c476b3-4723-4161-9dea-d64ff8bf505c',GVCN_ALLOWED_ORIGINS:origin,
   FIREBASE_SERVICE_ACCOUNT:JSON.stringify(credentials)};
+
+test('Worker bootstrap and repeated migration steps reuse the completed Firebase token',async()=>{
+  const f=restFixture();let adapters=0;
+  const worker=createWorker({createDatabase:()=>{adapters++;return createFirebaseRestDatabase(configured,{fetchImpl:f.fetch});}});
+  const env={...configured,SUPABASE_URL:'https://test.supabase.co',SUPABASE_SECRET_KEY:'sb_secret_test'};
+  const signed=await new SignJWT({tid:configured.MICROSOFT_TENANT_ID,oid:'33333333-3333-3333-3333-333333333333',preferred_username:'lammt@vietanhschool.edu.vn'})
+    .setProtectedHeader({alg:'RS256'}).setIssuer(`https://login.microsoftonline.com/${configured.MICROSOFT_TENANT_ID}/v2.0`)
+    .setAudience(configured.MICROSOFT_CLIENT_ID).setSubject('admin').setIssuedAt().setExpirationTime('1h').sign(pair.privateKey);
+  const original=globalThis.fetch;
+  globalThis.fetch=async url=>{
+    if(String(url).includes('/discovery/v2.0/keys'))return Response.json({keys:[await exportJWK(pair.publicKey)]});
+    if(String(url).endsWith('/rpc/gvcn_read'))return Response.json({version:'1',value:{state:'staged',session:'test',units:[],next:0,classes:0,students:0,months:0}});
+    throw Error('Unexpected request');
+  };
+  try{
+    const invoke=(path,body)=>worker.fetch(new Request(origin+'/api'+path,{method:body?'POST':'GET',headers:{Origin:origin,Authorization:'Bearer '+signed,'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})}),env);
+    assert.equal((await invoke('/bootstrap')).status,200);
+    for(let n=0;n<2;n++)assert.equal((await invoke('/supabase/stage',{operation:'begin'})).status,200);
+    assert.equal(adapters,1);assert.equal(f.counts().tokens,1);
+  }finally{globalThis.fetch=original;}
+});
+
+test('early token renewal failure may reuse a still-valid token but never an expired one',async()=>{
+  const f=restFixture({keep:true});let now=Date.now(),offline=false,attempts=0;
+  const db=createFirebaseRestDatabase(configured,{clock:()=>now,fetchImpl:async(url,options)=>{
+    if(url==='https://oauth2.googleapis.com/token'){
+      attempts++;
+      if(offline)throw new DOMException('Timed out','TimeoutError');
+    }
+    return f.fetch(url,options);
+  }});
+  await db.ref(ROOT).get();assert.equal(attempts,1);
+  now+=3570000;offline=true;
+  assert.deepEqual((await db.ref(ROOT).get()).val(),{keep:true});assert.equal(attempts,3);
+  now+=31000;
+  await assert.rejects(db.ref(ROOT).get(),{status:503});assert.equal(attempts,5);
+});
 
 test('Google token acquisition retries transient failures once and never retries invalid credentials',async()=>{
   for(const failure of [()=>{throw new DOMException('Timed out','TimeoutError');},()=>{throw new TypeError('network lost');},()=>Response.json({}, {status:503})]){

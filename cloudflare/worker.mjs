@@ -15,12 +15,21 @@ import {createMaintenance} from './maintenance.mjs';
  * scheduled chạy sao lưu định kỳ.
  */
 export function createWorker({createDatabase=createFirebaseRestDatabase}={}) {
-  const handlers=new WeakMap();
-  const database=env=>env.GVCN_DATA_SOURCE==='supabase'?createSupabaseDatabase(env):createDatabase(env);
+  const handlers=new WeakMap(),sources=new WeakMap();
+  // Giữ adapter và token đã hoàn tất cho cùng môi trường. Từng bước chuyển thử
+  // trước đây tạo adapter mới, làm mỗi nhánh lại phải xin token Google.
+  const firebase=env=>{
+    let source=sources.get(env);
+    if(!source){source=createDatabase(env);sources.set(env,source);}
+    return source;
+  };
+  const database=env=>env.GVCN_DATA_SOURCE==='supabase'?createSupabaseDatabase(env):firebase(env);
   return {async scheduled(event,env,ctx) {
     ctx.waitUntil((async()=>{
       const historyStore=createD1History(env.GVCN_HISTORY);
-      const service=createService(database(env),{historyStore});
+      // Cron có vòng đời I/O riêng; không dùng adapter có Promise đang chạy
+      // ngoài request scope của API.
+      const service=createService(env.GVCN_DATA_SOURCE==='supabase'?createSupabaseDatabase(env):createDatabase(env),{historyStore});
       if(historyStore&&env.GVCN_D1_ARCHIVE_ENABLED==='true'){
         // Four classes/hour bounds the Firebase work; all 32 classes rotate in 8h.
         const start=(Math.floor((event.scheduledTime||Date.now())/3600000)%8)*4;
@@ -51,7 +60,7 @@ export function createWorker({createDatabase=createFirebaseRestDatabase}={}) {
     }
     let handle=handlers.get(env);
     if(!handle) {
-      handle=createApiHandler({env,maintenance:createMaintenance(env.GVCN_HISTORY),getDatabase:()=>database(env),getMigrationSource:()=>createDatabase(env),getMigrationTarget:()=>createSupabaseDatabase(env,{requireVerified:false}),getHistoryStore:()=>createD1History(env.GVCN_HISTORY),getRevisionCache:()=>createRevisionCache(env.GVCN_HISTORY),getMetrics:()=>readMetrics(env.GVCN_HISTORY),databaseConfigured:()=>env.GVCN_DATA_SOURCE==='supabase'?!!(env.SUPABASE_URL&&env.SUPABASE_SECRET_KEY):serviceAccountConfigured(env)});
+      handle=createApiHandler({env,maintenance:createMaintenance(env.GVCN_HISTORY),getDatabase:()=>database(env),getMigrationSource:()=>firebase(env),getMigrationTarget:()=>createSupabaseDatabase(env,{requireVerified:false}),getHistoryStore:()=>createD1History(env.GVCN_HISTORY),getRevisionCache:()=>createRevisionCache(env.GVCN_HISTORY),getMetrics:()=>readMetrics(env.GVCN_HISTORY),databaseConfigured:()=>env.GVCN_DATA_SOURCE==='supabase'?!!(env.SUPABASE_URL&&env.SUPABASE_SECRET_KEY):serviceAccountConfigured(env)});
       handlers.set(env,handle);
     }
     let body={},bodyError,rawBodyLength=0;

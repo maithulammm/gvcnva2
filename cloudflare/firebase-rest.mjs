@@ -60,7 +60,14 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
       return cached.token;
     })();
     if(scope)scopedRefreshes.set(scope,job);else refreshing=job;
-    try{return await job;}finally{if(scope)scopedRefreshes.delete(scope);else if(refreshing===job)refreshing=null;}
+    try{return await job;}
+    catch(error){
+      // Làm mới sớm thất bại không làm mất token cũ còn hiệu lực. Chỉ dùng
+      // trong hạn thật (chừa 5 giây); token đã bị Firebase từ chối bị xóa bên dưới.
+      if(cached&&cached.until>clock()+5000)return cached.token;
+      throw error;
+    }
+    finally{if(scope)scopedRefreshes.delete(scope);else if(refreshing===job)refreshing=null;}
   }
   async function request(path,method,headers={},body,query='') {
     try {
