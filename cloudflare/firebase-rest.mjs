@@ -1,7 +1,7 @@
 import {importPKCS8,SignJWT} from 'jose';
 import {DATABASE_URL,ROOT,requireValue} from '../firebase/functions/model.mjs';
 import {serviceAccountConfigured} from '../firebase/functions/health.mjs';
-import {tracePhase} from '../firebase/functions/request-trace.mjs';
+import {tracePhase,requestScope} from '../firebase/functions/request-trace.mjs';
 
 const TOKEN_URL='https://oauth2.googleapis.com/token';
 const SCOPES='https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email';
@@ -16,12 +16,16 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
   requireValue(serviceAccountConfigured(env),'Máy chủ chưa cấu hình FIREBASE_SERVICE_ACCOUNT cho Firebase.',503);
   const account=JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
   let cached,refreshing,key;
+  const scopedRefreshes=new WeakMap();
   const snapshot=value=>({val:()=>structuredClone(value)});
   // Dùng chung Promise khi nhiều request cùng cần token; không gửi private_key ra trình duyệt.
   async function accessToken() {
     if(cached&&cached.until>clock()+60000)return cached.token;
-    if(refreshing)return refreshing;
-    refreshing=(async()=>{
+    // Reuse finished token data globally, but never await another HTTP request's
+    // in-flight network work on Workers. Coalesce only within the same scope.
+    const scope=requestScope(),pending=scope?scopedRefreshes.get(scope):refreshing;
+    if(pending)return pending;
+    const job=(async()=>{
       const now=Math.floor(clock()/1000);
       key ||= await importPKCS8(account.private_key,'RS256');
       const assertion=await new SignJWT({scope:SCOPES})
@@ -37,7 +41,8 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
       cached={token:data.access_token,until:clock()+Math.min(Number(data.expires_in),3600)*1000};
       return cached.token;
     })();
-    try{return await refreshing;}finally{refreshing=null;}
+    if(scope)scopedRefreshes.set(scope,job);else refreshing=job;
+    try{return await job;}finally{if(scope)scopedRefreshes.delete(scope);else if(refreshing===job)refreshing=null;}
   }
   async function request(path,method,headers={},body,query='') {
     try {
@@ -55,6 +60,9 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
         return response;
       }
     } catch(error) {
+      const kind=String(error.message||'').includes('different request')?'cross_request_io':
+        ['AbortError','TimeoutError'].includes(error.name)?'timeout':error.name==='TypeError'?'network':'upstream';
+      console.warn('GVCN_FIREBASE_FAILURE',JSON.stringify({requestId:requestScope()?.id,kind,method,status:error.status||503}));
       if(error.status)throw error;
       throw Object.assign(new Error('Kết nối Firebase tạm thời gián đoạn. Dữ liệu chưa được xác nhận lưu; hãy thử đồng bộ lại.'),{status:503});
     }

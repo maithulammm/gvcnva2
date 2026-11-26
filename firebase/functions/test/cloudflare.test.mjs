@@ -5,6 +5,7 @@ import {createWorker} from '../../../cloudflare/worker.mjs';
 import {createFirebaseRestDatabase} from '../../../cloudflare/firebase-rest.mjs';
 import {createService} from '../service.mjs';
 import {ROOT,DATABASE_URL} from '../model.mjs';
+import {withRequestTrace,requestScope} from '../request-trace.mjs';
 
 const origin='https://gvcnva2.lammt.workers.dev';
 const pair=await generateKeyPair('RS256',{extractable:true});
@@ -12,6 +13,20 @@ const credentials={type:'service_account',project_id:'gvcn-3bdf9',client_email:'
 const configured={MICROSOFT_TENANT_ID:'22215a7f-b9e3-4b53-bd27-3a317311e6ca',
   MICROSOFT_CLIENT_ID:'94c476b3-4723-4161-9dea-d64ff8bf505c',GVCN_ALLOWED_ORIGINS:origin,
   FIREBASE_SERVICE_ACCOUNT:JSON.stringify(credentials)};
+
+test('concurrent HTTP scopes do not share an in-flight Google fetch but reuse completed token data',async()=>{
+  const fixture=restFixture(),owners=[];let release,entered;
+  const gate=new Promise(resolve=>{release=resolve;}),started=new Promise(resolve=>{entered=resolve;});
+  const db=createFirebaseRestDatabase(configured,{fetchImpl:async(url,options)=>{
+    if(url==='https://oauth2.googleapis.com/token'){owners.push(requestScope().id);entered();await gate;}
+    return fixture.fetch(url,options);
+  }});
+  const first=withRequestTrace('first',()=>db.ref(ROOT+'/calendar').get());await started;
+  const second=withRequestTrace('second',()=>db.ref(ROOT+'/calendar').get());
+  await new Promise(resolve=>setTimeout(resolve,50));release();await Promise.all([first,second]);
+  assert.deepEqual(owners.sort(),['first','second']);
+  await withRequestTrace('third',()=>db.ref(ROOT+'/calendar').get());assert.equal(owners.length,2);
+});
 
 test('D1 archive preserves live data, supports Admin restore and retains Firebase history on failure',async()=>{
   const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},fixture=restFixture();
