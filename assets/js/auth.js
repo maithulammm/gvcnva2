@@ -184,6 +184,16 @@ async function acquireMicrosoftIdToken(forceRefresh=false) {
   }
 }
 let microsoftApiRefresh=null;
+/** Abort only the waiting API operation; MSAL retains ownership of its shared renewal. */
+function awaitMicrosoftApiToken(promise,signal){
+  if(!signal)return promise;
+  return new Promise((resolve,reject)=>{
+    const abort=()=>{signal.removeEventListener('abort',abort);reject(Object.assign(Error('Request aborted'),{name:'AbortError',stage:'microsoft'}));};
+    if(signal.aborted){Promise.resolve(promise).catch(()=>{});abort();return;}
+    signal.addEventListener('abort',abort,{once:true});
+    Promise.resolve(promise).then(value=>{signal.removeEventListener('abort',abort);resolve(value);},error=>{signal.removeEventListener('abort',abort);reject(error);});
+  });
+}
 /** API có thể từ chối token trong cache: làm mới và thử lại đúng một lần, không đổi phiên/dữ liệu. */
 async function fetchMicrosoftApi(path,options={}){
   const client=auth.client,account=auth.account,epoch=cloud.epoch;
@@ -194,7 +204,7 @@ async function fetchMicrosoftApi(path,options={}){
     if(!current())throw Error('Phiên làm việc đã thay đổi.');
     return response;
   };
-  let response=await send(await acquireMicrosoftIdToken());
+  let response=await send(await awaitMicrosoftApiToken(acquireMicrosoftIdToken(),options.signal));
   if(response.status!==401)return response;
   await response.body?.cancel();
   if(!current())throw Error('Phiên làm việc đã thay đổi.');
@@ -203,7 +213,7 @@ async function fetchMicrosoftApi(path,options={}){
     job.promise=acquireMicrosoftIdToken(true).finally(()=>{if(microsoftApiRefresh===job)microsoftApiRefresh=null;});
     microsoftApiRefresh=job;
   }
-  return send(await microsoftApiRefresh.promise);
+  return send(await awaitMicrosoftApiToken(microsoftApiRefresh.promise,options.signal));
 }
 /**
  * Khôi phục đăng nhập bằng redirect khi silent renewal không đủ; mốc 60 giây tránh lặp chuyển

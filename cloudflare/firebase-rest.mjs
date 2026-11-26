@@ -1,6 +1,7 @@
 import {importPKCS8,SignJWT} from 'jose';
 import {DATABASE_URL,ROOT,requireValue} from '../firebase/functions/model.mjs';
 import {serviceAccountConfigured} from '../firebase/functions/health.mjs';
+import {tracePhase} from '../firebase/functions/request-trace.mjs';
 
 const TOKEN_URL='https://oauth2.googleapis.com/token';
 const SCOPES='https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email';
@@ -27,9 +28,9 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
         .setProtectedHeader({alg:'RS256',typ:'JWT'})
         .setIssuer(account.client_email).setAudience(TOKEN_URL)
         .setIssuedAt(now).setExpirationTime(now+3600).sign(key);
-      const response=await fetchImpl(TOKEN_URL,{method:'POST',
+      const response=await tracePhase('google',()=>fetchImpl(TOKEN_URL,{method:'POST',signal:AbortSignal.timeout(15000),
         headers:{'Content-Type':'application/x-www-form-urlencoded'},
-        body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion})});
+        body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion})}));
       requireValue(response.ok,'Không thể xác thực tài khoản dịch vụ Firebase. Kiểm tra Secret trên Cloudflare.',503);
       const data=await response.json();
       requireValue(typeof data.access_token==='string'&&data.access_token&&Number(data.expires_in)>60,'Google không cấp phiên kết nối Firebase hợp lệ.',503);
@@ -38,13 +39,13 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
     })();
     try{return await refreshing;}finally{refreshing=null;}
   }
-  async function request(path,method,headers={},body) {
+  async function request(path,method,headers={},body,query='') {
     try {
       for(let attempt=0;attempt<2;attempt++){
         const token=await accessToken();
-        const response=await fetchImpl(`${DATABASE_URL}/${path}.json`,{method,
+        const response=await tracePhase('firebase',()=>fetchImpl(`${DATABASE_URL}/${path}.json${query}`,{method,signal:AbortSignal.timeout(15000),
           headers:{Authorization:`Bearer ${token}`,...headers},
-          ...(body!==undefined?{body:JSON.stringify(body)}:{})});
+          ...(body!==undefined?{body:JSON.stringify(body)}:{})}));
         // Chỉ làm mới khi Firebase đã xác nhận từ chối xác thực, giữ nguyên ETag và nội dung gửi.
         if(response.status===401&&attempt===0){
           if(cached?.token===token)cached=null;
@@ -61,6 +62,7 @@ export function createFirebaseRestDatabase(env,{fetchImpl=fetch,clock=()=>Date.n
   return {scoped:true,ref(path) {
     requireValue(path===ROOT||path.startsWith(ROOT+'/')&&path.slice(ROOT.length+1).split('/').every(key=>/^[A-Za-z0-9_@%+-]+$/.test(key)),'Đường dẫn dữ liệu không hợp lệ.',500);
     return {
+      async keys(){const response=await request(path,'GET',{},undefined,'?shallow=true');return Object.keys(await response.json()||{});},
       async get(){const response=await request(path,'GET');return snapshot(await response.json());},
       async transaction(update) {
         for(let attempt=0;attempt<maxAttempts;attempt++) {

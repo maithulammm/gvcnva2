@@ -143,8 +143,10 @@ Tài liệu: [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/bu
    `supabase/migrations/0002_transactional_storage.sql` trong SQL Editor.
 3. QTV → Dữ liệu → Kiểm tra kết nối Supabase → Sao chép thử & đối chiếu.
    Bản sao thử chỉ ghi đè một bản thử có marker `staged`, không ghi đè database
-   bất kỳ và không sửa/xóa Firebase. So sánh hash toàn bộ dữ liệu đã chuẩn hóa,
-   kiểm tra nguồn có thay đổi trong lúc sao chép và trả số lớp/học sinh/tháng.
+   bất kỳ và không sửa/xóa Firebase. Mỗi request xử lý một lớp/nhánh, so hash
+   bản đọc với bản ghi Supabase, lưu session/checkpoint trong `_migration` để
+   tiếp tục nếu mất mạng. Tiến độ là số phần đã hoàn tất, không phải giờ giả lập.
+   Đây là đối chiếu từng phần, không phải snapshot toàn trường cùng thời điểm.
 4. ĐÂY CHƯA PHẢI CUTOVER. Trước khi chuyển chính thức phải có cơ chế chặn tất cả
    lượt ghi, chờ các request đang chạy kết thúc, sao chép cuối cùng và đối chiếu.
    Không tự đổi marker thành `verified` hoặc bật biến nguồn trong Dashboard.
@@ -156,6 +158,18 @@ giao dịch ngắn, so hash giá trị cũ trước khi ghi và chỉ UPDATE nh�
 đổi. Nghiệp vụ phân quyền, snapshot, ảnh và liên kết M01/M02 dùng service cũ.
 Các bảng/hàm không mở cho anon/authenticated. Secret key chỉ ở backend.
 Chưa có luồng realtime/presence mới: không tạo Firebase Auth hoặc đổi đăng nhập.
+
+### Chẩn đoán timeout
+
+- `X-Request-ID` nối mã trong thông báo trên trình duyệt với Workers Logs.
+  CORS cho phép header này; `Server-Timing` có auth/operation và thời gian I/O
+  Google/Firebase/Supabase. AsyncLocalStorage tách số liệu từng request đồng thời.
+- Chỉ log mã, phương thức, HTTP và thời gian khi lỗi hoặc trên 10 giây; không log
+  body, token, email hoặc nội dung học sinh. Thống kê D1 vẫn dùng route ẩn ID.
+- Lượt gọi Google/Firebase có hạn chờ 15 giây. Không lặp PUT khi mất mạng và chưa
+  biết kết quả. Chờ MSAL bị hủy theo hạn chờ API, không hủy phiên Microsoft chung.
+- Bản frontend/backend mới cần được phát hành cùng nhau vì thay đổi header và
+  giao thức chuyển thử; không bật nguồn Supabase khi chỉ mới chép thử từng phần.
 
 - Chạy migrations D1 trước khi deploy để có `gvcn_api_metrics`.
 - QTV → Dữ liệu → Thống kê API: số request theo route/phương thức/HTTP,

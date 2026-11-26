@@ -1,4 +1,5 @@
 import {requireValue} from './model.mjs';
+import {tracePhase} from './request-trace.mjs';
 
 /** Server-only REST connection. Never return headers, keys or upstream bodies. */
 export function createSupabaseConnection(env,{fetchImpl=fetch}={}){
@@ -11,8 +12,8 @@ export function createSupabaseConnection(env,{fetchImpl=fetch}={}){
   async function read(table,query){
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
     try{
-      const response=await fetchImpl(`${url.origin}/rest/v1/${table}?${query}`,{
-        headers:{apikey:key,...(key.startsWith('sb_secret_')?{}:{Authorization:`Bearer ${key}`})},signal:controller.signal});
+      const response=await tracePhase('supabase',()=>fetchImpl(`${url.origin}/rest/v1/${table}?${query}`,{
+        headers:{apikey:key,...(key.startsWith('sb_secret_')?{}:{Authorization:`Bearer ${key}`})},signal:controller.signal}));
       if(!response.ok){
         await response.body?.cancel();
         throw Object.assign(Error([401,403].includes(response.status)?'Supabase từ chối khóa hoặc quyền truy cập máy chủ.':'Không đọc được bảng Supabase. Kiểm tra migration và Data API.'),{status:503});
@@ -25,8 +26,8 @@ export function createSupabaseConnection(env,{fetchImpl=fetch}={}){
     requireValue(['gvcn_read','gvcn_cas'].includes(name),'RPC không hợp lệ.',500);
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),45000);
     try{
-      const response=await fetchImpl(`${url.origin}/rest/v1/rpc/${name}`,{method:'POST',signal:controller.signal,
-        headers:{apikey:key,'Content-Type':'application/json',...(key.startsWith('sb_secret_')?{}:{Authorization:`Bearer ${key}`})},body:JSON.stringify(body)});
+      const response=await tracePhase('supabase',()=>fetchImpl(`${url.origin}/rest/v1/rpc/${name}`,{method:'POST',signal:controller.signal,
+        headers:{apikey:key,'Content-Type':'application/json',...(key.startsWith('sb_secret_')?{}:{Authorization:`Bearer ${key}`})},body:JSON.stringify(body)}));
       if(!response.ok){await response.body?.cancel();throw Object.assign(Error('Supabase chưa sẵn sàng. Kiểm tra migration, quyền và Data API.'),{status:503});}
       return await response.json();
     }catch(error){if(error.status)throw error;throw Object.assign(Error('Kết nối Supabase gián đoạn; chưa xác nhận thao tác đã hoàn tất. Hãy kiểm tra lại dữ liệu.'),{status:503});}

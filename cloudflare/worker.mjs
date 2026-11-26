@@ -75,10 +75,10 @@ export function createWorker({createDatabase=createFirebaseRestDatabase}={}) {
       finally{reader.releaseLock();}
     }
     const result=await handle({method:request.method,path:path.slice(4)||'/',origin:request.headers.get('origin'),
-      authorization:request.headers.get('authorization'),rawBodyLength,body,bodyError,query:Object.fromEntries(new URL(request.url).searchParams)});
+      authorization:request.headers.get('authorization'),requestId:request.headers.get('x-request-id'),rawBodyLength,body,bodyError,query:Object.fromEntries(new URL(request.url).searchParams)});
     const headers=new Headers(result.headers);headers.set('Content-Type','application/json; charset=utf-8');
     const durationMs=Date.now()-started;
-    headers.set('Server-Timing',`api;dur=${durationMs}`);
+    headers.set('Server-Timing',`${headers.get('Server-Timing')||''}, api;dur=${durationMs}`);
     if(ctx&&env.GVCN_HISTORY)ctx.waitUntil(recordMetric(env.GVCN_HISTORY,{path,method:request.method,status:result.status,durationMs})
       .catch(()=>console.error('GVCN_METRICS_WRITE_FAILED')));
     return new Response(result.status===204?null:JSON.stringify(result.body),{status:result.status,headers});

@@ -941,6 +941,16 @@ test('missing or expired ID tokens are silently renewed and empty bearer tokens 
   await assert.rejects(f.run('databaseRequest("/bootstrap")'),e=>e.status===401);assert.equal(fetches,0);
 });
 
+test('API timeout can cancel waiting for a stalled Microsoft token without sending a request',async()=>{
+  const f=frontend();await f.login();let fetches=0;
+  f.ctx.fetch=async()=>{fetches++;return {status:200};};
+  const controller=new AbortController();f.ctx.testSignal=controller.signal;
+  f.run('auth.client.acquireTokenSilent=()=>new Promise(()=>{})');
+  const request=f.run(`fetchMicrosoftApi('/bootstrap',{signal:testSignal})`);
+  controller.abort();await assert.rejects(request,error=>error.name==='AbortError');
+  assert.equal(fetches,0);assert(f.run('!!auth.account'));
+});
+
 test('API 401 refreshes token once and retries identical save body; repeated 401 and 403 are not looped',async()=>{
   const f=frontend();await f.login();const tokens=[],calls=[];
   f.ctx.tokenCall=async options=>{tokens.push(options);return {idToken:options.forceRefresh?'FRESH':'CACHED'};};

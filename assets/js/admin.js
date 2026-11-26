@@ -170,7 +170,7 @@ function renderDatabase() {
   if (!hasAppRole("admin")) return "";
   return `<div class="section-head"><h2>Dữ liệu</h2></div>${renderStorageSettings()}
     <section class="card"><h2>Thống kê API · 24 giờ</h2>${btn('Tải thống kê','loadApiMetrics()')}<div id="apiMetricsPanel"></div></section>
-    <section class="card"><h2>Supabase</h2><div class="actions">${btn('Kiểm tra kết nối Supabase','checkSupabaseConnection()')}${btn('Sao chép thử & đối chiếu','stageSupabaseData()')}</div><p id="supabaseStatus" class="help">Chưa chuyển nguồn lưu chính sang Supabase.</p></section>
+    <section class="card"><h2>Supabase</h2><div class="actions">${btn('Kiểm tra kết nối Supabase','checkSupabaseConnection()')}<button type="button" class="btn" id="stageSupabaseButton" onclick="stageSupabaseData()">Sao chép thử & đối chiếu</button></div><div id="supabaseStatus" class="help">Chưa chuyển nguồn lưu chính sang Supabase.</div></section>
     <div class="cols2"><section class="card"><h2>Kết nối dữ liệu dùng chung</h2>
     <p class="help" style="overflow-wrap:anywhere">Database: ${esc(FIREBASE_DATABASE_URL)}</p>
     ${cloud.error?`<p class="help">${esc(cloud.error)}</p>`:!cloud.ready?'<p class="help">Chưa kết nối dữ liệu dùng chung.</p>':''}
@@ -202,13 +202,25 @@ async function stageSupabaseData(){
   if(!hasAppRole('admin')||!cloud.ready)return;
   if(cloud.pending.size||cloud.worker){await appAlert('Hãy hoàn tất lưu dữ liệu đang sửa trước khi chuyển thử.');return;}
   if(!await appConfirm('Sao chép dữ liệu Firebase sang bản thử Supabase và đối chiếu? Firebase vẫn là nguồn chính.'))return;
+  const button=$('stageSupabaseButton'),panel=$('supabaseStatus');if(button?.disabled)return;
+  if(button)button.disabled=true;
+  const release=beginPageLoading('Đang sao chép thử sang Supabase…');let completed=false;
   try{
     const status=await databaseRequest('/supabase/status');
     if(!status.storageReady)throw Error('Cần chạy migration 0002_transactional_storage.sql trên Supabase trước.');
-    const result=await databaseRequest('/supabase/stage','POST',{});
-    const panel=$('supabaseStatus');if(panel)panel.textContent=`Đối chiếu thành công: ${result.classes} lớp, ${result.students} học sinh, ${result.months} tháng/lớp. `+
-      (result.sourceUnchanged?'Nguồn Firebase không thay đổi trong lúc sao chép.':'Có lượt nhập mới tại Firebase; cần sao chép lại trong bước chuyển chính thức.')+' Chưa bật nguồn Supabase.';
-  }catch(error){await appAlert(error.message);}
+    let result=await databaseRequest('/supabase/stage','POST',{operation:'begin'});
+    if(result.done&&await appConfirm('Bản sao thử trước đã hoàn tất. Tạo bản sao thử mới từ dữ liệu Firebase hiện tại?'))
+      result=await databaseRequest('/supabase/stage','POST',{operation:'begin',restart:true});
+    while(!result.done){
+      if(panel)panel.textContent=`Đang sao chép và kiểm tra ${result.next}/${result.total} phần (${Math.floor(result.next*100/result.total)}%). Có thể tiếp tục nếu gián đoạn.`;
+      const next=databaseRequest('/supabase/stage','POST',{operation:'step',session:result.session});
+      $('requestLoadingText').textContent=`Đang sao chép ${result.next}/${result.total} phần (${Math.floor(result.next*100/result.total)}%)…`;
+      result=await next;
+    }
+    completed=true;
+    if(panel)panel.textContent=`Đã đối chiếu từng phần: ${result.classes} lớp, ${result.students} học sinh, ${result.months} tháng/lớp (100%). Đây chưa phải bản chốt cùng một thời điểm; Firebase vẫn là nguồn chính.`;
+  }catch(error){if(panel)panel.textContent=error.message+' Bấm Sao chép thử & đối chiếu để tiếp tục từ phần đã lưu.';await appAlert(error.message);}
+  finally{release(completed);if(button)button.disabled=false;}
 }
 
 function openClassStudents(id) {

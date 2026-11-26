@@ -5,7 +5,7 @@ import {PGlite} from '@electric-sql/pglite';
 import {createSupabaseDatabase} from '../../../cloudflare/supabase-database.mjs';
 import {createService} from '../service.mjs';
 import {ROOT,YEAR} from '../model.mjs';
-import {stageSupabase} from '../supabase-migration.mjs';
+import {stageSupabase,stageSupabaseStep} from '../supabase-migration.mjs';
 import {memoryDatabase} from './helpers.mjs';
 
 test('Postgres storage preserves service permissions, class/month data, CAS and unchanged month rows',async()=>{
@@ -46,5 +46,18 @@ test('Postgres storage preserves service permissions, class/month data, CAS and 
     assert.equal(JSON.stringify(source.state()),sourceBefore);
     assert.equal((await db.ref(ROOT+'/_migration').get()).val().state,'staged');
     await assert.rejects(guarded.ref(ROOT).get(),{status:503});
+    const raw=source.state(),reads=[];
+    const branchSource={ref(path){const value=()=>path===ROOT?raw:path.slice(ROOT.length+1).split('/').reduce((v,k)=>v?.[k],raw);return {
+      async keys(){return Object.keys(value()||{});},async get(){assert.notEqual(path,ROOT);reads.push(path);return {val:()=>structuredClone(value())};}
+    };}};
+    let job=await stageSupabaseStep(branchSource,db,{operation:'begin'});
+    const session=job.session;
+    job=await stageSupabaseStep(branchSource,db,{operation:'step',session});
+    job=await stageSupabaseStep(branchSource,db,{operation:'step',session});
+    const resumed=await stageSupabaseStep(branchSource,db,{operation:'begin'});
+    assert.equal(resumed.session,session);assert.equal(resumed.next,2);
+    while(!job.done)job=await stageSupabaseStep(branchSource,db,{operation:'step',session});
+    assert.equal(job.classes,32);assert.equal(job.atomicSnapshot,false);assert.equal(job.next,job.total);
+    assert.equal(reads.length,job.total);
   }finally{await sql.close();}
 });

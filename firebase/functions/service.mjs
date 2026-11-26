@@ -565,7 +565,8 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       if(db.scoped){
         const user=await read('users/'+emailKey(identity.email));
         if(user?.oid===identity.oid){
-          const s=await context(identity),u=assignmentFor(s,identity),all=scopeFor(u);
+          // The bound user was already read immediately above; do not fetch it twice.
+          const s=normalizeSchool({users:{[emailKey(identity.email)]:user},calendar:await read('calendar')}),u=assignmentFor(s,identity),all=scopeFor(u);
           const ids=options.ids|| (options.paged?all.slice(0,8):all);
           requireValue(Array.isArray(ids)&&ids.length<=32&&ids.every(id=>all.includes(id)),'Phạm vi lớp không hợp lệ.',403);
           if(hasRole(u,'admin')&&!options.ids)[s.users,s.teachers]=await Promise.all([read('users'),read('teachers')]);

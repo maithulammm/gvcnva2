@@ -2,11 +2,12 @@ import {createIdentityVerifier} from './identity.mjs';
 import {createService} from './service.mjs';
 import {deploymentStatus} from './health.mjs';
 import {DATABASE_URL,requireValue} from './model.mjs';
-import {createHash} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
 import {createEvidenceStore} from './evidence-store.mjs';
 import {createEvidenceOAuth} from './evidence-oauth.mjs';
 import {createSupabaseConnection} from './supabase.mjs';
-import {stageSupabase} from './supabase-migration.mjs';
+import {stageSupabaseStep} from './supabase-migration.mjs';
+import {withRequestTrace,requestPhases} from './request-trace.mjs';
 
 const MAX_BODY_BYTES=5*1024*1024;
 /**
@@ -21,15 +22,25 @@ export function createApiHandler({getDatabase,getMigrationSource,getMigrationTar
   const getService=()=>service ||= createService(getDatabase(),{adminEmail:(env.GVCN_ADMIN_EMAIL||'lammt@vietanhschool.edu.vn').toLowerCase().trim(),historyStore:getHistoryStore(),revisionCache:getRevisionCache()});
   const oauth=()=>evidenceOAuth ||= createEvidenceOAuth(env,getService());
   const storage=()=>evidenceStore ||= createEvidenceStore(env,{loadConnection:()=>oauth().load(),saveConnection:connection=>oauth().save(connection)});
-  return async function handle({method,path,origin,authorization,rawBodyLength=0,body={},bodyError,query={}}) {
+  return async function handle({method,path,origin,authorization,rawBodyLength=0,body={},bodyError,query={},requestId}) {
+    requestId=/^[A-Za-z0-9-]{8,80}$/.test(requestId||'')?requestId:randomUUID();
+    return withRequestTrace(requestId,async()=>{
+    const started=Date.now();let authMs=0,operationStarted=started;
     const headers={'Cache-Control':'no-store',Vary:'Origin','X-Content-Type-Options':'nosniff'};
-    const respond=(status,result)=>({status,headers,body:result});
+    const respond=(status,result)=>{
+      headers['X-Request-ID']=requestId;
+      const phases=requestPhases();
+      headers['Server-Timing']=`auth;dur=${authMs}, operation;dur=${Date.now()-operationStarted}`+Object.entries(phases).map(([name,ms])=>`, ${name};dur=${ms}`).join('');
+      if(status>=400||Date.now()-started>=10000)console.info('GVCN_REQUEST',JSON.stringify({requestId,method,status,authMs,phases,totalMs:Date.now()-started}));
+      return {status,headers,body:status>=400?{...result,requestId}:result};
+    };
     try {
       const origins=String(env.GVCN_ALLOWED_ORIGINS||'').split(',').map(x=>x.trim()).filter(Boolean);
       requireValue(!origin || origins.includes(origin),'Địa chỉ website chưa được khai báo trong GVCN_ALLOWED_ORIGINS.',403);
       if(origin) headers['Access-Control-Allow-Origin']=origin;
       headers['Access-Control-Allow-Methods']='GET,POST,PUT,DELETE,OPTIONS';
-      headers['Access-Control-Allow-Headers']='Authorization,Content-Type';
+      headers['Access-Control-Allow-Headers']='Authorization,Content-Type,X-Request-ID';
+      headers['Access-Control-Expose-Headers']='X-Request-ID,Server-Timing';
       if(method==='OPTIONS') return respond(204,null);
       const route=String(path||'/').replace(/\/$/,'')||'/';
       if(method==='GET'&&route==='/maintenance')return respond(200,maintenance?await maintenance.read():{enabled:false,message:'',revision:0});
@@ -48,7 +59,8 @@ export function createApiHandler({getDatabase,getMigrationSource,getMigrationTar
       const token=/^Bearer ([^\s]+)$/.exec(authorization||'')?.[1];
       requireValue(token&&token.length<20000,'Thiếu phiên đăng nhập Microsoft.',401);
       verifyIdentity ||= createIdentityVerifier({tenantId:env.MICROSOFT_TENANT_ID,clientId:env.MICROSOFT_CLIENT_ID});
-      const identity=await verifyIdentity(token);
+      const authStarted=Date.now();let identity;
+      try{identity=await verifyIdentity(token);}finally{authMs=Date.now()-authStarted;operationStarted=Date.now();}
       requireValue(rawBodyLength<=MAX_BODY_BYTES,'Dữ liệu gửi lên vượt giới hạn 5 MB.',413);
       getService();
       if(maintenance){
@@ -67,7 +79,7 @@ export function createApiHandler({getDatabase,getMigrationSource,getMigrationTar
       else if(method==='POST'&&route==='/supabase/stage'){
         await service.integrationAdmin(identity);
         requireValue(env.GVCN_DATA_SOURCE!=='supabase'&&getMigrationSource&&getMigrationTarget,'Không cho chuyển thử khi Supabase đã là nguồn chính.',409);
-        result=await stageSupabase(getMigrationSource(),getMigrationTarget());
+        result=await stageSupabaseStep(getMigrationSource(),getMigrationTarget(),body);
       }
       else if(method==='GET'&&route==='/supabase/status'){
         await service.integrationAdmin(identity);
@@ -121,6 +133,7 @@ export function createApiHandler({getDatabase,getMigrationSource,getMigrationTar
       if(status===500) console.error('GVCN_API_ERROR',error.code||error.name);
       return respond(status,{error:status===500?(String(path).startsWith('/evidence/')?'Không thể xử lý ảnh minh chứng. Vui lòng thử lại.':'Không thể xử lý dữ liệu Firebase. Vui lòng thử lại.'):error.message});
     }
+    });
   };
 }
 

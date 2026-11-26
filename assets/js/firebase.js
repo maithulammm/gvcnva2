@@ -141,10 +141,12 @@ async function performDatabaseRequest(path, method = "GET", body, attempt=0) {
   if (epoch !== cloud.epoch) throw Error("Phiên làm việc đã thay đổi.");
   const controller = new AbortController(),
     timeout = setTimeout(() => controller.abort(), 45000);
+  const requestId=globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
   try {
     const response = await fetchMicrosoftApi(path, {
       method,
       headers: {
+        'X-Request-ID':requestId,
         ...(body ? { "Content-Type": "application/json" } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
@@ -159,7 +161,7 @@ async function performDatabaseRequest(path, method = "GET", body, attempt=0) {
     if (!response.ok)
       throw Object.assign(
         new Error(
-          data.error ||
+          (data.error?data.error+(data.code==='MAINTENANCE'?'':' [Mã: '+(data.requestId||requestId)+']'):null) ||
             "API Firebase chưa sẵn sàng (HTTP " + response.status + ").",
         ),
         { status: response.status,code:data.code },
@@ -172,7 +174,7 @@ async function performDatabaseRequest(path, method = "GET", body, attempt=0) {
       return performDatabaseRequest(path,method,body,attempt+1);
     if (error.name === "AbortError")
       throw Error(
-        "Kết nối Firebase quá thời gian chờ. Bản đang sửa vẫn được giữ trên trình duyệt.",
+        (error.stage==='microsoft'?'Chờ xác thực Microsoft quá thời gian cho phép.':'Yêu cầu API quá thời gian chờ.')+" Bản đang sửa vẫn được giữ trên trình duyệt. [Mã: "+requestId+"]",
       );
     if (error instanceof TypeError)
       throw Error(
