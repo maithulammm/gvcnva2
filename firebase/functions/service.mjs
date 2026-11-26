@@ -578,7 +578,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
             const after=await read('classes/'+id+'/revision')||0;
             requireValue(after===revision,'Lớp đang được cập nhật. Vui lòng tải lại dữ liệu.',409);
             const candidate=normalizeClass(id,data),check=backfillNovemberMeetings(structuredClone(candidate));
-            if((hasRole(u,'admin')||hasRole(u,'gvcn')&&u.classId===id)&&(check.added||check.linked)){
+            if(!options.readOnly&&(hasRole(u,'admin')||hasRole(u,'gvcn')&&u.classId===id)&&(check.added||check.linked)){
               const repaired=await repairNovember(identity,id);s.classes[id]=repaired.classes[id];
             }else s.classes[id]={data,revision};
           }));
@@ -598,7 +598,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       if(stored?.oid===identity.oid && current.bootstrapAdminOid &&
         (!hasRole(stored,'admin') || CLASSES.every(id=>current.classes[id]))) {
         const u=assignmentFor(current,identity);
-        for(const id of scopeFor(u))if(hasRole(u,'admin')||hasRole(u,'gvcn')&&u.classId===id){
+        for(const id of scopeFor(u))if(!options.readOnly&&(hasRole(u,'admin')||hasRole(u,'gvcn')&&u.classId===id)){
           const check=backfillNovemberMeetings(structuredClone(entry(current,id).data));
           if(check.added||check.linked){const repaired=await repairNovember(identity,id);current.classes[id]=repaired.classes[id];}
         }

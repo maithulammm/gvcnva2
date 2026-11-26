@@ -6,6 +6,7 @@ import {createSupabaseDatabase} from '../../../cloudflare/supabase-database.mjs'
 import {createService} from '../service.mjs';
 import {ROOT,YEAR} from '../model.mjs';
 import {stageSupabase,stageSupabaseStep} from '../supabase-migration.mjs';
+import {finalSupabaseStep} from '../storage-cutover.mjs';
 import {memoryDatabase} from './helpers.mjs';
 
 test('Postgres storage preserves service permissions, class/month data, CAS and unchanged month rows',async()=>{
@@ -59,5 +60,14 @@ test('Postgres storage preserves service permissions, class/month data, CAS and 
     while(!job.done)job=await stageSupabaseStep(branchSource,db,{operation:'step',session});
     assert.equal(job.classes,32);assert.equal(job.atomicSnapshot,false);assert.equal(job.next,job.total);
     assert.equal(reads.length,job.total);
+    // Exercise the final protocol against the real Postgres RPC storage, not
+    // only an in-memory target, before allowing its readiness marker.
+    const frozen={source:'firebase',frozen:true,epoch:1,active:0};
+    const control={async read(){return {...frozen};},async assertFrozen(epoch){assert.equal(epoch,frozen.epoch);assert(frozen.frozen);},async activate(){Object.assign(frozen,{source:'supabase',frozen:false});return {...frozen};}};
+    job=await finalSupabaseStep(branchSource,db,control,{operation:'begin'});
+    while(!job.verified)job=await finalSupabaseStep(branchSource,db,control,{operation:'advance',session:job.session});
+    assert.equal(job.classes,32);assert((await guarded.ref(ROOT).get()).val().classes['8C3']);
+    assert((await finalSupabaseStep(branchSource,db,control,{operation:'activate',session:job.session})).activated);
+    assert.equal(JSON.stringify(source.state()),sourceBefore);
   }finally{await sql.close();}
 });

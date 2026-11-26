@@ -147,11 +147,40 @@ Tài liệu: [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/bu
    bản đọc với bản ghi Supabase, lưu session/checkpoint trong `_migration` để
    tiếp tục nếu mất mạng. Tiến độ là số phần đã hoàn tất, không phải giờ giả lập.
    Đây là đối chiếu từng phần, không phải snapshot toàn trường cùng thời điểm.
-4. ĐÂY CHƯA PHẢI CUTOVER. Trước khi chuyển chính thức phải có cơ chế chặn tất cả
-   lượt ghi, chờ các request đang chạy kết thúc, sao chép cuối cùng và đối chiếu.
-   Không tự đổi marker thành `verified` hoặc bật biến nguồn trong Dashboard.
+4. Chuyển thử không phải bản chốt. Quy trình chính thức ở mục dưới; không tự đổi
+   marker thành `verified` hoặc bật biến nguồn trong Dashboard.
 5. Adapter nguồn Supabase chỉ chạy khi marker đã `verified`; nếu chưa có marker,
    báo 503 thay vì khởi tạo trường trống hoặc tự quay lại Firebase đã cũ.
+
+### Chốt và kích hoạt Supabase
+
+- Áp dụng D1 `0005_storage_cutover.sql` **trước** khi deploy Worker này. Migration
+  chỉ thêm bảng điều khiển/lease, không đổi dữ liệu Firebase hoặc nguồn đang dùng.
+  D1 `gvcn_storage_control.source` là nguồn chính thức cho mọi request/cron;
+  không dùng biến Dashboard để lật nguồn qua lại.
+- Bật bảo trì, ngừng thao tác QTV, xuất JSON trực tiếp từ Firebase. Khi triển khai
+  khóa lần đầu phải để các request/cron của phiên bản cũ hoàn tất; lease chỉ theo
+  dõi request qua phiên bản có khóa. Không đồng thời chỉnh Firebase Console hoặc
+  cho API cũ/ứng dụng khác ghi vào nhánh năm học trong lúc chốt.
+- QTV → Dữ liệu → Supabase → **Chuyển nguồn chính thức · QTV**. Xác nhận đã sao
+  lưu, bấm **Chốt & đối chiếu lần cuối**. Admission SQL chặn ghi mới trên toàn
+  Worker, kể cả QTV/refresh OAuth/bootstrap sửa lịch. Cron mới bỏ qua khi khóa.
+  Lease của lượt đã vào phải được trả xong trước khi tiến hành.
+- Bản chốt chạy từng nhánh, rồi chạy **lượt đọc đối chiếu thứ hai** giữa nguồn và
+  đích. Đối chiếu SHA-256 và tập khóa gốc/lớp, từ chối nhánh dư. Chỉ marker cùng
+  epoch khóa đã hoàn tất toàn bộ mới được ghi `verified`. Mất mạng thì bấm lại
+  để tiếp tục; không sửa thủ công marker hay xóa lease.
+- Bấm **Kích hoạt Supabase** sau 100%. D1 CAS đổi nguồn một lần, đồng thời gỡ khóa
+  ghi; **bảo trì vẫn bật**. API/cron mới chọn Supabase; API cũ giữ adapter Firebase
+  sẽ bị chặn ghi bởi kiểm tra nguồn tại D1. QTV tải mới dữ liệu, kiểm tra M01–05,
+  ảnh OneDrive và một lượt lưu hợp lệ trước khi tắt bảo trì.
+- **Hủy khóa chốt** chỉ có hiệu lực khi còn dùng Firebase và không có lượt đang
+  chạy. Hủy rồi khóa lại tạo epoch mới, vô hiệu toàn bộ kết quả đối chiếu cũ.
+  Lease không tự hết hạn: nếu số đang chạy không về 0, kiểm tra log trước khi
+  xử lý; không xóa lease để ép kích hoạt.
+- Sau khi Supabase nhận lượt ghi mới, Firebase là bản dự phòng cũ. **Không tự
+  lật về Firebase**; muốn quay lại phải bảo trì và đồng bộ/đối chiếu ngược trước.
+  Lịch sử D1 và ảnh OneDrive giữ nguyên kho lưu, không phải di chuyển lại.
 
 Các bảng `gvcn_classes`, `gvcn_class_months` tách lớp/tháng. Postgres CAS khóa
 giao dịch ngắn, so hash giá trị cũ trước khi ghi và chỉ UPDATE những tháng thay

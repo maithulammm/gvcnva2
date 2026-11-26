@@ -10,6 +10,7 @@ import {recordMetric,readMetrics} from './metrics.mjs';
 import {createRevisionCache} from './revision-cache.mjs';
 import {createSupabaseDatabase} from './supabase-database.mjs';
 import {createMaintenance} from './maintenance.mjs';
+import {createStorageControl,guardDatabase} from './storage-control.mjs';
 /**
  * Tách tài nguyên giao diện và /api; chuyển Request của Workers sang handler dùng chung, còn
  * scheduled chạy sao lưu định kỳ.
@@ -23,13 +24,20 @@ export function createWorker({createDatabase=createFirebaseRestDatabase}={}) {
     if(!source){source=createDatabase(env);sources.set(env,source);}
     return source;
   };
-  const database=env=>env.GVCN_DATA_SOURCE==='supabase'?createSupabaseDatabase(env):firebase(env);
   return {async scheduled(event,env,ctx) {
     ctx.waitUntil((async()=>{
+      const cutover=createStorageControl(env.GVCN_HISTORY),state=await cutover?.read();
+      if(state?.frozen)return;
+      let leave;
+      try{if(cutover)leave=await cutover.enter(state.source);}catch(error){
+        if((await cutover.read()).frozen)return;throw error;
+      }
+      try{
       const historyStore=createD1History(env.GVCN_HISTORY);
       // Cron có vòng đời I/O riêng; không dùng adapter có Promise đang chạy
       // ngoài request scope của API.
-      const service=createService(env.GVCN_DATA_SOURCE==='supabase'?createSupabaseDatabase(env):createDatabase(env),{historyStore});
+      const source=state?.source||env.GVCN_DATA_SOURCE||'firebase';
+      const service=createService(guardDatabase(source==='supabase'?createSupabaseDatabase(env):createDatabase(env),cutover,source),{historyStore});
       if(historyStore&&env.GVCN_D1_ARCHIVE_ENABLED==='true'){
         // Four classes/hour bounds the Firebase work; all 32 classes rotate in 8h.
         const start=(Math.floor((event.scheduledTime||Date.now())/3600000)%8)*4;
@@ -47,6 +55,7 @@ export function createWorker({createDatabase=createFirebaseRestDatabase}={}) {
       const [id]=await service.pendingEvidenceClasses(CLASSES.slice(offset,offset+16));if(!id)return;
       const oauth=createEvidenceOAuth(env,service),store=createEvidenceStore(env,{loadConnection:()=>oauth.load(),saveConnection:value=>oauth.save(value)});
       await service.cleanupEvidence(null,id,(item,scope)=>store.remove(item,scope),{limit:1});
+      }finally{if(leave)await leave();}
     })());
   },async fetch(request,env,ctx) {
     const started=Date.now();
@@ -58,10 +67,14 @@ export function createWorker({createDatabase=createFirebaseRestDatabase}={}) {
       }
       return env.ASSETS.fetch(request);
     }
-    let handle=handlers.get(env);
+    const cutover=createStorageControl(env.GVCN_HISTORY),state=await cutover?.read();
+    const source=state?.source||env.GVCN_DATA_SOURCE||'firebase';
+    let bySource=handlers.get(env);if(!bySource){bySource=new Map();handlers.set(env,bySource);}
+    let handle=bySource.get(source);
     if(!handle) {
-      handle=createApiHandler({env,maintenance:createMaintenance(env.GVCN_HISTORY),getDatabase:()=>database(env),getMigrationSource:()=>firebase(env),getMigrationTarget:()=>createSupabaseDatabase(env,{requireVerified:false}),getHistoryStore:()=>createD1History(env.GVCN_HISTORY),getRevisionCache:()=>createRevisionCache(env.GVCN_HISTORY),getMetrics:()=>readMetrics(env.GVCN_HISTORY),databaseConfigured:()=>env.GVCN_DATA_SOURCE==='supabase'?!!(env.SUPABASE_URL&&env.SUPABASE_SECRET_KEY):serviceAccountConfigured(env)});
-      handlers.set(env,handle);
+      const effectiveEnv={...env,GVCN_DATA_SOURCE:source};
+      handle=createApiHandler({env:effectiveEnv,cutover,maintenance:createMaintenance(env.GVCN_HISTORY),getDatabase:()=>guardDatabase(source==='supabase'?createSupabaseDatabase(env):firebase(env),cutover,source),getMigrationSource:()=>firebase(env),getMigrationTarget:()=>createSupabaseDatabase(env,{requireVerified:false}),getHistoryStore:()=>createD1History(env.GVCN_HISTORY),getRevisionCache:()=>createRevisionCache(env.GVCN_HISTORY),getMetrics:()=>readMetrics(env.GVCN_HISTORY),databaseConfigured:()=>source==='supabase'?!!(env.SUPABASE_URL&&env.SUPABASE_SECRET_KEY):serviceAccountConfigured(env)});
+      bySource.set(source,handle);
     }
     let body={},bodyError,rawBodyLength=0;
     if(request.body) {

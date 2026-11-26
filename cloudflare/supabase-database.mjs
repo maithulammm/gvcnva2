@@ -5,7 +5,7 @@ import {createSupabaseConnection} from '../firebase/functions/supabase.mjs';
  * Retry only explicit CAS conflicts, never an uncertain network write.
  */
 export function createSupabaseDatabase(env,{connection=createSupabaseConnection(env),maxAttempts=8,requireVerified=true}={}){
-  let readiness;
+  let verified=false;
   const snapshot=value=>({val:()=>structuredClone(value)});
   const read=async p=>{
     const result=await connection.rpc('gvcn_read',{y:YEAR,p});
@@ -13,8 +13,11 @@ export function createSupabaseDatabase(env,{connection=createSupabaseConnection(
   };
   const ready=()=>{
     if(!requireVerified)return Promise.resolve();
-    readiness ||= read(['_migration']).then(result=>requireValue(result.value?.state==='verified','Chưa đối chiếu dữ liệu Supabase; không bật nguồn dữ liệu mới.',503)).catch(error=>{readiness=null;throw error;});
-    return readiness;
+    if(verified)return Promise.resolve();
+    // Chỉ cache kết quả đã hoàn tất, không chia sẻ Promise fetch giữa request.
+    return read(['_migration']).then(result=>{
+      requireValue(result.value?.state==='verified','Chưa đối chiếu dữ liệu Supabase; không bật nguồn dữ liệu mới.',503);verified=true;
+    });
   };
   return {scoped:true,ref(path){
     requireValue(path===ROOT||path.startsWith(ROOT+'/'),'Đường dẫn không hợp lệ.',500);

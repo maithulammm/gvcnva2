@@ -170,7 +170,12 @@ function renderDatabase() {
   if (!hasAppRole("admin")) return "";
   return `<div class="section-head"><h2>Dữ liệu</h2></div>${renderStorageSettings()}
     <section class="card"><h2>Thống kê API · 24 giờ</h2>${btn('Tải thống kê','loadApiMetrics()')}<div id="apiMetricsPanel"></div></section>
-    <section class="card"><h2>Supabase</h2><div class="actions">${btn('Kiểm tra kết nối Supabase','checkSupabaseConnection()')}<button type="button" class="btn" id="stageSupabaseButton" onclick="stageSupabaseData()">Sao chép thử & đối chiếu</button></div><div id="supabaseStatus" class="help">Chưa chuyển nguồn lưu chính sang Supabase.</div></section>
+    <section class="card"><h2>Supabase</h2><div class="actions">${btn('Kiểm tra kết nối Supabase','checkSupabaseConnection()')}<button type="button" class="btn" id="stageSupabaseButton" onclick="stageSupabaseData()">Sao chép thử & đối chiếu</button></div><div id="supabaseStatus" class="help">Chưa chuyển nguồn lưu chính sang Supabase.</div>
+    <details class="marg-top"><summary>Chuyển nguồn chính thức · QTV</summary>
+    <p class="help">Giữ bảo trì bật. Chốt sẽ khóa cả QTV và tác vụ nền, đợi lượt ghi đang chạy rồi sao chép và đối chiếu lại. Firebase được giữ nguyên. Chỉ kích hoạt sau khi đối chiếu đạt.</p>
+    <label><input type="checkbox" id="cutoverBackupConfirmed"> Tôi đã xuất bản sao lưu đầy đủ từ Firebase và giữ file trên máy.</label>
+    <div class="actions marg-top">${btn('Chốt & đối chiếu lần cuối','finalizeSupabaseData()')}${btn('Kích hoạt Supabase','activateSupabaseData()','primary')}${btn('Kiểm tra nguồn hiện tại','checkCutoverStatus()')}${btn('Hủy khóa chốt','cancelSupabaseCutover()')}</div>
+    <div id="cutoverStatus" class="help" role="status"></div></details></section>
     <div class="cols2"><section class="card"><h2>Kết nối dữ liệu dùng chung</h2>
     <p class="help" style="overflow-wrap:anywhere">Database: ${esc(FIREBASE_DATABASE_URL)}</p>
     ${cloud.error?`<p class="help">${esc(cloud.error)}</p>`:!cloud.ready?'<p class="help">Chưa kết nối dữ liệu dùng chung.</p>':''}
@@ -221,6 +226,65 @@ async function stageSupabaseData(){
     if(panel)panel.textContent=`Đã đối chiếu từng phần: ${result.classes} lớp, ${result.students} học sinh, ${result.months} tháng/lớp (100%). Đây chưa phải bản chốt cùng một thời điểm; Firebase vẫn là nguồn chính.`;
   }catch(error){if(panel)panel.textContent=error.message+' Bấm Sao chép thử & đối chiếu để tiếp tục từ phần đã lưu.';await appAlert(error.message);}
   finally{release(completed);if(button)button.disabled=false;}
+}
+
+// Chốt là hai lượt thật: sao chép từng nhánh, sau đó đọc lại nguồn/đích để so
+// khớp. Khi mạng gián đoạn, checkpoint trên máy chủ cho phép tiếp tục an toàn.
+let cutoverBusy=false;
+async function checkCutoverStatus(){
+  if(!actualMaintenanceAdmin()||!cloud.ready)return;
+  try{
+    const state=await databaseRequest('/supabase/cutover');
+    if($('cutoverStatus'))$('cutoverStatus').textContent=`Nguồn chính: ${state.source==='supabase'?'Supabase':'Firebase'}. ${state.frozen?'Đang khóa ghi để chốt.':'Không khóa chốt.'} ${state.active} lượt đang chạy.`;
+    return state;
+  }catch(error){if($('cutoverStatus'))$('cutoverStatus').textContent=error.message;}
+}
+async function finalizeSupabaseData(){
+  if(!actualMaintenanceAdmin()||!cloud.ready||cutoverBusy)return;
+  if(!$('cutoverBackupConfirmed')?.checked){await appAlert('Hãy xác nhận đã xuất bản sao lưu đầy đủ từ Firebase.');return;}
+  if(cloud.pending.size||cloud.worker){await appAlert('Hãy hoàn tất lưu hoặc xuất phần đang chờ trước khi chốt.');return;}
+  if(!await appConfirm('Khóa ghi cho cả QTV, chờ lượt đang chạy và chốt bản sao cuối cùng? Cần giữ bảo trì bật.'))return;
+  cutoverBusy=true;const release=beginPageLoading('Đang khóa ghi và chờ lượt đang chạy…');let completed=false;
+  try{
+    let state=await databaseRequest('/supabase/cutover','POST',{operation:'freeze'});
+    for(let n=0;state.active&&n<20;n++){
+      release.update(0,`Đang đợi ${state.active} lượt hoàn tất…`);
+      await new Promise(resolve=>setTimeout(resolve,1000));state=await databaseRequest('/supabase/cutover');
+    }
+    if(state.active)throw Error('Vẫn còn lượt đang chạy. Khóa được giữ nguyên; bấm Chốt & đối chiếu lần cuối để tiếp tục.');
+    let result=await databaseRequest('/supabase/cutover','POST',{operation:'begin'});
+    while(!result.verified){
+      const percent=Math.floor((result.next+result.verifyNext)*100/(2*result.total));
+      release.update(percent,`${result.phase==='verify'?'Đang đối chiếu lại nguồn và đích':'Đang sao chép bản chốt'} · ${percent}%…`);
+      result=await databaseRequest('/supabase/cutover','POST',{operation:'advance',session:result.session});
+    }
+    completed=true;
+    if($('cutoverStatus'))$('cutoverStatus').textContent=`Đối chiếu cuối đạt 100%: ${result.classes} lớp, ${result.students} học sinh, ${result.months} tháng/lớp. Ghi vẫn đang khóa. Có thể bấm Kích hoạt Supabase.`;
+  }catch(error){if($('cutoverStatus'))$('cutoverStatus').textContent=error.message;await appAlert(error.message);}
+  finally{release(completed);cutoverBusy=false;}
+}
+async function activateSupabaseData(){
+  if(!actualMaintenanceAdmin()||!cloud.ready||cutoverBusy)return;
+  if(!await appConfirm('Chuyển nguồn chính sang Supabase sau đối chiếu cuối? Bảo trì vẫn được giữ bật để QTV kiểm tra.'))return;
+  cutoverBusy=true;const release=beginPageLoading('Đang kích hoạt Supabase…');let completed=false;
+  try{
+    const state=await databaseRequest('/supabase/cutover');
+    if(state.source!=='supabase'){
+      if(!state.frozen)throw Error('Hãy chốt và đối chiếu lần cuối trước.');
+      const result=await databaseRequest('/supabase/cutover','POST',{operation:'begin'});
+      if(!result.verified)throw Error('Chưa đối chiếu cuối đạt 100%. Bấm Chốt & đối chiếu lần cuối để tiếp tục.');
+      await databaseRequest('/supabase/cutover','POST',{operation:'activate',session:result.session});
+    }
+    completed=true;
+    if($('cutoverStatus'))$('cutoverStatus').textContent='Nguồn chính đã là Supabase. Giữ bảo trì bật, tải lại dữ liệu và kiểm tra các mẫu/ảnh bằng QTV trước khi tắt bảo trì.';
+  }catch(error){await appAlert(error.message);}
+  finally{release(completed);cutoverBusy=false;}
+}
+async function cancelSupabaseCutover(){
+  if(!actualMaintenanceAdmin()||!cloud.ready||cutoverBusy)return;
+  if(!await appConfirm('Hủy khóa chốt và tiếp tục dùng Firebase? Bảo trì vẫn được giữ bật.'))return;
+  try{const state=await databaseRequest('/supabase/cutover');await databaseRequest('/supabase/cutover','POST',{operation:'cancel',epoch:state.epoch});await checkCutoverStatus();}
+  catch(error){await appAlert(error.message);}
 }
 
 function openClassStudents(id) {
