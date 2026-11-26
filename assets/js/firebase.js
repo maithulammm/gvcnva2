@@ -127,15 +127,13 @@ async function performDatabaseRequest(path, method = "GET", body) {
   const epoch = cloud.epoch;
   if (!auth.client || !auth.account)
     throw Error("Cần đăng nhập Microsoft trước khi kết nối dữ liệu.");
-  const token=await acquireMicrosoftIdToken();
   if (epoch !== cloud.epoch) throw Error("Phiên làm việc đã thay đổi.");
   const controller = new AbortController(),
     timeout = setTimeout(() => controller.abort(), 45000);
   try {
-    const response = await fetch(FIREBASE_API_URL + path, {
+    const response = await fetchMicrosoftApi(path, {
       method,
       headers: {
-        Authorization: "Bearer " + token,
         ...(body ? { "Content-Type": "application/json" } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),

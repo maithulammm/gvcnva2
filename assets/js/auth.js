@@ -139,7 +139,7 @@ function microsoftTokenExpired(result) {
  * Lấy ID token âm thầm, thử làm mới nếu token cũ hết hạn. Kiểm tra epoch để kết quả của phiên cũ
  * không đi vào phiên mới.
  */
-async function acquireMicrosoftIdToken() {
+async function acquireMicrosoftIdToken(forceRefresh=false) {
   if (!auth.client || !auth.account)
     throw Object.assign(
       new Error("Cần đăng nhập Microsoft trước khi kết nối dữ liệu."),
@@ -153,7 +153,7 @@ async function acquireMicrosoftIdToken() {
       const result = await client.acquireTokenSilent({
         account,
         scopes: ["openid", "profile", "email"],
-        ...(attempt ? { forceRefresh: true } : {}),
+        ...(forceRefresh||attempt ? { forceRefresh: true } : {}),
       });
       if (epoch !== cloud.epoch || auth.account !== account)
         throw Error("Phiên làm việc đã thay đổi.");
@@ -182,6 +182,28 @@ async function acquireMicrosoftIdToken() {
       { status: 401 },
     );
   }
+}
+let microsoftApiRefresh=null;
+/** API có thể từ chối token trong cache: làm mới và thử lại đúng một lần, không đổi phiên/dữ liệu. */
+async function fetchMicrosoftApi(path,options={}){
+  const client=auth.client,account=auth.account,epoch=cloud.epoch;
+  const current=()=>client===auth.client&&account===auth.account&&epoch===cloud.epoch;
+  const send=async token=>{
+    if(!current())throw Error('Phiên làm việc đã thay đổi.');
+    const response=await fetch(FIREBASE_API_URL+path,{...options,headers:{...options.headers,Authorization:'Bearer '+token}});
+    if(!current())throw Error('Phiên làm việc đã thay đổi.');
+    return response;
+  };
+  let response=await send(await acquireMicrosoftIdToken());
+  if(response.status!==401)return response;
+  await response.body?.cancel();
+  if(!current())throw Error('Phiên làm việc đã thay đổi.');
+  if(!microsoftApiRefresh||microsoftApiRefresh.client!==client||microsoftApiRefresh.account!==account||microsoftApiRefresh.epoch!==epoch){
+    const job={client,account,epoch};
+    job.promise=acquireMicrosoftIdToken(true).finally(()=>{if(microsoftApiRefresh===job)microsoftApiRefresh=null;});
+    microsoftApiRefresh=job;
+  }
+  return send(await microsoftApiRefresh.promise);
 }
 /**
  * Khôi phục đăng nhập bằng redirect khi silent renewal không đủ; mốc 60 giây tránh lặp chuyển
@@ -269,6 +291,9 @@ function handleMicrosoftLogoutStorage(event) {
  * hiệu lực.
  */
 function lockUi() {
+  // Giữ bản đang nhập và các lớp đang chờ lưu trước khi dọn phiên hết hạn hoặc bị thu hồi quyền.
+  if($('editor').open&&ui.editing)saveEditorDraft();
+  if(cloud.ready&&appData)try{storePendingDrafts();}catch{}
   if(typeof closeGvcnTour==='function')closeGvcnTour(false);
   ui.storageStatus = null;
   ui.storageStatusLoading = false;

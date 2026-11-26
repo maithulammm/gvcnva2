@@ -883,6 +883,51 @@ test('missing or expired ID tokens are silently renewed and empty bearer tokens 
   await assert.rejects(f.run('databaseRequest("/bootstrap")'),e=>e.status===401);assert.equal(fetches,0);
 });
 
+test('API 401 refreshes token once and retries identical save body; repeated 401 and 403 are not looped',async()=>{
+  const f=frontend();await f.login();const tokens=[],calls=[];
+  f.ctx.tokenCall=async options=>{tokens.push(options);return {idToken:options.forceRefresh?'FRESH':'CACHED'};};
+  f.run('auth.client.acquireTokenSilent=tokenCall');
+  f.ctx.fetch=async(url,options)=>{calls.push(options);return {status:calls.length===1?401:200,ok:calls.length!==1,json:async()=>({saved:true})};};
+  await f.run(`databaseRequest('/classes/6A1','PUT',{revision:7,classData:{students:[]}})`);
+  assert.equal(calls.length,2);assert.equal(calls[0].body,calls[1].body);
+  assert.equal(calls[0].headers.Authorization,'Bearer CACHED');assert.equal(calls[1].headers.Authorization,'Bearer FRESH');
+  assert.equal(tokens[1].forceRefresh,true);
+  calls.length=0;
+  f.ctx.fetch=async()=>{calls.push(1);return {status:401,ok:false,json:async()=>({error:'Expired'})};};
+  await assert.rejects(f.run(`databaseRequest('/bootstrap')`),e=>e.status===401);assert.equal(calls.length,2);
+  calls.length=0;
+  f.ctx.fetch=async()=>{calls.push(1);return {status:403,ok:false,json:async()=>({error:'Forbidden'})};};
+  await assert.rejects(f.run(`databaseRequest('/bootstrap')`),e=>e.status===403);assert.equal(calls.length,1);
+});
+
+test('concurrent photo and data requests share forced renewal after 401',async()=>{
+  const f=frontend();await f.login();let forced=0,release,entered;
+  const started=new Promise(resolve=>entered=resolve),gate=new Promise(resolve=>release=resolve);
+  f.ctx.tokenCall=async options=>{if(options.forceRefresh){forced++;entered();await gate;return {idToken:'FRESH'};}return {idToken:'CACHED'};};
+  f.run('auth.client.acquireTokenSilent=tokenCall');
+  f.ctx.fetch=async(url,options)=>({status:options.headers.Authorization==='Bearer FRESH'?200:401,ok:options.headers.Authorization==='Bearer FRESH',json:async()=>({ok:true})});
+  const both=f.run(`Promise.all([databaseRequest('/calendar'),evidenceApi('/evidence/6A1/status')])`);
+  await started;await new Promise(resolve=>setImmediate(resolve));release();await both;
+  assert.equal(forced,1);
+});
+
+test('expired session cleanup preserves editor draft and unsynced class data',async()=>{
+  const f=frontend();await f.login();f.run(`cls().students=[{id:'S1',name:'Student'}];openModal('m02');cloud.ready=true;cloud.pending.add(ui.classId);`);
+  f.el('entryForm').concern='Unsubmitted text';
+  const draft=f.run('editorDraftKey()'),pending=f.run('cloudCacheKey()+"_PENDING"');
+  f.run('lockUi()');
+  assert.equal(JSON.parse(f.memory.get(draft)).fields.concern,'Unsubmitted text');
+  assert.equal(JSON.parse(f.memory.get(pending)).classes['6A1'].data.students[0].id,'S1');
+  assert.equal(f.run('auth.account'),null);
+});
+
+test('switching session during an unauthorized API response cannot refresh or retry as another account',async()=>{
+  const f=frontend();await f.login();let calls=0;
+  f.ctx.fetch=async()=>{calls++;f.run('cloud.epoch++');return {status:401,ok:false,json:async()=>({error:'Expired'})};};
+  await assert.rejects(f.run(`databaseRequest('/bootstrap')`),/Phiên làm việc đã thay đổi/);
+  assert.equal(calls,1);
+});
+
 test('automatic reauthentication is limited to one redirect and does not bypass explicit logout',async()=>{
   const f=frontend();await f.login();let redirects=0;
   f.ctx.redirectCall=async()=>{redirects++;};f.run('auth.client.acquireTokenRedirect=redirectCall');

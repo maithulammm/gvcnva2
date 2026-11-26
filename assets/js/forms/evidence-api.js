@@ -45,9 +45,9 @@ function evidenceThumbnail(meta,{editorIndex,recordId='',index=0,preview='',disa
     ${editorIndex!==undefined?`<button type="button" class="evidence-remove" ${disabled?'disabled':''} title="Gỡ ảnh" aria-label="Gỡ ảnh minh chứng ${editorIndex+1}" onclick="removeEvidenceImage(${editorIndex})">×</button>`:''}</span>`;
 }
 async function evidenceApi(path,options={}){
-  const epoch=cloud.epoch,owner=auth.email,token=await acquireMicrosoftIdToken();
+  const epoch=cloud.epoch,owner=auth.email;
   if(epoch!==cloud.epoch||owner!==auth.email)throw Error('Phiên làm việc đã thay đổi.');
-  const response=await fetch(FIREBASE_API_URL+path,{...options,cache:'no-store',headers:{Authorization:'Bearer '+token,...options.headers}});
+  const response=await fetchMicrosoftApi(path,{...options,cache:'no-store'});
   let data;try{data=await response.json();}catch{throw Error('Kho ảnh chưa sẵn sàng.');}
   if(epoch!==cloud.epoch||owner!==auth.email)throw Error('Phiên làm việc đã thay đổi.');
   if(!response.ok)throw Error(response.status===404?'Ảnh hoặc API kho ảnh chưa sẵn sàng.':data.error||'Không truy cập được ảnh minh chứng.');
