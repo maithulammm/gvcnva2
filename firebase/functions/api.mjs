@@ -32,7 +32,7 @@ export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=pr
       const route=String(path||'/').replace(/\/$/,'')||'/';
       if(method==='GET'&&route==='/health') {
         const health=deploymentStatus(env,{databaseConfigured:databaseConfigured()});
-        return respond(health.configured?200:503,{...health,meetingPaperEvidence:true});
+        return respond(health.configured?200:503,{...health,meetingPaperEvidence:true,novemberMeetingBackfill:true});
       }
       if(method==='GET'&&route==='/evidence/oauth/callback'){
         const result=await oauth().callback(query);

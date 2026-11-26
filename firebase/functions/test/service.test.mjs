@@ -12,6 +12,26 @@ async function fixture() {
 }
 const teacherInput={name:'Giáo viên A',email:teacher.email,classId:'8C3',active:true};
 
+test('loading assigned class repairs November once with snapshot and leaves locked state and other months intact',async()=>{
+  let {api,db,saved}=await photosFixture();
+  const c=structuredClone(saved.data);
+  c.months['T11/2026'].meetings=[{id:'OLD',studentId:'S1',actual:'22/11/2026 18:30 · Sân trường',concern:'Old content'}];
+  c.months['T12/2026']={...emptyMonth(),meetings:[{id:'DEC',studentId:'S1',actual:'2026-12-01'}]};
+  const written=await api.putClass(admin,'8C3',{classData:c,revision:saved.revision});
+  const stored=db.state();stored.classes['8C3'].data.months.T11_2026.approval.state='approved';
+  db=memoryDatabase(stored);api=createService(db);
+  const boot=await api.bootstrap(teacher),nov=boot.classes['8C3'].months['T11/2026'];
+  assert.equal(boot.revisions['8C3'],written.revision+1);
+  assert.equal(nov.meetings.length,1);assert.equal(nov.approval.state,'approved');
+  assert.equal(nov.schedule.S1.appointments[0].sourceMeetingId,'OLD');
+  assert.deepEqual(nov.connections,written.data.months['T11/2026'].connections);
+  assert.deepEqual(boot.classes['8C3'].months['T12/2026'],written.data.months['T12/2026']);
+  assert(Object.values(db.state().audit).some(e=>e.action==='backfill-november:8C3'));
+  const history=await api.recovery(admin,'8C3');
+  assert(history.snapshots['rev-'+written.revision]);
+  assert.equal((await api.bootstrap(teacher)).revisions['8C3'],boot.revisions['8C3']);
+});
+
 test('M02 paper photos are scoped separately, allow blank goals, preserve M03 and clean up on deletion',async()=>{
   const {api,photos,saved}=await photosFixture();
   const contactBefore=structuredClone(saved.data.months['T11/2026'].connections);

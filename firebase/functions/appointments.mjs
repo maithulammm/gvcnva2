@@ -14,11 +14,21 @@ function slotOf(record) {
 }
 
 // Chỉ miễn quy tắc lịch dự kiến khi có cuộc gặp thật cùng học sinh, ID và thời điểm.
+export function actualMeetingSlot(r){
+  const text=String(r.actualDateTime||r.actual||''),iso=text.match(/\b(\d{4}-\d{2}-\d{2})(?:[T\s]+(\d{1,2})[:h](\d{2}))?/),local=text.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[\s·,]+(\d{1,2})[:h](\d{2}))?/);
+  const date=iso?.[1]||(local?`${local[3]}-${local[2].padStart(2,'0')}-${local[1].padStart(2,'0')}`:'');
+  const hour=iso?.[2]||local?.[4],minute=iso?.[3]||local?.[5];
+  const time=hour===undefined?'':hour.padStart(2,'0')+':'+minute;
+  const dt=new Date(date+'T12:00:00Z');
+  if(!date||!Number.isFinite(dt.getTime())||dt.toISOString().slice(0,10)!==date||time&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(time))return {date:'',time:''};
+  return {date,time};
+}
 export function actualMeetingMirror(m,studentId,a){
   const r=m.meetings.find(r=>r.id===a.sourceMeetingId&&r.studentId===studentId&&r.appointmentId===a.id);
   if(!r)return false;
-  const local=String(r.actual||'').match(/\b(\d{2})\/(\d{2})\/(\d{4}) (\d{2}:\d{2})/);
-  const actual=r.actualDateTime||(local?`${local[3]}-${local[2]}-${local[1]}T${local[4]}`:'');
+  const slot=actualMeetingSlot(r);
+  if(a.recordedDate&&!a.date&&!a.session)return !!slot.date&&!slot.time&&a.recordedDate===slot.date&&a.planTime===`${slot.date.slice(8)}/${slot.date.slice(5,7)}/${slot.date.slice(0,4)} · Đã ghi nhận (chưa ghi giờ)`;
+  const actual=slot.date&&slot.time?slot.date+'T'+slot.time:'';
   const start=a.session==='morning'?'09:55':a.session==='afternoon'?'15:00':a.startTime;
   return actual===`${a.date}T${start}`;
 }
@@ -38,9 +48,10 @@ export function validateAppointments(c,month,m,previous,requireValue) {
       allIds.set(appointment.id,studentId);
       const structured=appointment.date!==undefined||appointment.session!==undefined;
       const unchanged=same(oldEntries.find(a=>a.id===appointment.id),appointment);
-      requireValue(!nested||structured||unchanged,'Lượt hẹn mới cần có ngày và buổi rõ ràng.');
       const {date,session}=slotOf(appointment);
       const mirrored=actualMeetingMirror(m,studentId,appointment);
+      requireValue(!appointment.recordedDate||mirrored&&appointment.recordedDate.startsWith(prefix),'Ngày ghi nhận không thuộc tháng báo cáo.');
+      requireValue(!nested||structured||unchanged||mirrored,'Lượt hẹn mới cần có ngày và buổi rõ ràng.');
       requireValue(!appointment.sourceMeetingId||mirrored,'Lịch đồng bộ phải khớp cuộc gặp thực tế.');
       if(structured) {
         const day=Number(String(date||'').slice(-2));

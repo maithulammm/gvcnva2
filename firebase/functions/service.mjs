@@ -1,5 +1,6 @@
 import { randomUUID,createHash } from 'node:crypto';
 import {appointmentEntries,actualMeetingMirror} from './appointments.mjs';
+import {backfillNovemberMeetings} from './november-backfill.mjs';
 import {evidenceReferences,evidenceStillUsed,queueRemovedEvidence,assertEvidenceNotRetired,stripRetiredEvidence} from './evidence-cleanup.mjs';
 import {YEAR,GRADES,CLASSES,MONTHS,ROOT,emailKey,list,normalizeSchool,normalizeClass,encodeClass,blankClass,
   assignmentFor,scopeFor,checkScope,requireValue,validateClass,authorizeClassEdit,emptyMonth,validateReport,summary,
@@ -202,6 +203,17 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
     s.classes[id]={...s.classes[id],pendingEvidenceDeletes,data:encodeClass(c),revision:revision+1,updatedAt:now(),updatedBy:identity.email};
   }
   function publicClass(s,id) {const value=entry(s,id);return {...value,data:publicData(value.data),cleanupPending:Object.keys(s.classes[id]?.pendingEvidenceDeletes||{}).length};}
+  /** Sửa dữ liệu cũ trong giao dịch cấp lớp, có snapshot/revision; chỉ GVCN lớp đó hoặc Admin. */
+  async function repairNovember(identity,id){
+    return mutateClass(identity,id,null,(s,u)=>{
+      requireValue(hasRole(u,'admin')||hasRole(u,'gvcn')&&u.classId===id,'Không có quyền đồng bộ lớp này.',403);
+      const old=entry(s,id),copy=structuredClone(old.data),result=backfillNovemberMeetings(copy);
+      if(result.added||result.linked){
+        put(s,id,copy,old.revision,identity);
+        s.audit[randomUUID()]={action:'backfill-november:'+id,actor:identity.email,oid:identity.oid,at:now(),...result};
+      }
+    });
+  }
   /**
    * Chỉ trả chi tiết cho Admin/GVCN đúng lớp; BGH/khối trưởng nhận chỉ tiêu và lỗi đã bỏ nội dung
    * nhận diện cá nhân.
@@ -503,7 +515,10 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
             const data=await read('classes/'+id+'/data');
             const after=await read('classes/'+id+'/revision')||0;
             requireValue(after===revision,'Lớp đang được cập nhật. Vui lòng tải lại dữ liệu.',409);
-            s.classes[id]={data,revision};
+            const candidate=normalizeClass(id,data),check=backfillNovemberMeetings(structuredClone(candidate));
+            if((hasRole(u,'admin')||hasRole(u,'gvcn')&&u.classId===id)&&(check.added||check.linked)){
+              const repaired=await repairNovember(identity,id);s.classes[id]=repaired.classes[id];
+            }else s.classes[id]={data,revision};
           }));
           const result={...publicBootstrap(s,identity,ids),scopedSync:true,
             remainingClassIds:options.paged?all.filter(id=>!ids.includes(id)):[]};
@@ -519,6 +534,11 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       const stored=current.users[emailKey(identity.email)];
       if(stored?.oid===identity.oid && current.bootstrapAdminOid &&
         (!hasRole(stored,'admin') || CLASSES.every(id=>current.classes[id]))) {
+        const u=assignmentFor(current,identity);
+        for(const id of scopeFor(u))if(hasRole(u,'admin')||hasRole(u,'gvcn')&&u.classId===id){
+          const check=backfillNovemberMeetings(structuredClone(entry(current,id).data));
+          if(check.added||check.linked){const repaired=await repairNovember(identity,id);current.classes[id]=repaired.classes[id];}
+        }
         return publicBootstrap(current,identity);
       }
       const s=await mutate(identity,null,(school,u)=>{

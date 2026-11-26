@@ -13,6 +13,23 @@ const configured={MICROSOFT_TENANT_ID:'22215a7f-b9e3-4b53-bd27-3a317311e6ca',
   MICROSOFT_CLIENT_ID:'94c476b3-4723-4161-9dea-d64ff8bf505c',GVCN_ALLOWED_ORIGINS:origin,
   FIREBASE_SERVICE_ACCOUNT:JSON.stringify(credentials)};
 
+test('scoped bootstrap backfills November inside class transaction and does not rewrite other months or repeat writes',async()=>{
+  const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin',name:'Admin'},fixture=restFixture();
+  const api=createService(createFirebaseRestDatabase(configured,{fetchImpl:fixture.fetch}));
+  const boot=await api.bootstrap(admin),c=boot.classes['8C3'];
+  c.students=[{id:'S1',name:'Student'}];
+  c.months={'T11/2026':{meetings:[{id:'R1',studentId:'S1',actual:'20/11/2026 09:55 · Phòng học'}]},'T12/2026':{notes:{summary:'December unchanged'}}};
+  const saved=await api.putClass(admin,'8C3',{classData:c,revision:0});fixture.trace.length=0;
+  const repaired=await api.bootstrap(admin,{ids:['8C3']});
+  assert.equal(repaired.revisions['8C3'],saved.revision+1);
+  assert.equal(repaired.classes['8C3'].months['T11/2026'].schedule.S1.appointments.length,1);
+  assert.deepEqual(repaired.classes['8C3'].months['T12/2026'],saved.data.months['T12/2026']);
+  assert(fixture.trace.filter(r=>r.method==='PUT').every(r=>r.path==='classes/8C3'));
+  assert(fixture.state().classes['8C3'].recovery['rev-'+saved.revision]);
+  fixture.trace.length=0;await api.bootstrap(admin,{ids:['8C3']});
+  assert(!fixture.trace.some(r=>r.method==='PUT'));
+});
+
 function restFixture(initial=null,{conflicts=0,missingETag=false,deny=false}={}) {
   let state=structuredClone(initial),revision=0,tokens=0,writes=0,reads=0;
   const assertions=[],trace=[];

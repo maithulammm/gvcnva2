@@ -272,7 +272,7 @@ function* automaticScheduleSteps(c=cls(),month=ui.month) {
   const addBusy=(studentId,appointment)=>{
     const slot=scheduleSlot(appointment);if(!slot.date)return;
     if(!busy.has(slot.date))busy.set(slot.date,[]);
-    busy.get(slot.date).push(appointmentRange({...appointment,...slot}));
+    if(['morning','afternoon','other'].includes(slot.session))busy.get(slot.date).push(appointmentRange({...appointment,...slot}));
     if(!studentDays.has(studentId))studentDays.set(studentId,new Set());
     studentDays.get(studentId).add(slot.date);
   };
