@@ -2,6 +2,15 @@
 
 // M03: positive parent connections.
 
+/** Điền gợi ý theo thao tác của GV, giữ chữ đang nhập và không lặp khi bấm nhiều lần. */
+function suggestParentNoReply(){
+  if(ui.editing?.type!=='m03'||!editorContextCurrent()||!editable())return;
+  const input=$('entryForm').querySelector('[name="reply"]'),text='Phụ huynh chưa phản hồi';
+  if(!input)return;
+  if(!input.value.includes(text))input.value=input.value.trim()?input.value.trimEnd()+'\n'+text:text;
+  saveEditorDraft();input.focus();
+}
+
 function renderM03() {
   let c = cls(),
     m = mdata(),

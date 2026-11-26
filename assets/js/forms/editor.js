@@ -214,6 +214,7 @@ function openModal(type, id = "", seed = {}) {
       control = `<textarea name="${key}" ${req} placeholder="${esc(label)}">${esc(value)}</textarea>`;
     } else
       control = `<input name="${key}" type="${kind}" value="${esc(value)}" ${req} placeholder="${esc(label)}">`;
+    if(type==='m03'&&key==='reply')control+=`<div class="meeting-suggestions"><button type="button" class="btn small" onclick="suggestParentNoReply()">Phụ huynh chưa phản hồi</button></div>`;
     const fieldHtml=`<div data-field="${key}" class="field ${kind === "textarea" || kind === "months" || type==='m02'&&['actual','progressEvidence'].includes(key) || type==='m03'&&key==='channel' || type==='profile'&&key==='result' ? "wide" : ""}"><label>${esc(label)}${required ? " *" : ""}</label>${control}</div>`;
     if(type==='m02'&&['cooperation','needsCoop','profileId','profileProgress','profileNext'].includes(key))advanced+=fieldHtml;
     else h+=fieldHtml;
