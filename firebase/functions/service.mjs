@@ -70,7 +70,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
   }
   function publicData(c){
     const copy=structuredClone(c);
-    for(const m of Object.values(copy.months))for(const row of m.connections)
+    for(const m of Object.values(copy.months))for(const row of [...m.connections,...m.meetings])
       if(Array.isArray(row.evidenceImages))row.evidenceImages=row.evidenceImages.map(image=>image.provider==='onedrive'?{provider:'legacy',id:legacyId(image)}:image);
     return copy;
   }
@@ -267,7 +267,7 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
             if(evidenceStillUsed(normalizeClass(id,stored.data),current,item)){
               delete stored.pendingEvidenceDeletes[key];return false;
             }
-            current.item={driveId:item.driveId,itemId:item.itemId,classId:id,month:task.month};
+            current.item={driveId:item.driveId,itemId:item.itemId,classId:id,month:task.month,...(item.recordType?{recordType:item.recordType}:{})};
             return {protectedImageIds:evidenceReferences(normalizeClass(id,stored.data)).filter(ref=>ref.image.provider==='school').map(ref=>ref.key)};
           });
           if(!ready)continue;
@@ -366,17 +366,19 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
       const s=db.scoped?await imageContext(identity,id,month,studentId):normalizeSchool((await ref.get()).val());evidenceAccess(s,identity,id,month,studentId,true);
     },
     async registerEvidence(identity,id,body,item){
-      const key=createHash('sha256').update([id,body.month,body.studentId,body.uploadId].join('|')).digest('hex');
+      const recordType=body.recordType||'connections';
+      requireValue(['meetings','connections'].includes(recordType),'Loại minh chứng không hợp lệ.');
+      const key=createHash('sha256').update([id,body.month,body.studentId,body.uploadId,...(recordType==='meetings'?['meetings']:[])].join('|')).digest('hex');
       if(db.scoped){
         const s=await imageContext(identity,id,body.month,body.studentId);
         evidenceAccess(s,identity,id,body.month,body.studentId,true);
-        const saved={...item,id:key,classId:id,month:body.month,studentId:body.studentId,createdBy:identity.email,createdAt:now()};
+        const saved={...item,recordType,id:key,classId:id,month:body.month,studentId:body.studentId,createdBy:identity.email,createdAt:now()};
         await db.ref(ROOT+'/evidence/'+key).transaction(()=>saved);
         return {provider:'school',id:key,size:saved.size,mimeType:saved.mimeType};
       }
       const s=await mutate(identity,'evidence:'+id,(school)=>{
         evidenceAccess(school,identity,id,body.month,body.studentId,true);school.evidence ||= {};
-        school.evidence[key]={...item,id:key,classId:id,month:body.month,studentId:body.studentId,createdBy:identity.email,createdAt:now()};
+        school.evidence[key]={...item,recordType,id:key,classId:id,month:body.month,studentId:body.studentId,createdBy:identity.email,createdAt:now()};
       });
       const saved=s.evidence[key];return {provider:'school',id:key,size:saved.size,mimeType:saved.mimeType};
     },
@@ -532,8 +534,8 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
         // Ảnh đã gắn đúng bản ghi sẽ được xác minh lại với bản hiện tại trong transaction;
         // chỉ tra cứu chỉ mục riêng cho ảnh vừa thêm, tránh hàng trăm request lặp lại.
         const existing=await read('classes/'+id+'/data');
-        const existingIds=new Set(Object.values(existing?.months||{}).flatMap(m=>(m.connections||[]).flatMap(r=>(r.evidenceImages||[]).filter(a=>a?.provider==='school').map(a=>a.id))));
-        const ids=[...new Set(Object.values(body.classData?.months||{}).flatMap(m=>(m.connections||[]).flatMap(r=>(r.evidenceImages||[]).filter(a=>a?.provider==='school').map(a=>a.id))))];
+        const existingIds=new Set(Object.values(existing?.months||{}).flatMap(m=>[...(m.connections||[]),...(m.meetings||[])].flatMap(r=>(r.evidenceImages||[]).filter(a=>a?.provider==='school').map(a=>a.id))));
+        const ids=[...new Set(Object.values(body.classData?.months||{}).flatMap(m=>[...(m.connections||[]),...(m.meetings||[])].flatMap(r=>(r.evidenceImages||[]).filter(a=>a?.provider==='school').map(a=>a.id))))];
         requireValue(ids.length<=10000&&ids.every(key=>/^[a-f0-9]{64}$/.test(key)),'Mã ảnh không hợp lệ.');
         const added=ids.filter(key=>!existingIds.has(key));
         requireValue(added.length<=16,'Hãy lưu ảnh theo từng nhóm nhỏ hơn để tránh vượt giới hạn xử lý.');
@@ -547,26 +549,27 @@ export function createService(db,{adminEmail='lammt@vietanhschool.edu.vn',clock=
         requireValue(Array.isArray(body.classData.students),'Danh sách học sinh phải là một mảng.');
         requireValue(!body.classData.profiles || Array.isArray(body.classData.profiles),'Danh sách M05 không đúng định dạng.');
         const c=normalizeClass(id,body.partialMonths?{...body.classData,months:{...old.data.months,...body.classData.months}}:body.classData);
-        for(const [month,m]of Object.entries(c.months))for(const row of m.connections){
+        for(const [month,m]of Object.entries(c.months))for(const recordType of ['connections','meetings'])for(const row of m[recordType]){
           if(row.evidenceImages===undefined)continue;
           requireValue(Array.isArray(row.evidenceImages),'Danh sách ảnh không hợp lệ.');
-          const previousImages=old.data.months[month]?.connections.find(r=>r.id===row.id&&r.studentId===row.studentId)?.evidenceImages||[];
+          const previousImages=old.data.months[month]?.[recordType].find(r=>r.id===row.id&&r.studentId===row.studentId)?.evidenceImages||[];
           const unchangedLegacy=row.evidenceImages.length<=previousImages.length&&row.evidenceImages.every(image=>image&&previousImages.some(oldImage=>oldImage&&(image.id&&image.id===oldImage.id&&image.provider===oldImage.provider||image.provider==='legacy'&&legacyId(oldImage)===image.id||JSON.stringify(image)===JSON.stringify(oldImage))));
-          requireValue(Array.isArray(row.evidenceImages)&&(row.evidenceImages.length<=2||unchangedLegacy),'Tối đa 2 ảnh minh chứng mỗi lần kết nối.');
+          requireValue(Array.isArray(row.evidenceImages)&&(row.evidenceImages.length<=2||unchangedLegacy),'Tối đa 2 ảnh minh chứng mỗi bản ghi.');
           row.evidenceImages=row.evidenceImages.map(image=>{
             requireValue(image&&typeof image==='object','Ảnh minh chứng không hợp lệ.');
             if(image.provider==='school'){
               const existing=previousImages.find(a=>a.provider==='school'&&a.id===image.id);
-              const stored=school.evidence?.[image.id]||(existing?{...existing,classId:id,month,studentId:row.studentId}:null);
-              requireValue(stored&&stored.classId===id&&stored.month===month&&stored.studentId===row.studentId,'Ảnh không thuộc học sinh/lớp/tháng này.',403);
+              const stored=school.evidence?.[image.id]||(existing?{...existing,classId:id,month,studentId:row.studentId,recordType}:null);
+              requireValue(stored&&stored.classId===id&&stored.month===month&&stored.studentId===row.studentId&&(stored.recordType||'connections')===recordType,'Ảnh không thuộc học sinh/lớp/tháng hoặc loại biểu mẫu này.',403);
               return {provider:'school',id:stored.id,size:stored.size,mimeType:stored.mimeType};
             }
             if(image.provider==='legacy'){
-              const prior=old.data.months[month]?.connections.find(r=>r.id===row.id&&r.studentId===row.studentId);
+              const prior=old.data.months[month]?.[recordType].find(r=>r.id===row.id&&r.studentId===row.studentId);
               const original=prior?.evidenceImages?.find(a=>legacyId(a)===image.id);
               requireValue(original,'Liên kết ảnh cũ đã thay đổi.',409);return original;
             }
             // Tương thích bản cũ: metadata OneDrive hiện có vẫn được giữ, không tạo link công khai.
+            requireValue(recordType==='connections'||previousImages.some(oldImage=>JSON.stringify(oldImage)===JSON.stringify(image)),'Ảnh phiếu giấy phải được tải qua kho ảnh của trường.',403);
             return image;
           });
         }

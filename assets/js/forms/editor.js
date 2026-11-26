@@ -131,7 +131,7 @@ function openModal(type, id = "", seed = {}) {
   // Bản nháp chỉ được áp khi còn cùng baseline; ưu tiên nội dung giáo viên chưa lưu.
   const restored = restoreEditorDraft();
   if (restored) Object.assign(rec, restored);
-  if(type==='m03')initEvidenceEditor(rec);
+  if(['m02','m03'].includes(type))initEvidenceEditor(rec);
   if(type==='profile'&&!id){rec.code=nextProfileCode(c,rec.startMonth||ui.month,rec.studentId);rec.result ||= 'Đang theo dõi';}
   $("discardDraftBtn").hidden = !DRAFT_TYPES.includes(type);
   $("editorDraftStatus").textContent = restored ? "Đã khôi phục bản nháp trên máy này. Chưa ghi vào báo cáo." : "";
@@ -217,12 +217,13 @@ function openModal(type, id = "", seed = {}) {
     const fieldHtml=`<div data-field="${key}" class="field ${kind === "textarea" || kind === "months" || type==='m02'&&['actual','progressEvidence'].includes(key) || type==='m03'&&key==='channel' || type==='profile'&&key==='result' ? "wide" : ""}"><label>${esc(label)}${required ? " *" : ""}</label>${control}</div>`;
     if(type==='m02'&&['cooperation','needsCoop','profileId','profileProgress','profileNext'].includes(key))advanced+=fieldHtml;
     else h+=fieldHtml;
+    if(type==='m02'&&key==='actual')h+=evidenceEditorHtml();
   }
   if(type==='m03')h+=evidenceEditorHtml();
   if (type === "m02")
     h += `<details id="meetingExtra" class="wide meeting-extra" ${rec.needsCoop==='Có'||rec.profileId?'open':''}><summary>Phối hợp & liên kết Mẫu 5</summary><div class="fieldgrid">${advanced}</div></details>`;
   $("modalBody").innerHTML = `<div class="fieldgrid">${h}</div>`;
-  if(type==='m03')renderEvidenceEditor();
+  if(['m02','m03'].includes(type))renderEvidenceEditor();
   updateMeetingFields();
   refreshButtonChoices($("entryForm"));
   $("editor").showModal();
@@ -272,7 +273,7 @@ async function submitForm(e) {
     catch(error) { appAlert(error.message);return; }
   }
   let releaseEvidenceLoading;
-  if(type==='m03'){
+  if(['m02','m03'].includes(type)){
     const editor=ui.editing;
     if(editor.evidence?.busy)return toast('Đang xử lý ảnh. Vui lòng chờ.');
     const saveButton=$('modalSave'),saveLabel=saveButton.innerHTML;
@@ -392,7 +393,7 @@ async function submitForm(e) {
         appAlert("Phiếu M05 phải thuộc đúng học sinh của lượt gặp.");
         return;
       }
-      if (!record.profileProgress || !record.profileNext) {
+      if ((!record.profileProgress || !record.profileNext)&&!record.evidenceImages?.length) {
         appAlert(
           "Đã liên kết M05: cần nhập Tiến bộ/khó khăn và Mốc kiểm tra tiếp theo.",
         );
@@ -439,7 +440,7 @@ async function removeRecord(type, id) {
   let name = r.studentId ? studentName(c, r.studentId) : r.name || r.code;
   if (
     !await appConfirm(
-      type==='m03'&&r.evidenceImages?.length?`Xóa lần kết nối của "${name}" và các ảnh minh chứng? Ảnh không còn được sử dụng sẽ bị xóa vĩnh viễn; bản sao lưu không khôi phục được ảnh.`:`Xóa mục "${name}"? Thao tác này không thể hoàn tác nếu chưa có bản sao lưu.`,
+      ['m02','m03'].includes(type)&&r.evidenceImages?.length?`Xóa bản ghi của "${name}" và các ảnh minh chứng? Ảnh không còn được sử dụng sẽ bị xóa vĩnh viễn; bản sao lưu không khôi phục được ảnh.`:`Xóa mục "${name}"? Thao tác này không thể hoàn tác nếu chưa có bản sao lưu.`,
     )
   )
     return;

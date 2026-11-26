@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createService} from '../service.mjs';
-import {CLASSES,ROOT,emailKey,emptyMonth,blankClass,encodeClass} from '../model.mjs';
+import {CLASSES,ROOT,emailKey,emptyMonth,blankClass,encodeClass,validateReport} from '../model.mjs';
 import {memoryDatabase} from './helpers.mjs';
 const admin={email:'lammt@vietanhschool.edu.vn',oid:'admin-oid',name:'Admin'};
 const teacher={email:'teacher@vietanhschool.edu.vn',oid:'teacher-oid',name:'Teacher'};
@@ -11,6 +11,30 @@ async function fixture() {
   return {db,api};
 }
 const teacherInput={name:'Giáo viên A',email:teacher.email,classId:'8C3',active:true};
+
+test('M02 paper photos are scoped separately, allow blank goals, preserve M03 and clean up on deletion',async()=>{
+  const {api,photos,saved}=await photosFixture();
+  const contactBefore=structuredClone(saved.data.months['T11/2026'].connections);
+  const photo=await api.registerEvidence(teacher,'8C3',{month:'T11/2026',studentId:'S1',uploadId:'one',recordType:'meetings'},
+    {driveId:'drive',itemId:'paper',size:10,mimeType:'image/jpeg',recordType:'meetings'});
+  assert.notEqual(photo.id,photos[0].id);
+  const c=structuredClone(saved.data);
+  c.months['T11/2026'].meetings=[{id:'M1',studentId:'S1',actual:'26/11/2026 09:55 · Phòng 8C3',actualDateTime:'2026-11-26T09:55',actualLocation:'Phòng 8C3',goal:'',goals:[],evidenceImages:[photo]}];
+  const wrong=structuredClone(c);wrong.months['T11/2026'].meetings[0].evidenceImages=[photos[0]];
+  await assert.rejects(api.putClass(teacher,'8C3',{classData:wrong,revision:saved.revision}),{status:403});
+  let next=await api.putClass(teacher,'8C3',{classData:c,revision:saved.revision});
+  assert.deepEqual(next.data.months['T11/2026'].connections,contactBefore);
+  assert.equal((await api.evidenceItem(teacher,'8C3',photo.id)).recordType,'meetings');
+  await assert.rejects(api.evidenceItem(teacher,'8C4',photo.id),{status:403});
+  const without=structuredClone(next.data);without.months['T11/2026'].meetings[0].evidenceImages=[];
+  assert(validateReport(without,'T11/2026').errors.some(e=>e.key==='K3'));
+  next.data.months['T11/2026'].meetings=[];
+  await api.putClass(teacher,'8C3',{classData:next.data,revision:next.revision});
+  const deleted=[];
+  await api.cleanupEvidence(teacher,'8C3',async item=>{assert.equal(item.recordType,'meetings');deleted.push(item.itemId);});
+  assert.deepEqual(deleted,['paper']);
+  assert.equal((await api.evidenceItem(teacher,'8C3',photos[0].id)).itemId,'one');
+});
 
 async function photosFixture({shared=false}={}){
   const {db,api}=await fixture();await api.saveTeacher(admin,teacherInput);

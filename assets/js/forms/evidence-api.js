@@ -20,7 +20,7 @@ function scheduleEvidenceCleanup(classId,notify=false){
     }catch{
       if(notify&&owner===auth.email&&epoch===cloud.epoch)toast('Đã lưu dữ liệu. Tác vụ xóa ảnh sẽ được thử lại.');
     }finally{
-      if(removed&&owner===auth.email&&epoch===cloud.epoch&&ui.classId===classId){clearEvidenceImages();if(ui.page==='m03')render();}
+      if(removed&&owner===auth.email&&epoch===cloud.epoch&&ui.classId===classId){clearEvidenceImages();if(['m02','m03'].includes(ui.page))render();}
       evidenceCleanupJobs.delete(key);
     }
   })();
@@ -98,6 +98,10 @@ async function uploadSchoolEvidence(editor,onProgress=()=>{}){
   const state=editor.evidence;if(!state)return [];
   if(state.busy)throw Error('Đang xử lý ảnh. Vui lòng chờ.');
   if(!state.entries.some(item=>!item.meta))return state.entries.map(item=>item.meta);
+  if(editor.type==='m02'){
+    const health=await evidenceApi('/health');
+    if(!health.meetingPaperEvidence)throw Error('API lưu phiếu giấy đang được cập nhật. Ảnh đã chọn vẫn được giữ; vui lòng thử lưu lại sau ít phút.');
+  }
   const studentId=$('entryForm').querySelector('[name="studentId"]')?.value;
   if(!studentId)throw Error('Hãy chọn học sinh trước khi lưu ảnh.');
   state.busy=true;const controller=state.controller=new AbortController();
@@ -109,7 +113,7 @@ async function uploadSchoolEvidence(editor,onProgress=()=>{}){
       if(!evidenceCurrent(editor))throw Error('Phiên hoặc dữ liệu đã thay đổi.');
       state.status='Đang tải ảnh '+(completed+1)+'/'+total+'…';onProgress(completed,total,state.status);renderEvidenceEditor();
       const bytes=new Uint8Array(await item.file.arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
-      const uploaded=await evidenceApi('/evidence/'+editor.classId+'/upload',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({month:editor.month,studentId,uploadId:item.uploadId,contentBase64:btoa(binary)})});
+      const uploaded=await evidenceApi('/evidence/'+editor.classId+'/upload',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({month:editor.month,studentId,recordType:editor.type==='m02'?'meetings':'connections',uploadId:item.uploadId,contentBase64:btoa(binary)})});
       const meta=evidenceMetadata(uploaded);if(meta?.provider!=='school')throw Error('Kho ảnh trả kết quả chưa hợp lệ.');
       if(!evidenceCurrent(editor))throw Error('Phiên hoặc dữ liệu đã thay đổi.');
       item.meta=meta;saveEditorDraft();

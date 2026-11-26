@@ -32,7 +32,7 @@ export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=pr
       const route=String(path||'/').replace(/\/$/,'')||'/';
       if(method==='GET'&&route==='/health') {
         const health=deploymentStatus(env,{databaseConfigured:databaseConfigured()});
-        return respond(health.configured?200:503,health);
+        return respond(health.configured?200:503,{...health,meetingPaperEvidence:true});
       }
       if(method==='GET'&&route==='/evidence/oauth/callback'){
         const result=await oauth().callback(query);
@@ -52,10 +52,12 @@ export function createApiHandler({getDatabase,databaseConfigured=()=>true,env=pr
       else if(method==='POST'&&route==='/evidence/admin/connect')result=await oauth().start(identity,body.returnUrl);
       else if(method==='POST'&&/^\/evidence\/[A-Za-z0-9]+\/upload$/.test(route)){
         const id=route.split('/')[2];
+        const recordType=body.recordType||'connections';
+        requireValue(['meetings','connections'].includes(recordType),'Loại minh chứng không hợp lệ.');
         requireValue(typeof body.uploadId==='string'&&/^[A-Za-z0-9_-]{1,100}$/.test(body.uploadId),'Mã ảnh không hợp lệ.');
         await service.evidenceScope(identity,id,body.month,body.studentId);
-        const key=createHash('sha256').update([id,body.month,body.studentId,body.uploadId].join('|')).digest('hex');
-        const item=await storage().upload({id:key,classId:id,month:body.month,contentBase64:body.contentBase64});
+        const key=createHash('sha256').update([id,body.month,body.studentId,body.uploadId,...(recordType==='meetings'?['meetings']:[])].join('|')).digest('hex');
+        const item=await storage().upload({id:key,classId:id,month:body.month,recordType,contentBase64:body.contentBase64});
         result=await service.registerEvidence(identity,id,body,item);
       }
       else if(method==='GET'&&/^\/evidence\/[A-Za-z0-9]+\/[a-f0-9]{64}$/.test(route)){

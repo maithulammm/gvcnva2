@@ -9,6 +9,38 @@ import {summary,validateReport} from '../model.mjs';
 
 const projectRoot=new URL('../../../',import.meta.url);
 
+test('M02 paper photo permits empty content without fabricating goals; no photo still requires goal',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student'}];openModal('m02');
+    ui.editing.evidence.entries=[{meta:{provider:'school',id:'a'.repeat(64),size:10,mimeType:'image/jpeg'}}];`);
+  f.ctx.input={studentId:'S1',actualDate:'2026-11-26',actualTime:'09:55',actualDateTime:'2026-11-26T09:55',actualLocation:'Phòng 6A1',
+    concern:'',participation:'',goal1:'',goalAmount1:'1',goalUnit1:'week',needsCoop:'Không'};
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');
+  assert.equal(f.run('mdata().meetings.length'),1);
+  assert.equal(f.run('mdata().meetings[0].goal'),'');
+  assert.equal(f.run('mdata().meetings[0].goals.length'),0);
+  assert.equal(f.run('mdata().meetings[0].evidenceImages.length'),1);
+  assert.equal(f.run("validations(cls(),ui.month).errors.some(e=>e.key==='K3')"),false);
+  const c=JSON.parse(f.run('JSON.stringify(cls())'));
+  assert.equal(validateReport(c,'T11/2026').errors.some(e=>e.key==='K3'),false);
+  f.run('openModal("m02")');
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');
+  assert.equal(f.run('mdata().meetings.length'),1);
+  assert(f.alerts.some(text=>/mục tiêu 1/.test(text)));
+});
+
+test('M02 failed photo upload keeps form and original report unchanged',async()=>{
+  const f=frontend();await f.login();
+  f.run(`cls().students=[{id:'S1',name:'Student'}];openModal('m02');
+    ui.editing.evidence.entries=[{file:{}}];uploadConnectionEvidence=async()=>{throw Error('Upload failed')};`);
+  const before=f.run('JSON.stringify(cls())');
+  f.ctx.input={studentId:'S1',actualDateTime:'2026-11-26T09:55',actualLocation:'Phòng 6A1',goal1:''};
+  await f.run('submitForm({preventDefault(){},currentTarget:input})');
+  assert.equal(f.run('JSON.stringify(cls())'),before);
+  assert.equal(f.el('editor').open,true);
+  assert(f.alerts.includes('Upload failed'));
+});
+
 test('priority pupils receive three appointments before ordinary second-round allocation is exhausted',async()=>{
   const f=frontend();await f.login();
   f.run(`cls().students=Array.from({length:23},(_,i)=>({id:'S'+i,name:'Student '+i}));

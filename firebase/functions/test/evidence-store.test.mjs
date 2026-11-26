@@ -4,6 +4,25 @@ import {createEvidenceStore,centralEvidenceConfigured} from '../evidence-store.m
 const env={EVIDENCE_AUTH_MODE:'application',MICROSOFT_TENANT_ID:'tenant',EVIDENCE_CLIENT_ID:'storage-app',EVIDENCE_CLIENT_SECRET:'server-only',EVIDENCE_DRIVE_ID:'drive',EVIDENCE_ROOT_ID:'root'};
 const bytes=Buffer.from([255,216,255,217]);
 
+test('meeting evidence adds a separate OneDrive folder and deletion validates that branch',async()=>{
+  const calls=[],key='b'.repeat(64);
+  const store=createEvidenceStore(env,{fetchImpl:async(url,options={})=>{
+    url=String(url);calls.push(url);
+    if(url.includes('oauth2'))return Response.json({access_token:'SERVER',expires_in:3600});
+    if(options.method==='PUT')return Response.json({id:'photo',parentReference:{driveId:'drive'}});
+    if(url.endsWith('/permanentDelete'))return new Response(null,{status:204});
+    const folderNames={paper:['Gap-hoc-sinh','month'],month:['T11-2026','class'],class:['8C3','year'],year:['2026-2027','root']};
+    if(url.includes('/items/photo?'))return Response.json({id:'photo',name:key+'.jpg',file:{mimeType:'image/jpeg'},parentReference:{id:'paper'}});
+    for(const [id,[name,parent]]of Object.entries(folderNames))if(url.includes('/items/'+id+'?'))return Response.json({id,name,parentReference:{id:parent}});
+    return Response.json({id:'child',folder:{}});
+  }});
+  const item=await store.upload({id:key,classId:'8C3',month:'T11/2026',recordType:'meetings',contentBase64:bytes.toString('base64')});
+  assert(calls.some(url=>url.endsWith(':/Gap-hoc-sinh')));
+  assert.equal(item.recordType,'meetings');
+  await store.remove(item,{classId:'8C3',month:'T11/2026',key});
+  assert.equal(calls.filter(url=>url.endsWith('/permanentDelete')).length,1);
+});
+
 function deletionStore(mode='ok'){
   const calls=[],key='a'.repeat(64);
   const store=createEvidenceStore(env,{fetchImpl:async(url,options={})=>{

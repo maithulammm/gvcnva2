@@ -140,14 +140,14 @@ export function validateClass(c,previous=null) {
             requireValue(r.actual===`${d}/${mo}/${y} ${h}:${mi} · ${r.actualLocation}`,'Thời gian hoặc địa điểm gặp chưa khớp dữ liệu.');
           }
           if(r.goals!==undefined) {
-            requireValue(Array.isArray(r.goals)&&r.goals.length>=1&&r.goals.length<=3,'Cần có từ 1 đến 3 mục tiêu.');
+            requireValue(Array.isArray(r.goals)&&r.goals.length>=(r.evidenceImages?.length?0:1)&&r.goals.length<=3,'Cần có từ 1 đến 3 mục tiêu hoặc ảnh phiếu giấy.');
             const positions=new Set();
             for(const goal of r.goals) {
               requireValue(Number.isInteger(goal.position)&&goal.position>=1&&goal.position<=3&&!positions.has(goal.position),'Vị trí mục tiêu không hợp lệ.');
               positions.add(goal.position);
               requireValue(typeof goal.text==='string'&&goal.text.trim()&&Number.isInteger(goal.amount)&&goal.amount>=1&&goal.amount<=999&&['day','week'].includes(goal.unit),'Mục tiêu hoặc thời hạn không hợp lệ.');
             }
-            requireValue(positions.has(1),'Cần nhập mục tiêu 1.');
+            requireValue(positions.has(1)||r.evidenceImages?.length&&!r.goals.length,'Cần nhập mục tiêu 1.');
             requireValue(r.goal===r.goals.map(g=>`${g.position}. ${g.text} (${g.amount} ${g.unit==='week'?'tuần':'ngày'})`).join('\n'),'Nội dung mục tiêu chưa khớp dữ liệu.');
           }
         }
@@ -191,8 +191,8 @@ export function validateReport(c,month) {
   const missing=(x,keys)=>keys.some(k=>!x[k]);
   for(const [i,r] of m.meetings.entries()) {
     if(!r.actual) add('K2',`M02 lượt ${i+1} thiếu thời gian thực tế.`);
-    if(missing(r,['studentId','actual','concern','participation','progressEvidence','goal','cooperation','needsCoop'])) add('K3',`M02 lượt ${i+1} thiếu thông tin.`);
-    if(r.profileId && (missing(r,['profileProgress','profileNext']) || !c.profiles.some(p=>p.id===r.profileId && p.studentId===r.studentId))) add('K6',`M05 lượt ${i+1} thiếu chi tiết hoặc liên kết.`);
+    if(missing(r,r.evidenceImages?.length?['studentId','actual']:['studentId','actual','concern','participation','progressEvidence','goal','cooperation','needsCoop'])) add('K3',`M02 lượt ${i+1} thiếu thông tin.`);
+    if(r.profileId && ((!r.evidenceImages?.length&&missing(r,['profileProgress','profileNext'])) || !c.profiles.some(p=>p.id===r.profileId && p.studentId===r.studentId))) add('K6',`M05 lượt ${i+1} thiếu chi tiết hoặc liên kết.`);
   }
   for(const [i,r] of m.connections.entries()) if(missing(r,['studentId','date','channel','recipient'])) add('K4',`M03 lượt ${i+1} thiếu thông tin.`);
   for(const r of m.previous) if(missing(r,['studentId','action','observation','next'])) add('K5','M04 phần I thiếu thông tin.');

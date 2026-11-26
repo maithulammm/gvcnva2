@@ -5,7 +5,7 @@ export const evidenceKey=image=>['school','legacy'].includes(image?.provider)?im
   createHash('sha256').update(JSON.stringify(image)).digest('hex');
 const sameFile=(a,b)=>a?.driveId&&a.driveId===b?.driveId&&a.itemId===b?.itemId;
 export function evidenceReferences(c){
-  return Object.entries(c.months||{}).flatMap(([month,m])=>(m.connections||[]).flatMap(row=>(row.evidenceImages||[])
+  return Object.entries(c.months||{}).flatMap(([month,m])=>[...(m.connections||[]),...(m.meetings||[])].flatMap(row=>(row.evidenceImages||[])
     .filter(image=>image&&['school','onedrive','legacy'].includes(image.provider))
     .map(image=>({key:evidenceKey(image),image,month,studentId:row.studentId,recordId:row.id}))));
 }
@@ -33,7 +33,7 @@ export function assertEvidenceNotRetired(c,stored,index){
 }
 /** Khôi phục nội dung báo cáo không khôi phục liên kết tới ảnh đã xóa vĩnh viễn. */
 export function stripRetiredEvidence(c,stored){
-  for(const m of Object.values(c.months))for(const row of m.connections)
+  for(const m of Object.values(c.months))for(const row of [...m.connections,...m.meetings])
     if(Array.isArray(row.evidenceImages))row.evidenceImages=row.evidenceImages.filter(image=>!retired(stored,image));
   return c;
 }

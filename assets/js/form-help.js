@@ -60,7 +60,7 @@ const FORM_HELP_QUICK={
     ['Nhận xét lần trước','Nhóm này chỉ hiện khi có **lần gặp trước** hoặc nhận xét đã lưu. Đánh giá việc thực hiện mục tiêu cũ; phần tham khảo dài có thể bấm mở.'],
     ['Nội dung mới','Ghi **điều học sinh quan tâm** và **mức tham gia / tiến bộ**. Chọn cụm từ gợi ý rồi chỉnh theo tình huống thực tế.'],
     ['Mục tiêu tiếp theo','Thống nhất **mục tiêu cụ thể**, **thời hạn** và **việc cần làm**. Bấm **Lưu thông tin** hoặc **Lưu & ghi HS tiếp theo**.']
-  ],note:['Ghi đúng căn cứ','Chọn **Chưa đủ căn cứ** khi chưa có đủ dữ kiện để so sánh tiến bộ. Chỉ mở **Phối hợp & liên kết Mẫu 5** khi cần.']},
+  ],note:['Ghi đúng căn cứ','Nếu đã ghi trên **phiếu giấy**, chọn hoặc dán **ảnh phiếu** sau phần ngày giờ: không cần nhập lại nội dung, nhận xét và mục tiêu. Vẫn chọn đúng **học sinh, ngày giờ và địa điểm**. Nếu nhập trực tiếp, chọn **Chưa đủ căn cứ** khi chưa có đủ dữ kiện so sánh; chỉ mở **Phối hợp & liên kết Mẫu 5** khi cần.']},
   m03:{label:'KẾT NỐI PHỤ HUYNH',headline:'Ghi lại lần kết nối đã thực hiện',steps:[
     ['Chọn học sinh và ngày','Hình thức mặc định là **Tin nhắn**, người nhận mặc định là **Mẹ**. Đổi lại nếu lần kết nối có hình thức hoặc người nhận khác.'],
     ['Ghi nội dung cần thiết','**Thông điệp** và **phản hồi không bắt buộc nhập**. Nếu ghi, nêu sự việc tích cực cụ thể; tránh so sánh học sinh với bạn.'],

@@ -10,6 +10,22 @@ const MEETING_SUGGESTIONS = {
 };
 const PROGRESS_CHOICES = [["Chưa đủ căn cứ","Chưa đủ căn cứ"],["Có","Có tiến bộ"],["Không","Chưa tiến bộ"]];
 const MEETING_EXTRA_FIELDS = ["actualDateTime","actualDate","actualTime","actualLocation",...Array.from({length:3},(_,i)=>["goal"+(i+1),"goalAmount"+(i+1),"goalUnit"+(i+1)]).flat()];
+/** Chỉ miễn nhập nội dung khi có ảnh thật đã chọn/đã lưu; không miễn chọn đúng hồ sơ và thời điểm. */
+function meetingHasPaperEvidence(){return ui.editing?.type==='m02'&&!!ui.editing.evidence?.entries.some(item=>item.file||item.meta);}
+function updateMeetingPaperFields(){
+  if(ui.editing?.type!=='m02')return;
+  const paper=meetingHasPaperEvidence(),form=$('entryForm');
+  for(const name of ['concern','participation','progressEvidence','goal1','goalAmount1','cooperation','profileProgress','profileNext']){
+    const input=form.querySelector?.(`[name="${name}"]`);if(!input)continue;
+    input.required=!paper&&!input.disabled;
+  }
+  for(const label of form.querySelectorAll?.('[data-field="concern"]>label,[data-field="participation"]>label,[data-field="progressEvidence"]>label,[data-field="goal"] label')||[]){
+    for(const node of label.childNodes||[])if(node.nodeType===3){
+      if(node.paperOriginalText===undefined)node.paperOriginalText=node.nodeValue;
+      node.nodeValue=paper?node.paperOriginalText.replace(/\s*\*\s*$/,''):node.paperOriginalText;
+    }
+  }
+}
 /**
  * Đọc giờ ISO hoặc dd/mm/yyyy và tách địa điểm từ chuỗi cũ; chỉ chuẩn hóa để nhập, không tự sửa
  * bản ghi gốc.
@@ -169,7 +185,7 @@ function serializeMeetingInputs(fd,record) {
       if(!Number.isInteger(amount)||amount<1||amount>999||!['day','week'].includes(unit))throw Error(`Thời hạn mục tiêu ${i} không hợp lệ.`);
       goals.push({position:i,text,amount,unit});
     }
-    if(!goals.some(g=>g.position===1))throw Error('Cần nhập ít nhất mục tiêu 1.');
+    if(!goals.some(g=>g.position===1)&&!meetingHasPaperEvidence())throw Error('Cần nhập ít nhất mục tiêu 1.');
     const old=ui.editing.id?lookup('m02',ui.editing.id):null,initial=ui.editing.meetingInitial;
     const unchanged=old&&!old.goals&&[1,2,3].every(i=>String(fd.get('goal'+i)||'')===String(initial['goal'+i])&&String(fd.get('goalAmount'+i))===String(initial['goalAmount'+i])&&fd.get('goalUnit'+i)===initial['goalUnit'+i]);
     if(unchanged)record.goal=old.goal;

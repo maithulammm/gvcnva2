@@ -127,12 +127,7 @@ function validations(c, month) {
       !x.studentId ||
       !ids.has(x.studentId) ||
       !x.actual ||
-      !x.concern ||
-      !x.participation ||
-      !x.progressEvidence ||
-      !x.goal ||
-      !x.cooperation ||
-      !x.needsCoop
+      (!x.evidenceImages?.length&&(!x.concern || !x.participation || !x.progressEvidence || !x.goal || !x.cooperation || !x.needsCoop))
     )
       add(
         "K3",
@@ -184,8 +179,7 @@ function validations(c, month) {
     if (
       !profile ||
       profile.studentId !== x.studentId ||
-      !x.profileProgress ||
-      !x.profileNext
+      (!x.evidenceImages?.length&&(!x.profileProgress || !x.profileNext))
     )
       add(
         "K6",

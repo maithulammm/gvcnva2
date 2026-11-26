@@ -32,13 +32,14 @@ function initEvidenceEditor(record){
 }
 function evidenceCurrent(editor){return ui.editing===editor&&editorContextCurrent()&&editable();}
 function evidenceEditorHtml(){
-  return `<section class="wide evidence-editor" aria-label="Ảnh minh chứng kết nối phụ huynh">
+  const paper=ui.editing?.type==='m02';
+  return `<section class="wide evidence-editor" aria-label="${paper?'Ảnh phiếu gặp học sinh':'Ảnh minh chứng kết nối phụ huynh'}">
     <div class="evidence-heading"><b>Ảnh minh chứng <small>Không bắt buộc</small></b><span>Tối đa 2 ảnh</span></div>
     <div class="evidence-tools"><label class="btn small evidence-file-label">＋ Chọn ảnh<input id="evidenceFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple onchange="addEvidenceFiles(this.files);this.value='' "></label>
     </div>
     <div id="evidencePaste" class="evidence-paste" tabindex="0" role="group" aria-label="Bấm vào đây và dán ảnh chụp màn hình" onpaste="pasteEvidenceImages(event)">Bấm vào đây rồi Ctrl+V để dán ảnh chụp màn hình</div>
     <div id="evidenceList" class="evidence-list"></div><p id="evidenceStatus" class="help" role="status" aria-live="polite"></p>
-    <small class="help">Bấm ảnh để xem lớn. Ảnh được lưu khi bấm Lưu thông tin.</small></section>`;
+    <small class="help">${paper?'Có ảnh phiếu giấy: không cần nhập lại nội dung, nhận xét và mục tiêu. Vẫn chọn đúng học sinh và ngày giờ gặp. ':''}Bấm ảnh để xem lớn. Ảnh được lưu khi bấm Lưu thông tin.</small></section>`;
 }
 function renderEvidenceEditor(){
   const state=ui.editing?.evidence,host=$('evidenceList');if(!state||!host)return;
@@ -47,6 +48,7 @@ function renderEvidenceEditor(){
   if(state.busy)$('evidenceStatus').insertAdjacentHTML('afterbegin','<span class="request-spinner" aria-hidden="true"></span> ');
   $('evidenceFiles').disabled=state.busy;
   hydrateEvidenceImages(host);
+  if(ui.editing?.type==='m02')updateMeetingPaperFields();
 }
 /** Giải mã rồi vẽ lại ảnh raster; không đưa SVG/HTML hoặc tên tệp gốc vào OneDrive. */
 async function prepareEvidenceImage(file){
@@ -66,7 +68,7 @@ async function addEvidenceFiles(files){
   const editor=ui.editing,state=editor?.evidence;
   if(!state||state.busy||!evidenceCurrent(editor))return;
   const selected=Array.from(files||[]);if(!selected.length)return;
-  if(selected.length+state.entries.length>EVIDENCE_LIMIT)return appAlert('Mỗi lần kết nối được đính kèm tối đa 2 ảnh.');
+  if(selected.length+state.entries.length>EVIDENCE_LIMIT)return appAlert('Mỗi bản ghi được đính kèm tối đa 2 ảnh.');
   state.busy=true;state.status='Đang chuẩn bị ảnh…';renderEvidenceEditor();
   try{
     for(const file of selected){

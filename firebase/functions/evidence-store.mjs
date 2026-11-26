@@ -78,7 +78,7 @@ export function createEvidenceStore(env,{fetchImpl=fetch,clock=()=>Date.now(),lo
       requireValue(['image/jpeg','image/png','image/webp'].includes(node.file?.mimeType),'Chỉ được xóa tệp ảnh minh chứng.',403);
       if(protectedImageIds.some(id=>node.name===id+'.jpg'))return {retained:true};
       if(!legacy)requireValue(node.name===key+'.jpg','Tên ảnh không khớp chỉ mục minh chứng.',403);
-      for(const name of [month.replace('/','-'),classId,YEAR]){
+      for(const name of [...(item.recordType==='meetings'?['Gap-hoc-sinh']:[]),month.replace('/','-'),classId,YEAR]){
         requireValue(node.parentReference?.id,'Ảnh không thuộc thư mục minh chứng.',403);
         node=await graph('/items/'+encodeURIComponent(node.parentReference.id)+'?$select=id,name,parentReference');
         requireValue(node.name===name,'Ảnh không thuộc lớp/tháng cần xóa.',403);
@@ -87,13 +87,14 @@ export function createEvidenceStore(env,{fetchImpl=fetch,clock=()=>Date.now(),lo
       try{await graph(path+'/permanentDelete',{method:'POST'});}
       catch(error){if(error.status!==404)throw error;}
     },
-    async upload({id,classId,month,contentBase64}){
+    async upload({id,classId,month,contentBase64,recordType='connections'}){
+      requireValue(['meetings','connections'].includes(recordType),'Loại minh chứng không hợp lệ.');
       requireValue(typeof contentBase64==='string'&&contentBase64.length<=Math.ceil(MAX_IMAGE_BYTES/3)*4&&/^[A-Za-z0-9+/]+={0,2}$/.test(contentBase64),'Ảnh không hợp lệ hoặc vượt 2 MB.');
       const bytes=Buffer.from(contentBase64,'base64');requireValue(bytes.length>3&&bytes.length<=MAX_IMAGE_BYTES&&bytes[0]===255&&bytes[1]===216&&bytes[2]===255,'Chỉ nhận ảnh JPEG hợp lệ, tối đa 2 MB.');
-      await token();let parent=rootId();for(const name of [YEAR,classId,month.replace('/','-')])parent=await folder(parent,name);
+      await token();let parent=rootId();for(const name of [YEAR,classId,month.replace('/','-'),...(recordType==='meetings'?['Gap-hoc-sinh']:[])])parent=await folder(parent,name);
       const file=await graph('/items/'+encodeURIComponent(parent)+':/'+id+'.jpg:/content',{method:'PUT',headers:{'Content-Type':'image/jpeg'},body:bytes});
       requireValue(file.id&&file.parentReference?.driveId===driveId(),'Kho ảnh trả kết quả chưa hợp lệ.',503);
-      return {itemId:file.id,driveId:driveId(),size:bytes.length,mimeType:'image/jpeg'};
+      return {itemId:file.id,driveId:driveId(),size:bytes.length,mimeType:'image/jpeg',...(recordType==='meetings'?{recordType}:{})};
     },
     async read(item,{legacy=false,classId,month}={}){
       if(delegated)await token();
